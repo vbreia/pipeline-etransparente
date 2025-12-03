@@ -169,7 +169,12 @@ cython_debug/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
+testes-dash
 # Project specific
 *.log
 dados_pre_tratados.json
+output
+.gitignore
+wkhtmltox_0.12.6-1.focal_amd64.deb
+/teste-api-ga4
+scripts/tests

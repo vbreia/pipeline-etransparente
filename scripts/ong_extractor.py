@@ -14,6 +14,7 @@ from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional, Tuple, Any
 from bs4 import BeautifulSoup
 import logging
+import os
 from datetime import datetime
 import time
 
@@ -435,12 +436,17 @@ class ONGExtractor:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36"
         }
         
-        # Configurar logging
+        # Configurar logging (arquivo em ./logs/ong_extractor.log)
+        log_dir = os.path.join(os.getcwd(), 'logs')
+        os.makedirs(log_dir, exist_ok=True)
+        log_ts = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        log_file = os.path.join(log_dir, f'ong_extractor_{log_ts}.log')
+
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler('ong_extractor.log'),
+                logging.FileHandler(log_file),
                 logging.StreamHandler()
             ]
         )
@@ -623,25 +629,45 @@ class ONGExtractor:
         self.logger.info(f"Extração concluída: {len(resultados)} ONGs processadas com sucesso")
         return resultados
     
-    def salvar_dados(self, dados: List[ONGData], arquivo: str = "dados_pre_tratados.json"):
-        """Salvar dados em arquivo JSON"""
-        
+    def salvar_dados(self, dados: List[ONGData], arquivo: Optional[str] = None):
+        """Salvar dados em arquivo JSON.
+
+        Se `arquivo` for None, gera um nome com timestamp no diretório `output/`:
+        `output/oscs_etransparente_YYYY-MM-DD-HH-MM-SS.json`.
+
+        Observação: remover `estatisticas_termos` do dicionário de cada ONG antes
+        de salvar para que o arquivo de saída não contenha estatísticas.
+        Retorna o caminho do arquivo salvo em caso de sucesso, ou False em caso de erro.
+        """
+
         try:
+            # Determinar caminho destino se não fornecido
+            if arquivo is None:
+                timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+                filename = f"oscs_etransparente_{timestamp}.json"
+                dirpath = os.path.join(os.getcwd(), "output")
+                os.makedirs(dirpath, exist_ok=True)
+                arquivo = os.path.join(dirpath, filename)
+
             # Converter dataclasses para dicionários
             dados_dict = []
             for ong in dados:
                 ong_dict = asdict(ong)
+
+                # Remover estatísticas por ONG do output (campo opcional)
+                ong_dict.pop('estatisticas_termos', None)
+
                 dados_dict.append(ong_dict)
-            
+
             # Salvar em JSON
             with open(arquivo, 'w', encoding='utf-8') as f:
                 json.dump(dados_dict, f, ensure_ascii=False, indent=2)
-            
+
             self.logger.info(f"Dados salvos em: {arquivo}")
             self.logger.info(f"Total de registros: {len(dados)}")
-            
-            return True
-            
+
+            return arquivo
+
         except Exception as e:
             self.logger.error(f"Erro ao salvar dados: {str(e)}")
             return False
@@ -699,15 +725,15 @@ def main():
     dados = extrator.extrair_todas_ongs()
     
     if dados:
-        # Salvar dados
-        sucesso = extrator.salvar_dados(dados, "dados_pre_tratados.json")
-        
-        if sucesso:
+        # Salvar dados (retorna caminho do arquivo salvo ou False)
+        caminho_salvo = extrator.salvar_dados(dados)
+
+        if caminho_salvo:
             # Gerar relatório
             extrator.gerar_relatorio_estatisticas()
-            
+
             print(f"\n✅ EXTRAÇÃO FINALIZADA COM SUCESSO!")
-            print(f"💾 Arquivo gerado: dados_pre_tratados.json")
+            print(f"💾 Arquivo gerado: {caminho_salvo}")
             print(f"📊 Total de ONGs extraídas: {len(dados)}")
         else:
             print(f"\n❌ Erro ao salvar dados")

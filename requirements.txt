@@ -2,3 +2,7 @@ requests
 pandas
 beautifulsoup4
 openpyxl
+plotly
+streamlit
+pdfkit
+xhtml2pdf
