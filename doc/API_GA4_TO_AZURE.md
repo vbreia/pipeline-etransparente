@@ -97,6 +97,7 @@ Navegar em: IAM e administrador → Workload Identity Federation → Criar Pool
 
 No Console GCP, dentro do Pool azure-pool:
 Aba Provedores → Adicionar Provedor
+
 <img src="assets/gcp-create-wif-provider.png" alt="GCP Create WIF Provider" width="400"/>
 
 Configurações do Provedor:
