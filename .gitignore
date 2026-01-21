@@ -175,6 +175,9 @@ testes-dash
 dados_pre_tratados.json
 output
 .gitignore
-wkhtmltox_0.12.6-1.focal_amd64.deb
+# Docker packages (instalados automaticamente)
+docker/*.deb
 /teste-api-ga4
 scripts/tests
+*/__pycache__
+/logs/

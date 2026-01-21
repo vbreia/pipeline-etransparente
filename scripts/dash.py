@@ -75,6 +75,9 @@ def gerar_dashboard_html(osc):
     website = osc.get('website', '') or ''
     localizacao = osc.get('localizacao', '') or ''
     cnpj = osc.get('cnpj', '') or ''
+    
+    # Buscar logo local da ONG
+    logo_local_path = osc.get('logo_local_path', '') or ''
 
     redes = osc.get('redes_sociais', {}) or {}
     instagram = redes.get('instagram', '') or ''
@@ -180,17 +183,116 @@ def gerar_dashboard_html(osc):
         docs_html = f'<ul class="docs">{docs_html_items}</ul>'
     else:
         docs_html = '<div class="none">Nenhum</div>'
-    # Resolve absolute paths for local fonts so wkhtmltopdf can load them
+    
+    # Identificar campos faltantes
+    campos_faltantes = []
+    
+    # Verificar informações básicas
+    if not telefone:
+        campos_faltantes.append('Telefone')
+    if not email:
+        campos_faltantes.append('E-mail')
+    if not website:
+        campos_faltantes.append('Website')
+    if not localizacao:
+        campos_faltantes.append('Localização')
+    if not cnpj:
+        campos_faltantes.append('CNPJ')
+    
+    # Verificar redes sociais
+    if not instagram:
+        campos_faltantes.append('Instagram')
+    if not linkedin:
+        campos_faltantes.append('LinkedIn')
+    if not youtube:
+        campos_faltantes.append('YouTube')
+    
+    # Verificar documentos importantes
+    if not documentos.get('cneas'):
+        campos_faltantes.append('CNEAS')
+    if not documentos.get('cebas'):
+        campos_faltantes.append('CEBAS')
+    if not documentos.get('estatuto'):
+        campos_faltantes.append('Estatuto')
+    if not documentos.get('relatorio_atividades'):
+        campos_faltantes.append('Relatório de Atividades')
+    if not documentos.get('plano_acao'):
+        campos_faltantes.append('Plano de Ação')
+    
+    # Verificar balanços (últimos 3 anos)
+    for ano in ['2024', '2023', '2022']:
+        if not documentos.get(f'balanco_{ano}'):
+            campos_faltantes.append(f'Balanço {ano}')
+    
+    # Construir HTML de campos faltantes
+    if campos_faltantes:
+        faltantes_texto = ', '.join(campos_faltantes)
+        faltantes_html = f'<div style="color:#dc2626; font-size:0.9rem; line-height:1.6;">{_html.escape(faltantes_texto)}</div>'
+    else:
+        faltantes_html = '<div style="color:#16a34a; font-weight:500; font-size:0.95rem;">🎉 Parabéns! Todos os dados de transparência estão disponíveis.</div>'
+    # Resolve absolute paths for local fonts and background so wkhtmltopdf can load them
     repo_root = os.path.abspath(os.getcwd())
     font_dir = os.path.join(repo_root, 'assets', 'fonts')
     regular_path = os.path.join(font_dir, 'Montserrat-Regular.woff2')
     medium_path = os.path.join(font_dir, 'Montserrat-Medium.woff2')
     bold_path = os.path.join(font_dir, 'Montserrat-Bold.woff2')
+    # Background images absolute paths (prefer JPG)
+    bg_jpg_path = os.path.join(repo_root, 'assets', 'img', 'bg-dash-e.jpg')
+    bg_svg_path = os.path.join(repo_root, 'assets', 'img', 'bg-dash-e.svg')
+    # Fonts existence checks (optional warnings)
+    for fp in (regular_path, medium_path, bold_path):
+        if not os.path.exists(fp):
+            print(f"[dash.py] Aviso: fonte não encontrada em {fp}. Pode afetar a renderização.")
+    if not os.path.exists(bg_jpg_path) and not os.path.exists(bg_svg_path):
+        print(f"[dash.py] Aviso: nenhum background encontrado em {bg_jpg_path} ou {bg_svg_path}.")
 
     # Use file:// URLs so wkhtmltopdf (called from a different working dir) can access the files
     regular_url = f'file://{regular_path}'
     medium_url = f'file://{medium_path}'
     bold_url = f'file://{bold_path}'
+
+    # Prefer JPG (more robust with wkhtmltopdf). Fallback to SVG if JPG missing.
+    if os.path.exists(bg_jpg_path):
+        bg_url = f'file://{bg_jpg_path}'
+    else:
+        bg_url = f'file://{bg_svg_path}'
+
+    # Determinar logo da ONG
+    # 1. Tentar usar logo_local_path se existir
+    # 2. Se não existir, tentar buscar na pasta de logos usando slug da URL
+    # 3. Fallback: logo padrão ou placeholder
+    logo_url = ""
+    
+    if logo_local_path and os.path.exists(logo_local_path):
+        # Usar caminho absoluto do logo local
+        logo_url = f'file://{os.path.abspath(logo_local_path)}'
+    else:
+        # Tentar encontrar logo pelo slug extraído da URL
+        slug = ''
+        match = re.search(r'/oscs/([^/]+)/?$', url)
+        if match:
+            slug = match.group(1)
+            logo_path = os.path.join(repo_root, 'assets', 'img', 'logos-ongs', f'{slug}.jpg')
+            
+            if os.path.exists(logo_path):
+                logo_url = f'file://{logo_path}'
+        
+        # Se ainda não encontrou, tentar fallback com nome seguro
+        if not logo_url:
+            safe_name = re.sub(r'[^A-Za-z0-9_-]+', '_', nome).strip('_') or 'logo'
+            logo_path = os.path.join(repo_root, 'assets', 'img', 'logos-ongs', f'{safe_name}.jpg')
+            
+            if os.path.exists(logo_path):
+                logo_url = f'file://{logo_path}'
+        
+        # Fallback: usar logo padrão se existir
+        if not logo_url:
+            default_logo = os.path.join(repo_root, 'assets', 'img', 'logo-default.png')
+            if os.path.exists(default_logo):
+                logo_url = f'file://{default_logo}'
+            else:
+                # Última opção: usar placeholder de teste (pode ser removido depois)
+                logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
 
     html = f"""
         <!DOCTYPE html>
@@ -223,18 +325,40 @@ def gerar_dashboard_html(osc):
 
             /* Forçar impressão de cores e ajustes de impressão */
             * {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-            @media print {{
-              body {{ background: #f5f5f5; -webkit-print-color-adjust: exact; }}
-              .container {{ box-shadow: none; }}
-              /* Ajustes de margens, tamanhos se necessário */
-            }}
-            body {{ font-family: 'MontserratLocal', 'Montserrat', sans-serif; }}
-            body {{ font-family: 'MontserratLocal', 'Montserrat', sans-serif; }}
-            .container {{ max-width: 900px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
-            .header {{ display: flex; align-items: center; gap: 20px; margin-bottom: 30px; border-bottom: 2px solid #1e3a8a; padding-bottom: 20px; }}
-            .logo {{ width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); flex-shrink: 0; }}
+                        @media print {{
+                            /* Garantir que o fundo seja impresso */
+                            body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                            .container {{ box-shadow: none; }}
+                        }}
+                        body {{
+                            font-family: 'MontserratLocal', 'Montserrat', sans-serif;
+                            margin: 0;
+                            padding: 0;
+                            position: relative; /* cria contexto para .page-bg absoluta */
+                        }}
+                        /* Fundo ocupa toda a página (viewport) e imprime ponta a ponta */
+                        .page-bg {{
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            width: 210mm;   /* A4 */
+                            height: 297mm;
+                            z-index: 0;
+                            border: 0;
+                            display: block;
+                        }}
+                        /* Garantir que o conteúdo fique sobre o fundo */
+                        .container {{ position: relative; z-index: 1; }}
+            .container {{ max-width: 840px; margin: 24px 20px 56px; background: #fff; padding: 8px 22px 72px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
+            .header {{ margin-bottom: 30px; border-bottom: 2px solid #1e3a8a; padding-bottom: 20px; }}
+            .header-table {{ width: 100%; border-collapse: collapse; table-layout: fixed; }}
+            .header-table td {{ vertical-align: middle; padding: 0; }}
+            .logo-cell {{ width: 100px; padding-right: 18px; }}
+            .text-cell {{ width: auto; }}
+            .logo {{ width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: block; flex-shrink: 0; }}
             .logo-link {{ display: inline-block; margin-right: 18px; text-decoration: none; }}
-            .title-area {{ display: flex; flex-direction: column; gap: 8px; }}
+            .title-area {{ display: block; }}
+            .title-area .nome-ong {{ margin-bottom: 8px; }}
             .nome-ong {{ font-size: 1.4rem; font-weight: bold; color: #1e3a8a; word-break: break-word; }}
             .nome-ong a {{ color: inherit; text-decoration: none; }}
             .meta {{ display: flex; gap: 20px; font-size: 0.95rem; color: #374151; }}
@@ -257,16 +381,25 @@ def gerar_dashboard_html(osc):
         </style>
     </head>
     <body>
+        <img class="page-bg" src="{bg_url}" alt=""/><br><br>
         <div class="container">
             <div class="header">
-                <a class="logo-link" href="{_html.escape(url)}" target="_blank" rel="noopener noreferrer"><div class="logo" aria-hidden="true"></div></a>
-                <div class="title-area">
-                    <div class="nome-ong"><a href="{_html.escape(url)}" target="_blank" rel="noopener noreferrer">{_html.escape(nome)}</a></div>
-                    <div class="meta">
-                        <span><strong>Nível:</strong> { _html.escape(nivel) }</span>
-                        <span><strong>Nota:</strong> { nota_geral }</span>
-                    </div>
-                </div>
+                <table class="header-table">
+                    <tr>
+                        <td class="logo-cell">
+                            <a class="logo-link" href="{_html.escape(url)}" target="_blank" rel="noopener noreferrer"><img class="logo" src="{logo_url}" alt="Logo"/></a>
+                        </td>
+                        <td class="text-cell">
+                            <div class="title-area">
+                                <div class="nome-ong"><a href="{_html.escape(url)}" target="_blank" rel="noopener noreferrer">{_html.escape(nome)}</a></div>
+                                <div class="meta">
+                                    <span><strong>Nível:</strong> { _html.escape(nivel) }</span>
+                                    <span><strong>Nota:</strong> { nota_geral }</span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
             <div class="body">
@@ -294,11 +427,8 @@ def gerar_dashboard_html(osc):
             </div>
 
             <div class="link-area">
-                <p><strong>Redes Sociais:</strong></p>
-                <div class="social-row">{socials_html}</div>
-                <p style="margin-top:12px;"><strong>Documentos disponíveis:</strong></p>
-                <div class="docs-area">{docs_html}</div>
-                
+                <p><strong>Campos, dados ou documentos faltantes:</strong></p>
+                <div class="faltantes-area">{faltantes_html}</div>
             </div>
         </div>
     </body>
@@ -320,14 +450,37 @@ def main():
     os.makedirs(html_dir, exist_ok=True)
     os.makedirs(pdf_dir, exist_ok=True)
 
+    # Obter data para nome do arquivo: Relatório-etransparente-{mês}-de-{ano}-{slug}
+    mes_nome = datetime.now().strftime('%B').lower()  # janeiro, fevereiro, etc
+    # Mapear para português
+    meses_pt = {
+        'january': 'janeiro', 'february': 'fevereiro', 'march': 'março', 'april': 'abril',
+        'may': 'maio', 'june': 'junho', 'july': 'julho', 'august': 'agosto',
+        'september': 'setembro', 'october': 'outubro', 'november': 'novembro', 'december': 'dezembro'
+    }
+    mes_nome = meses_pt.get(mes_nome, datetime.now().strftime('%B').lower())
+    ano = datetime.now().strftime('%Y')
+
     pdf_count = 0
     for idx, osc in enumerate(oscs, 1):
         nome = osc.get('nome', 'Sem nome')
-        nome_arquivo = ''.join(c if c.isalnum() or c in (' ', '-', '_') else '_' for c in nome)
-        nome_arquivo = nome_arquivo.strip().replace(' ', '_')[:50]
+        url = osc.get('url', '')
+        
+        # Extrair slug da URL
+        slug = ''
+        match = re.search(r'/oscs/([^/]+)/?$', url)
+        if match:
+            slug = match.group(1)
+        else:
+            # Fallback: usar nome sanitizado se não conseguir extrair slug
+            slug = ''.join(c if c.isalnum() or c in ('-', '_') else '-' for c in nome).lower()
+            slug = re.sub(r'-+', '-', slug).strip('-')[:50]
 
-        html_file = os.path.join(html_dir, f"{idx:03d}_{nome_arquivo}.html")
-        pdf_file = os.path.join(pdf_dir, f"{idx:03d}_{nome_arquivo}.pdf")
+        # Nome do arquivo: Relatório-etransparente-{mês}-de-{ano}-{slug}
+        nome_arquivo = f"Relatório-etransparente-{mes_nome}-de-{ano}-{slug}"
+
+        html_file = os.path.join(html_dir, f"{nome_arquivo}.html")
+        pdf_file = os.path.join(pdf_dir, f"{nome_arquivo}.pdf")
 
         try:
             try:
@@ -353,13 +506,15 @@ def main():
                 try:
                     options = {
                         'page-size': 'A4',
-                        'margin-top': '15mm',
-                        'margin-right': '15mm',
-                        'margin-bottom': '15mm',
-                        'margin-left': '15mm',
+                        'margin-top': '0mm',
+                        'margin-right': '0mm',
+                        'margin-bottom': '0mm',
+                        'margin-left': '0mm',
                         'encoding': 'UTF-8',
                         'enable-local-file-access': None,   # permite carregar assets locais
                         'background': None,                 # renderiza fundos
+                        'print-media-type': None,           # usa estilos de impressão, mantendo fundos
+                        'disable-smart-shrinking': None,    # evita encolhimento inesperado
                         'zoom': '1.0',
                         'javascript-delay': '200',
                         'load-error-handling': 'ignore',

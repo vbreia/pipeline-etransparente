@@ -1,0 +1,39 @@
+FROM apache/airflow:2.8.3-python3.11
+
+USER root
+
+# Instalar dependências básicas primeiro
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    libcairo2 \
+    fonts-dejavu \
+    fonts-liberation \
+    fontconfig \
+    libfreetype6 \
+    libjpeg62-turbo \
+    libpng16-16 \
+    libx11-6 \
+    libxcb1 \
+    libxext6 \
+    libxrender1 \
+    xfonts-75dpi \
+    xfonts-base \
+    libfontconfig1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar libssl1.1 do Bullseye (necessário para wkhtmltopdf)
+RUN wget -q http://ftp.debian.org/debian/pool/main/o/openssl/libssl1.1_1.1.1w-0+deb11u1_amd64.deb -O /tmp/libssl1.1.deb \
+    && dpkg -i /tmp/libssl1.1.deb \
+    && rm /tmp/libssl1.1.deb
+
+# Instalar wkhtmltopdf
+RUN wget -q https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.bullseye_amd64.deb -O /tmp/wkhtmltox.deb \
+    && dpkg -i /tmp/wkhtmltox.deb \
+    && rm /tmp/wkhtmltox.deb
+
+USER airflow
+
+# As dependências Python serão instaladas via _PIP_ADDITIONAL_REQUIREMENTS
+# definido no docker-compose.yml
+

@@ -10,6 +10,8 @@ Este script implementa uma solução orientada a objetos para extrair:
 import requests
 import json
 import re
+import glob
+import html as html_module
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional, Tuple, Any
 from bs4 import BeautifulSoup
@@ -17,6 +19,13 @@ import logging
 import os
 from datetime import datetime
 import time
+from urllib.parse import urlsplit
+from io import BytesIO
+
+try:
+    from PIL import Image
+except Exception:
+    Image = None
 
 
 @dataclass
@@ -81,6 +90,8 @@ class ONGData:
     """Estrutura principal para dados de uma ONG"""
     nome: str = ""
     url: str = ""
+    logo_url: str = ""
+    logo_local_path: str = ""
     descricao_objeto_social: str = ""
     telefone: str = ""
     email: str = ""
@@ -195,6 +206,103 @@ class WebScraper:
                 categorias['outros_documentos'].append(doc)
         
         return categorias
+
+    def _baixar_logo(self, logo_url: str, ong_web_url: str) -> str:
+        """Baixar logo, converter para JPG e salvar em assets/img/logos-ongs/<slug>.jpg (sobrescreve).
+        
+        Args:
+            logo_url: URL da imagem da logo
+            ong_web_url: URL completa da ONG (https://etransparente.org/oscs/{slug}/)
+        
+        Returns:
+            Caminho relativo do arquivo salvo (assets/img/logos-ongs/<slug>.jpg)
+        """
+        if not logo_url:
+            return ""
+
+        try:
+            base_dir = os.path.join(os.getcwd(), 'assets', 'img', 'logos-ongs')
+            os.makedirs(base_dir, exist_ok=True)
+
+            # Extrair slug único da URL (tudo depois de /oscs/ até a última /)
+            slug = ''
+            match = re.search(r'/oscs/([^/]+)/?$', ong_web_url)
+            if match:
+                slug = match.group(1)
+            else:
+                self.logger.warning(f"Não foi possível extrair slug de: {ong_web_url}")
+                return ""
+            
+            destino = os.path.join(base_dir, f"{slug}.jpg")
+            # Retornar caminho relativo para uso em dashboards
+            destino_relativo = os.path.join('assets', 'img', 'logos-ongs', f"{slug}.jpg")
+
+            # Limpar restos de extensões antigas do mesmo nome
+            for f in glob.glob(os.path.join(base_dir, f"{slug}.*")):
+                if f != destino:
+                    try:
+                        os.remove(f)
+                    except Exception:
+                        pass
+
+            resp = requests.get(logo_url, headers=self.headers, timeout=30)
+            if not (resp.status_code == 200 and resp.content):
+                self.logger.warning(f"Falha ao baixar logo ({resp.status_code}) para {slug}: {logo_url}")
+                return ""
+
+            content = resp.content
+
+            # Converter para JPG usando Pillow se disponível
+            if Image is not None:
+                try:
+                    img = Image.open(BytesIO(content))
+                    
+                    # Converter para RGB se necessário, preservando transparência com fundo branco
+                    if img.mode in ("RGBA", "LA"):
+                        bg = Image.new('RGB', img.size, (255, 255, 255))
+                        if img.mode == "RGBA":
+                            bg.paste(img, mask=img.split()[3])  # canal alpha
+                        else:
+                            bg.paste(img, mask=img.split()[1])  # canal LA
+                        img = bg
+                    elif img.mode == "P":
+                        img = img.convert("RGB")
+                    elif img.mode != "RGB":
+                        img = img.convert("RGB")
+                    
+                    # Redimensionar para formato 1:1 (quadrado) com fundo branco
+                    width, height = img.size
+                    max_dim = max(width, height)
+                    
+                    # Criar imagem quadrada com fundo branco
+                    square_img = Image.new('RGB', (max_dim, max_dim), (255, 255, 255))
+                    
+                    # Calcular posição para centralizar a imagem original
+                    offset_x = (max_dim - width) // 2
+                    offset_y = (max_dim - height) // 2
+                    
+                    # Colar imagem original centralizada
+                    square_img.paste(img, (offset_x, offset_y))
+                    
+                    # Salvar como JPG
+                    square_img.save(destino, format="JPEG", quality=90)
+                    self.logger.info(f"Logo salva como JPG quadrado (1:1): {destino}")
+                    return destino_relativo
+                except Exception as conv_err:
+                    self.logger.warning(f"Falha na conversão para JPG para {slug}: {conv_err}")
+
+            # Fallback: se já for JPEG (magic bytes), salvar direto
+            if content[:3] == b"\xff\xd8\xff":
+                with open(destino, 'wb') as f:
+                    f.write(content)
+                return destino_relativo
+
+            self.logger.warning(f"Logo não convertida (Pillow ausente ou formato desconhecido) para {slug}: {logo_url}")
+            return ""
+
+        except Exception as e:
+            self.logger.error(f"Erro ao baixar logo de {slug}: {e}")
+            return ""
     
     def extrair_dados_web(self, url: str, nome_ong: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """Extrair dados completos de uma ONG específica via web scraping"""
@@ -286,6 +394,23 @@ class WebScraper:
                         cnpj = texto
                         break
 
+            # Logo
+            logo_url = ''
+            logo_local_path = ''
+            anchor_logo = soup.find('a', class_=re.compile(r'profile-avatar'))
+            if anchor_logo:
+                href_logo = anchor_logo.get('href', '')
+                style_attr = anchor_logo.get('style', '')
+                if href_logo:
+                    logo_url = href_logo
+                elif style_attr:
+                    match = re.search(r"url\(['\"]?(.*?)['\"]?\)", style_attr)
+                    if match:
+                        logo_url = match.group(1)
+
+                if logo_url:
+                    logo_local_path = self._baixar_logo(logo_url, url)
+
             # Documentos
             documentos_list = []
             documentos_set = set()
@@ -296,6 +421,15 @@ class WebScraper:
                     documentos_set.add(href)
             
             docs_categorizados = self.categorizar_documentos(documentos_list)
+
+            # Decodificar entidades HTML em todos os campos de texto
+            descricao = html_module.unescape(descricao)
+            telefone = html_module.unescape(telefone)
+            email = html_module.unescape(email)
+            website = html_module.unescape(website)
+            horario = html_module.unescape(horario)
+            localizacao = html_module.unescape(localizacao)
+            cnpj = html_module.unescape(cnpj)
 
             dados = {
                 'nome': nome_ong,
@@ -326,7 +460,9 @@ class WebScraper:
                     'balanco_2023': docs_categorizados['balanco_2023'],
                     'balanco_2024': docs_categorizados['balanco_2024'],
                     'outros_documentos': ';'.join(docs_categorizados['outros_documentos'])
-                }
+                },
+                'logo_url': logo_url,
+                'logo_local_path': logo_local_path
             }
             
             return dados, None
@@ -486,6 +622,8 @@ class ONGExtractor:
         """Processar uma ONG com dados de informações + termos"""
         
         nome = ong_data.get('title', {}).get('rendered', 'Nome não encontrado')
+        # Decodificar entidades HTML no nome (ex: &#8211; → -)
+        nome = html_module.unescape(nome)
         url = ong_data.get('link', '')
         
         self.logger.info(f"Processando: {nome}")
@@ -501,6 +639,8 @@ class ONGExtractor:
             ong = ONGData(
                 nome=dados_web['nome'],
                 url=dados_web['url'],
+                logo_url=dados_web.get('logo_url', ''),
+                logo_local_path=dados_web.get('logo_local_path', ''),
                 descricao_objeto_social=dados_web['descricao_objeto_social'],
                 telefone=dados_web['telefone'],
                 email=dados_web['email'],
@@ -538,6 +678,8 @@ class ONGExtractor:
             ong = ONGData(
                 nome=nome,
                 url=url,
+                logo_url=dados_web['logo_url'] if dados_web else '',
+                logo_local_path=dados_web['logo_local_path'] if dados_web else '',
                 termos=termos
             )
             

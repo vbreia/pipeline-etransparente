@@ -1,6 +1,144 @@
-# 🏢 Extrator de Dados de ONGs - etransparente.org
+# 🏢 Pipeline de Transparência - etransparente.org
 
-Script Python orientado a objetos para extração completa de dados de ONGs do site **etransparente.org**, combinando web scraping e API REST.
+Pipeline automatizada com Docker + Airflow para extração, análise e geração de dashboards de transparência de ONGs do site **etransparente.org**.
+
+## � Documentação
+
+Documentação completa disponível em `/doc`:
+
+- **[Quick Start](doc/QUICK_START.md)** - Guia de início rápido
+- **[Airflow Setup](doc/AIRFLOW_SETUP.md)** - Configuração detalhada do Airflow
+- **[Guia Técnico](doc/TECHNICAL_GUIDE.md)** - Arquitetura e detalhes técnicos
+- **[Dependências](doc/DEPENDENCIES.md)** - Lista completa de dependências
+- **[Estrutura Docker](doc/DOCKER_STRUCTURE.md)** - Organização dos arquivos Docker
+- **[ONG Extractor](doc/ONG_EXTRACTOR_EXPLAIN.md)** - Explicação do extrator de dados
+- **[API GA4 para Azure](doc/API_GA4_TO_AZURE.md)** - Integração Google Analytics 4
+
+## �🚀 Quick Start (1 comando)
+
+```bash
+./docke./docker/quick-start.sh
+```
+
+Acesse http://localhost:8080 (admin/admin) e execute a DAG `ong_pipeline`!
+
+## 📋 Pré-requisitos
+
+### **Sistema Operacional**
+- Linux (Ubuntu, Debian, CentOS, etc.)
+- macOS
+- Windows com WSL2
+
+### **Software Necessário**
+
+1. **Docker** (versão 20.10+)
+```bash
+# Ubuntu/Debian
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+```
+
+2. **Docker Compose** (versão 2.0+)
+```bash
+# Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install docker-compose-plugin
+```
+
+3. **Git**
+```bash
+# Ubuntu/Debian
+sudo apt-get install git
+```
+
+### **Recursos Mínimos Recomendados**
+- **CPU**: 2 cores
+- **RAM**: 4 GB (recomendado 8 GB)
+- **Disco**: 10 GB livres
+- **Rede**: Conexão estável com internet
+
+### **Setup em VM Azure (Recomendado) ⭐**
+
+**Configuração testada e otimizada:**
+- **Tamanho**: Standard B2s ou superior (8 GB RAM) ✅
+- **OS**: Ubuntu 22.04 LTS
+- **Disco**: 30 GB Premium SSD
+- **Região**: Escolha mais próxima para melhor performance
+
+**Setup Automático (1 comando):**
+
+```bash
+# Conectar via SSH
+ssh azureuser@<seu-ip-publico>
+
+# Executar setup completo
+curl -fsSL https://raw.githubusercontent.com/vbreia/pipeline-etransparente/main/docke./docker/setup-azure-vm.sh | bash
+```
+
+**Ou Setup Manual:**
+
+```bash
+# 1. Conectar via SSH
+ssh azureuser@<seu-ip-publico>
+
+# 2. Clonar repositório
+git clone https://github.com/vbreia/pipeline-etransparente.git
+cd pipeline-etransparente
+
+# 3. Executar setup Azure
+chmod +x docke./docker/setup-azure-vm.sh
+./docke./docker/setup-azure-vm.sh
+
+# 4. Aplicar permissões Docker
+newgrp docker
+
+# 5. Iniciar pipeline
+./docke./docker/quick-start.sh
+```
+
+**O script `setup-azure-vm.sh` configura automaticamente:**
+- ✅ Atualização do sistema
+- ✅ Instalação do Docker e Docker Compose
+- ✅ Permissões corretas para o usuário
+- ✅ Criação de swap (se RAM < 4GB)
+- ✅ Configuração de firewall UFW
+- ✅ Clone do repositório
+
+**Configurar NSG (Network Security Group):**
+
+No Portal Azure:
+1. Acesse sua VM → **Networking** → **Add inbound port rule**
+2. Configure:
+   - **Port**: 8080
+   - **Protocol**: TCP
+   - **Source**: Seu IP público (mais seguro) ou Any
+   - **Action**: Allow
+   - **Name**: Airflow-WebUI
+
+**Descobrir seu IP público da VM:**
+```bash
+curl ifconfig.me
+```
+
+**Acessar remotamente:**
+```
+http://<ip-publico-da-vm>:8080
+Username: admin
+Password: admin
+```
+
+**Monitoramento de recursos:**
+```bash
+# Ver uso de RAM
+free -h
+
+# Ver uso de disco
+df -h
+
+# Ver containers rodando
+docker stats
+```
 
 ## 🎯 Funcionalidades
 
@@ -11,12 +149,25 @@ Script Python orientado a objetos para extração completa de dados de ONGs do s
 - **Identificação**: CNPJ, Localização, Descrição do objeto social
 - **Redes Sociais**: Instagram, LinkedIn, YouTube (separados automaticamente)
 - **Documentos**: CNEAS, CEBAS, Estatuto, Balanços contábeis (categorizados por ano)
+- **🎨 Logos**: Download automático, conversão para JPG quadrado 1:1 com fundo branco
 
 **📋 Termos e Contratos (API)**
 - **Termos com Município**: Contratos e colaborações municipais
 - **Termos com Estado**: Parcerias estaduais
 - **Termos com União**: Convênios federais
 - **Emendas Parlamentares**: Recursos de emendas parlamentares
+
+### 🖼️ **Processamento de Logos**
+
+- **Detecção Automática**: Localiza logo na página HTML
+- **Download Inteligente**: Suporta múltiplos formatos (PNG, JPG, WebP)
+- **Processamento com Pillow**:
+  - Conversão de transparência para fundo branco
+  - Redimensionamento para formato quadrado 1:1 (sem distorção)
+  - Centralização automática da imagem
+  - Compressão JPG de alta qualidade (90%)
+- **Armazenamento**: `assets/img/logos-ongs/<nome_normalizado>.jpg`
+- **Integração**: Logos aparecem automaticamente nos dashboards HTML/PDF
 
 ### 🔧 **Características Técnicas**
 
@@ -26,12 +177,18 @@ Script Python orientado a objetos para extração completa de dados de ONGs do s
 - **Dataclasses**: Estruturas de dados tipadas e organizadas
 - **Proteção contra Sobrecarga**: Pausas entre requisições
 - **Estatísticas Integradas**: Relatórios de completude automáticos
+- **Processamento de Imagens**: Pillow para manipulação avançada de logos
 
 ## 📦 Dependências
 
 ```bash
-pip install beautifulsoup4 requests
+pip install beautifulsoup4 requests pillow
 ```
+
+**Bibliotecas:**
+- `beautifulsoup4`: Parsing HTML para scraping
+- `requests`: Requisições HTTP
+- `pillow`: Processamento de imagens (logos)
 
 ## 🚀 Como Usar
 
@@ -76,6 +233,8 @@ Log detalhado da execução com timestamps e níveis de log.
 {
   "nome": "Nome da ONG",
   "url": "URL da página",
+  "logo_url": "https://example.com/logo.png",
+  "logo_local_path": "/home/airflow/assets/img/logos-ongs/Nome_da_ONG.jpg",
   "descricao_objeto_social": "Descrição das atividades",
   "telefone": "Telefone de contato",
   "email": "Email de contato",
@@ -263,6 +422,267 @@ extrator.salvar_dados(ongs_com_contratos, "ongs_com_contratos.json")
 print(f"Encontradas {len(ongs_com_contratos)} ONGs com contratos ativos")
 ```
 
+## 🐳 Pipeline com Docker + Airflow
+
+### **Setup Inicial (Máquina Nova)**
+
+```bash
+# 1. Instalar Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+newgrp docker  # ou faça logout/login
+
+# 2. Instalar Docker Compose
+sudo apt-get update
+sudo apt-get install docker-compose-plugin
+
+# 3. Clonar o repositório
+git clone https://github.com/vbreia/pipeline-etransparente.git
+cd pipeline-etransparente
+
+# 4. Executar o quick start
+chmod +x docke./docker/quick-start.sh
+./docke./docker/quick-start.sh
+```
+
+**O script `docke./docker/quick-start.sh` fará automaticamente:**
+- ✅ Verificar Docker e Docker Compose
+- ✅ Criar diretórios necessários (dags, scripts, output, logs)
+- ✅ Configurar permissões corretas (chmod 777)
+- ✅ Fazer build das imagens Docker (incluindo wkhtmltopdf)
+- ✅ Iniciar todos os containers
+- ✅ Verificar se wkhtmltopdf foi instalado
+- ✅ Validar que a DAG foi carregada
+- ✅ Exibir instruções de acesso
+
+**Tempo estimado**: 5-10 minutos na primeira execução (download de imagens e build)
+
+### **Arquitetura**
+
+A pipeline foi implementada usando **Docker Compose** com 4 serviços:
+
+1. **PostgreSQL 15**: Banco de dados do Airflow
+2. **Airflow Init**: Inicialização do banco e criação do usuário admin
+3. **Airflow Scheduler**: Orquestrador de tarefas (execução da DAG)
+4. **Airflow Webserver**: Interface web (http://localhost:8080)
+
+### **Estrutura da DAG**
+
+```
+extract_ong_data (ong_extractor.py)
+    ↓
+generate_transparency_scores (generate_transparency_scores.py)
+    ↓
+generate_dashboards (dash.py)
+```
+
+**Agendamento**: Diariamente às 02:00 AM UTC  
+**Retry**: 2 tentativas com intervalo de 5 minutos
+
+### **Como Executar**
+
+#### **1. Iniciar a Pipeline**
+
+```bash
+docker-compose up -d
+```
+
+#### **2. Acessar Interface Web**
+
+- **URL**: http://localhost:8080
+- **Usuário**: admin
+- **Senha**: admin
+
+#### **3. Verificar Status**
+
+```bash
+# Status dos containers
+docker-compose ps
+
+# Logs do scheduler
+docker logs airflow-scheduler
+
+# Logs do webserver
+docker logs airflow-webserver
+```
+
+#### **4. Executar DAG Manualmente**
+
+```bash
+docker exec airflow-webserver airflow dags trigger ong_pipeline
+```
+
+#### **5. Parar a Pipeline**
+
+```bash
+docker-compose down
+```
+
+### **Outputs Gerados**
+
+```
+output/
+├── oscs_etransparente_YYYY-MM-DD-HH-MM-SS.json          # Dados extraídos
+├── scores/
+│   └── transparency_scores_YYYY-MM-DD-HH-MM-SS.json     # Scores de transparência
+└── dashboards/
+    └── YYYYMMDDHHMMSS/
+        ├── html/                                         # 52 dashboards HTML
+        │   ├── 001_Nome_da_ONG.html
+        │   └── ...
+        └── pdf/                                          # 52 dashboards PDF
+            ├── 001_Nome_da_ONG.pdf
+            └── ...
+```
+
+### **Configuração do wkhtmltopdf**
+
+Para gerar PDFs, o `wkhtmltopdf` foi instalado no container com as seguintes etapas:
+
+1. **Instalação de dependências** (fontconfig, libx11-6, xfonts, etc.)
+2. **Instalação do libssl1.1** (dependência necessária do wkhtmltopdf)
+3. **Instalação do wkhtmltopdf 0.12.6.1-2 Bullseye**
+
+**docker/Dockerfile.airflow:**
+```dockerfile
+FROM apache/airflow:2.8.3-python3.11
+
+USER root
+
+# Instalar dependências básicas
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget fonts-dejavu fonts-liberation fontconfig \
+    libfreetype6 libjpeg62-turbo libpng16-16 \
+    libx11-6 libxcb1 libxext6 libxrender1 \
+    xfonts-75dpi xfonts-base libfontconfig1 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Instalar libssl1.1 (dependência do wkhtmltopdf)
+RUN wget -q http://ftp.debian.org/debian/pool/main/o/openssl/libssl1.1_1.1.1w-0+deb11u1_amd64.deb -O /tmp/libssl1.1.deb \
+    && dpkg -i /tmp/libssl1.1.deb && rm /tmp/libssl1.1.deb
+
+# Instalar wkhtmltopdf
+RUN wget -q https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.bullseye_amd64.deb -O /tmp/wkhtmltox.deb \
+    && dpkg -i /tmp/wkhtmltox.deb && rm /tmp/wkhtmltox.deb
+
+USER airflow
+```
+
+### **Dependências Python**
+
+As seguintes bibliotecas são instaladas automaticamente via `_PIP_ADDITIONAL_REQUIREMENTS`:
+
+- `pdfkit` - Wrapper Python para wkhtmltopdf
+- `requests` - Requisições HTTP
+- `pandas` - Manipulação de dados
+- `beautifulsoup4` - Web scraping
+- `openpyxl` - Manipulação de Excel
+- `plotly` - Gráficos interativos
+- `streamlit` - Dashboards web
+
+### **Volumes Docker**
+
+```yaml
+volumes:
+  - ./dags:/home/airflow/dags           # DAGs do Airflow
+  - ./scripts:/home/airflow/scripts     # Scripts Python
+  - ./output:/home/airflow/output       # Outputs gerados
+  - ./logs:/home/airflow/logs           # Logs da pipeline
+```
+
+### **Troubleshooting**
+
+#### **Container reiniciando constantemente**
+
+```bash
+# Ver logs de erro
+docker logs airflow-scheduler --tail 50
+
+# Verificar permissões dos diretórios
+chmod -R 777 output logs dags scripts
+```
+
+#### **DAG não aparece na interface**
+
+```bash
+# Verificar se a DAG está válida
+docker exec airflow-scheduler airflow dags list
+
+# Ver erros de parsing
+docker exec airflow-scheduler airflow dags list-import-errors
+```
+
+#### **wkhtmltopdf não encontrado**
+
+```bash
+# Verificar se está instalado
+docker exec airflow-scheduler which wkhtmltopdf
+
+# Testar versão
+docker exec airflow-scheduler wkhtmltopdf --version
+```
+
+#### **Problemas específicos de Azure VM**
+
+**Porta 8080 não acessível:**
+```bash
+# 1. Verificar se o container está rodando
+docker ps | grep airflow-webserver
+
+# 2. Verificar se a porta está aberta localmente
+curl http://localhost:8080
+
+# 3. Se funciona local mas não remoto, configure NSG:
+# - Portal Azure → VM → Networking → Add inbound port rule
+# - Port: 8080
+# - Protocol: TCP
+# - Source: Seu IP ou Any (menos seguro)
+```
+
+**Falta de espaço em disco:**
+```bash
+# Verificar espaço
+df -h
+
+# Limpar imagens Docker antigas
+docker system prune -a
+
+# Limpar logs antigos
+sudo find /var/log -type f -name "*.log" -mtime +7 -delete
+```
+
+**VM com pouca memória (menos de 8GB):**
+```bash
+# Criar swap de 4GB
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+**Firewall UFW bloqueando:**
+```bash
+# Verificar status
+sudo ufw status
+
+# Permitir porta 8080
+sudo ufw allow 8080/tcp
+```
+
+## 📊 Histórico de Execuções
+
+### 11 de Dezembro de 2025
+
+- ✅ **52 ONGs** processadas com sucesso
+- ✅ **52 HTMLs** gerados
+- ✅ **52 PDFs** gerados
+- ⏱️ Tempo de execução: ~3 minutos
+  - Extract: ~2 min
+  - Scores: <1 seg
+  - Dashboards: <1 seg
+
 ## 👥 Contribuição
 
 Para contribuir com melhorias:
@@ -279,4 +699,4 @@ Este projeto está sob licença MIT. Veja o arquivo `LICENSE` para mais detalhes
 
 ---
 
-**Desenvolvido para facilitar a análise de transparência de ONGs brasileiras** 🇧🇷
+**Pipeline automatizada para análise de transparência de ONGs brasileiras** 🇧🇷

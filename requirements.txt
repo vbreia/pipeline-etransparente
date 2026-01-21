@@ -1,8 +1,22 @@
-requests
-pandas
-beautifulsoup4
-openpyxl
-plotly
-streamlit
-pdfkit
-xhtml2pdf
+# Dependências HTTP e Web Scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# Processamento de dados
+pandas>=2.0.0
+
+# Manipulação de arquivos
+openpyxl>=3.1.0
+
+# Visualização e dashboards
+plotly>=5.18.0
+streamlit>=1.28.0
+
+# Geração de PDF
+pdfkit>=1.0.0
+
+# Processamento de imagens
+Pillow>=10.0.0
+
+# Airflow (para desenvolvimento local - opcional)
+# apache-airflow==2.8.3
