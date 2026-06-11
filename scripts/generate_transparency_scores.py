@@ -1,23 +1,18 @@
 #!/usr/bin/env python3
-"""Gera pontuações de transparência a partir do arquivo mais recente em `output/`.
+"""Gera pontuações de transparência com metodologia de rubrica fixa.
 
-Comportamento:
-- localiza o arquivo mais novo em `output/` cujo nome corresponde a
-  `oscs_etransparente_YYYY-MM-DD-HH-MM-SS.json` (usa o sufixo timestamp para ordenar)
-- carrega o JSON (lista de ONGs)
-- para cada ONG calcula: campos preenchidos e total de campos (regra simples: campos vazios/""/0/[]/{} contam como não preenchidos)
-- gera um JSON de saída com a pontuação (nota = soma dos booleanos de preenchimento)
+Escala:
+- Informações gerais:  0–15 pts  (15 campos pontuáveis, 1 pt cada)
+- Termos/emendas:      0–15 pts  (média de todos os itens individuais × 15)
 
-O formato de saída (por ONG):
-{
-  "nome": "...",
-  "url": "...",
-  "preenchidos": 7,
-  "total": 24,
-  "nota": 7
-}
+Nota final:
+- Com termos/emendas:  nota_gerais + nota_termos   → escala 0–30
+- Sem termos/emendas:  nota_gerais                 → escala 0–15
 
-Arquivo gerado em: `output/transparency_scores_YYYY-MM-DD-HH-MM-SS.json`
+Classificação (percentual = nota_final / max_nota × 100):
+- Regular : ≤ 30%
+- Bom     : ≤ 69%
+- Ótimo   : > 69%
 """
 
 from __future__ import annotations
@@ -26,7 +21,7 @@ import json
 import os
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 OUTPUT_DIR = os.path.join(os.getcwd(), "output")
@@ -34,44 +29,142 @@ SCORES_DIR = os.path.join(OUTPUT_DIR, "scores")
 FILENAME_RE = re.compile(r"^oscs_etransparente_(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})\.json$")
 
 
-def find_latest_output_file(output_dir: str = OUTPUT_DIR) -> Optional[str]:
-    """Procura o arquivo mais recente em output/ baseado no sufixo timestamp.
+# ---------------------------------------------------------------------------
+# Configuração declarativa de pontuação
+# ---------------------------------------------------------------------------
 
-    Retorna o caminho absoluto do arquivo ou None se não encontrar nada.
-    """
+# Campos de informações gerais que pontuam (1 pt cada, máx 15)
+# Tupla (parent, key) indica subcampo de 'documentos'.
+# String simples indica campo direto na OSC.
+# 'redes_sociais' tem tratamento especial: qualquer subcampo preenchido = 1 pt.
+GERAIS_SCORE_FIELDS: List = [
+    'logo_local_path',
+    'descricao_objeto_social',
+    'telefone',
+    'email',
+    'website',
+    'redes_sociais',
+    'horario_funcionamento',
+    'localizacao',
+    'cnpj',
+    ('documentos', 'cneas'),
+    ('documentos', 'plano_acao'),
+    ('documentos', 'estatuto'),
+    ('documentos', 'ata_eleicao'),
+    ('documentos', 'balanco_2024'),
+    ('documentos', 'balanco_2023'),
+]
+GERAIS_MAX = 15
+
+# Emblemas: não entram na nota, mas são persistidos na saída
+GERAIS_BADGE_FIELDS = ['cebas', 'utilidade_publica']  # subcampos de 'documentos'
+
+# Campos pontuáveis por tipo de termo (presença = 1 pt, ausência = 0 pt)
+# municipio e uniao têm a mesma estrutura de campos (11 campos, divisor 11)
+# estado: 14 campos, divisor 14
+# emendas_parlamentares: 15 campos, divisor 15
+TERMO_CONFIG: Dict[str, Dict] = {
+    'municipio': {
+        'max_fields': 11,
+        'score_fields': [
+            'identificacao_do_instrumento_de_parceria',
+            'termo_assinado',
+            'descricao_do_objeto_da_parceria',
+            'data_da_assinatura',
+            'data_final_da_vigencia',
+            'valor_total_do_termo',
+            'situacao_do_termo',
+            'prestacao_de_contas_da_parceria',
+            'data_prevista_para_a_sua_apresentacao_da_prestacao_de_contas',
+            'resultado_da_prestacao_de_contas',
+            'valor_total_da_remuneracao_da_equipe_de_trabalho',
+        ],
+    },
+    'uniao': {
+        'max_fields': 11,
+        'score_fields': [
+            'identificacao_do_instrumento_de_parceria',
+            'termo_assinado',
+            'descricao_do_objeto_da_parceria',
+            'data_da_assinatura',
+            'data_final_da_vigencia',
+            'valor_total_do_termo',
+            'situacao_do_termo',
+            'prestacao_de_contas_da_parceria',
+            'data_prevista_para_a_sua_apresentacao_da_prestacao_de_contas',
+            'resultado_da_prestacao_de_contas',
+            'valor_total_da_remuneracao_da_equipe_de_trabalho',
+        ],
+    },
+    'estado': {
+        'max_fields': 14,
+        'score_fields': [
+            'numero_do_contrato_ou_do_convenio',
+            'termo_assinado',
+            'descricao_do_objeto_da_parceria',
+            'data_de_assinatura_do_termo',
+            'data_final_da_vigencia',
+            'valor_total_do_termo',
+            'situacao_do_termo',
+            'data_prevista_para_apresentacao_da_prestacao_de_contas',
+            'resultado_da_prestacao_de_contas',
+            'relatorio_de_execucao_fisico_financeira',
+            'demonstrativo_da_execucao_da_receita_e_despesa',
+            'relacao_de_pagamentos',
+            'extrato_bancario_completo_da_conta_especifica',
+            'relacao_de_bens_adquiridos',
+        ],
+    },
+    'emendas_parlamentares': {
+        'max_fields': 15,
+        'score_fields': [
+            'estado',
+            'municipio',
+            'tipo',
+            'num',
+            'num_processo',
+            'termo_assinado',
+            'plano_trabalho',
+            'data_de_liberacao_recurso',
+            'data_final',
+            'nome_do_parlamentar',
+            'area_tematica',
+            'orgao_responsavel_pela_gestao_do_recurso',
+            'valor',
+            'objeto',
+            'prestacao_de_contas',
+        ],
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Utilitários
+# ---------------------------------------------------------------------------
+
+def find_latest_output_file(output_dir: str = OUTPUT_DIR) -> Optional[str]:
     if not os.path.isdir(output_dir):
         return None
-
-    candidates: List[Tuple[str, str]] = []  # (timestamp, fullpath)
-
+    candidates: List[Tuple[str, str]] = []
     for name in os.listdir(output_dir):
         m = FILENAME_RE.match(name)
         if m:
-            ts = m.group(1)
-            candidates.append((ts, os.path.join(output_dir, name)))
-
+            candidates.append((m.group(1), os.path.join(output_dir, name)))
     if not candidates:
-        # fallback: pick most recently modified file in dir
-        files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
+        files = [
+            os.path.join(output_dir, f)
+            for f in os.listdir(output_dir)
+            if os.path.isfile(os.path.join(output_dir, f))
+        ]
         if not files:
             return None
         files.sort(key=lambda p: os.path.getmtime(p), reverse=True)
         return files[0]
-
-    # timestamps formatted YYYY-MM-DD-HH-MM-SS sort lexicographically
     candidates.sort(key=lambda t: t[0], reverse=True)
     return candidates[0][1]
 
 
 def is_filled(value: Any) -> bool:
-    """Regra simples para considerar um campo preenchido.
-
-    - strings não vazias => True
-    - int/float != 0 => True
-    - bool True => True
-    - lists/dicts with len>0 => True
-    - None or empty string/list/dict or 0 => False
-    """
     if value is None:
         return False
     if isinstance(value, bool):
@@ -84,264 +177,162 @@ def is_filled(value: Any) -> bool:
         return len(value) > 0
     if isinstance(value, dict):
         return len(value) > 0
-    # For other types, try truthiness
     return bool(value)
 
 
-def calcular_info_gerais(osc: Dict[str, Any]) -> Dict[str, Any]:
-    """Calcula pontos, total e percentual para campos gerais (não-termos).
+def classificar(nota_final: float, max_nota: float) -> str:
+    percentual = nota_final / max_nota * 100 if max_nota > 0 else 0.0
+    if percentual <= 30:
+        return 'Regular'
+    if percentual <= 69:
+        return 'Bom'
+    return 'Ótimo'
 
-    Regras tomadas por falta de especificação explícita:
-    - Campos considerados: descricao_objeto_social, telefone, email, website,
-      horario_funcionamento, localizacao, cnpj, redes_sociais subcampos,
-      documentos subcampos.
-    - Campos que não pontuam devem ser ignorados (não contamos aqui campos
-      fora da lista acima).
-    - Cada subcampo conta como 1 ponto se preenchido conforme is_filled().
-    """
-    # Apenas os 8 campos que pontuam conforme especificação:
-    # 1. cnpj
-    # 2. documentos.estatuto
-    # 3. documentos.ata_eleicao
-    # 4. documentos.balanco_2020
-    # 5. documentos.balanco_2021
-    # 6. documentos.balanco_2022
-    # 7. documentos.balanco_2023
-    # 8. documentos.balanco_2024
-    filled = 0
-    total = 0
 
-    # cnpj
-    total += 1
-    if is_filled(osc.get('cnpj')):
-        filled += 1
+# ---------------------------------------------------------------------------
+# Cálculo de informações gerais
+# ---------------------------------------------------------------------------
 
+def calcular_gerais(osc: Dict[str, Any]) -> Dict[str, Any]:
+    pontos = 0
     documentos = osc.get('documentos') or {}
-    if isinstance(documentos, dict):
-        for key in ['estatuto', 'ata_eleicao', 'balanco_2020', 'balanco_2021', 'balanco_2022', 'balanco_2023', 'balanco_2024']:
-            total += 1
-            if is_filled(documentos.get(key)):
-                filled += 1
 
-    percentual = (filled / total * 100) if total > 0 else 0.0
-    return {'pontos': filled, 'total': total, 'percentual': percentual}
-
-
-def calcular_termo(termo: Dict[str, Any], tipo: str) -> Tuple[float, int]:
-    """Calcula pontos (e total) para um termo individual.
-
-    Regras especiais:
-    - `situacao_termo`: avalia se o termo está em situação acionável.
-      Interpretação (assunção): statuses que indiquem execução/ativo => 1 ponto;
-      statuses que indiquem encerramento/cancelamento => 0 pontos.
-      Exemplos mapeados:
-        - positivos: 'ativo', 'em execução', 'em andamento'
-        - negativos: 'encerrado', 'concluido', 'cancelado'
-      Se desconhecido e não vazio, conta como 1 ponto (assumimos positivo).
-
-    - `resultado_prestacao`: interpretação (assunção): prestações aprovadas/aceitas
-      contam como 1 ponto; pendentes/negativas => 0.
-
-    - Campos vazios/None/"" não pontuam.
-
-    Retorna (pontos, total_campos_considerados).
-    """
-    pontos: float = 0.0
-    total: int = 0
-
-    # Campos específicos por tipo
-    campos_base = [
-        'identificacao_do_instrumento_de_parceria',
-        'termo_assinado',
-        'termos_aditivos',
-        'termo_aditivo',
-        'descricao_do_objeto_da_parceria',
-        'data_da_assinatura',
-        'data_final_da_vigencia',
-        'valor_total_do_termo',
-        'situacao_do_termo',
-        'prestacao_de_contas_da_parceria',
-        'data_prevista_para_a_sua_apresentacao_da_prestacao_de_contas',
-        'resultado_da_prestacao_de_contas',
-        'valor_total_da_remuneracao_da_equipe_de_trabalho'
-    ]
-
-    campos_estado_extra = [
-        'relatorio_de_execucao_fisico_financeira',
-        'demonstrativo_da_execucao_da_receita_e_despesa',
-        'relacao_de_pagamentos',
-        'extrato_bancario_completo_da_conta_especifica',
-        'relacao_de_bens_adquiridos'
-    ]
-
-    campos_avaliar = list(campos_base)
-    if tipo == 'estado':
-        campos_avaliar += campos_estado_extra
-
-    for campo in campos_avaliar:
-        # some sources may use slight naming variations; try to fetch robustly
-        valor = termo.get(campo)
-        # if campo not present, try alternative keys without plurals/underscores
-        if valor is None:
-            # try small set of alternatives
-            alt = campo.replace('termos_aditivos', 'termo_aditivo')
-            if alt != campo:
-                valor = termo.get(alt)
-
-        # special handling
-        if campo == 'situacao_do_termo':
-            total += 1
-            if not is_filled(valor):
-                continue
-            v = str(valor).strip().lower()
-            # positivo if contains 'vigent','em aprov','prorrog'
-            if 'vigent' in v or 'em aprov' in v or 'prorrog' in v or 'vigente' in v:
-                pontos += 1
-            else:
-                # consider other explicit negatives
-                negativos = ['encerr', 'conclu', 'cancel', 'inativ']
-                if any(x in v for x in negativos):
-                    pontos += 0
-                else:
-                    pontos += 1
-
-        elif campo == 'resultado_da_prestacao_de_contas':
-            total += 1
-            if not is_filled(valor):
-                continue
-            v = str(valor).strip().lower()
-            if 'aprov' in v or 'conforme' in v or 'aceit' in v:
-                pontos += 1
-            elif 'parcial' in v:
-                pontos += 0.5
-            else:
-                # outros => 0
-                pontos += 0
-
+    for field in GERAIS_SCORE_FIELDS:
+        if isinstance(field, tuple):
+            _, key = field
+            val = documentos.get(key)
+        elif field == 'redes_sociais':
+            redes = osc.get('redes_sociais') or {}
+            val = any(is_filled(v) for v in redes.values()) if isinstance(redes, dict) else redes
         else:
-            # campos gerais: pontuam 1 se preenchidos
-            if valor is not None:
-                total += 1
-                if is_filled(valor):
-                    pontos += 1
+            val = osc.get(field)
 
-    return pontos, total
+        if is_filled(val):
+            pontos += 1
 
+    badges = {badge: is_filled(documentos.get(badge)) for badge in GERAIS_BADGE_FIELDS}
 
-def calcular_termos_tipo(termos_array: List[Dict[str, Any]], tipo: str) -> Dict[str, Any]:
-    """Calcula a média aritmética de pontuação dos termos de um tipo.
-
-    Retorna dict com: {'media_percentual': float, 'n_termos': int}
-    Se não houver termos, media_percentual = 0.
-    """
-    if not termos_array or not isinstance(termos_array, list):
-        return {'media_percentual': 0.0, 'n_termos': 0}
-
-    percentuais = []
-    for termo in termos_array:
-        pontos, total = calcular_termo(termo, tipo)
-        if total > 0:
-            percentuais.append((pontos / total) * 100)
-        else:
-            percentuais.append(0.0)
-
-    media = sum(percentuais) / len(percentuais) if percentuais else 0.0
-    return {'media_percentual': media, 'n_termos': len(termos_array)}
+    return {
+        'pontos': pontos,
+        'max': GERAIS_MAX,
+        'percentual': round(pontos / GERAIS_MAX * 100, 1),
+        'badges': badges,
+    }
 
 
-def calcular_score_geral(componentes: Dict[str, float], termos_info: Dict[str, int]) -> Dict[str, Any]:
-    """Só inclui na média os componentes que EXISTEM.
+# ---------------------------------------------------------------------------
+# Cálculo de termos e emendas
+# ---------------------------------------------------------------------------
 
-    - sempre inclui 'gerais'
-    - inclui cada tipo de termo (municipio/estado/uniao/emendas_parlamentares)
-      somente se termos_info[tipo] > 0
-    Retorna {'percentual': float, 'classificacao': str}.
-    """
-    valores: List[float] = []
+def calcular_termo_individual(termo: Dict[str, Any], tipo: str) -> Dict[str, Any]:
+    config = TERMO_CONFIG[tipo]
+    max_fields = config['max_fields']
+    pontos = sum(1 for f in config['score_fields'] if is_filled(termo.get(f)))
+    return {
+        'pontos': pontos,
+        'max': max_fields,
+        'percentual': round(pontos / max_fields * 100, 1),
+    }
 
-    # sempre incluir gerais se presente
-    if 'gerais' in componentes and componentes.get('gerais') is not None:
-        valores.append(componentes['gerais'])
+
+def calcular_bloco_termos(osc: Dict[str, Any]) -> Dict[str, Any]:
+    termos_raw = osc.get('termos') or {}
+    todos_percentuais: List[float] = []
+    por_tipo: Dict[str, List[Dict]] = {}
 
     for tipo in ['municipio', 'estado', 'uniao', 'emendas_parlamentares']:
-        if termos_info.get(tipo, 0) > 0:
-            v = componentes.get(tipo)
-            if v is not None:
-                valores.append(v)
+        bloco = termos_raw.get(tipo) or {}
+        arr = bloco.get('termos') or [] if isinstance(bloco, dict) else (bloco if isinstance(bloco, list) else [])
 
-    percentual = sum(valores) / len(valores) if valores else 0.0
+        individuais = []
+        for termo in arr:
+            if isinstance(termo, dict):
+                res = calcular_termo_individual(termo, tipo)
+                individuais.append(res)
+                todos_percentuais.append(res['percentual'])
 
-    if percentual <= 30:
-        classificacao = 'Regular'
-    elif percentual <= 69:
-        classificacao = 'Bom'
+        if individuais:
+            por_tipo[tipo] = individuais
+
+    tem_termos = len(todos_percentuais) > 0
+    media_percentual = sum(todos_percentuais) / len(todos_percentuais) if tem_termos else 0.0
+    nota_termos = round(media_percentual / 100 * 15, 2) if tem_termos else 0.0
+
+    return {
+        'tem_termos_emendas': tem_termos,
+        'total_itens': len(todos_percentuais),
+        'media_percentual': round(media_percentual, 1),
+        'nota_termos_emendas': nota_termos,
+        'por_tipo': por_tipo,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Score final por OSC
+# ---------------------------------------------------------------------------
+
+def calcular_score_osc(osc: Dict[str, Any]) -> Dict[str, Any]:
+    nome = osc.get('nome') or osc.get('title') or 'sem_nome'
+    url = osc.get('url', '')
+
+    gerais = calcular_gerais(osc)
+    termos = calcular_bloco_termos(osc)
+
+    nota_gerais = gerais['pontos']  # 0–15
+
+    if termos['tem_termos_emendas']:
+        nota_termos = termos['nota_termos_emendas']  # 0–15
+        nota_final = round(nota_gerais + nota_termos, 2)
+        max_nota = 30
+        tag = 'com_termos_emendas'
     else:
-        classificacao = 'Ótimo'
+        nota_termos = 0.0
+        nota_final = float(nota_gerais)
+        max_nota = 15
+        tag = 'sem_termos_emendas'
 
-    return {'percentual': percentual, 'classificacao': classificacao}
+    return {
+        'nome': nome,
+        'url': url,
+        'tag': tag,
+        'nota_gerais': nota_gerais,
+        'nota_termos_emendas': nota_termos,
+        'nota_final': nota_final,
+        'max_nota': max_nota,
+        'classificacao': classificar(nota_final, max_nota),
+        'badges': gerais['badges'],
+        'gerais': {
+            'pontos': gerais['pontos'],
+            'max': gerais['max'],
+            'percentual': gerais['percentual'],
+        },
+        'termos': {
+            'total_itens': termos['total_itens'],
+            'media_percentual': termos['media_percentual'],
+            'por_tipo': termos['por_tipo'],
+        },
+    }
 
+
+# ---------------------------------------------------------------------------
+# I/O
+# ---------------------------------------------------------------------------
 
 def analyze_file(filepath: str) -> Dict[str, Any]:
     with open(filepath, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     if not isinstance(data, list):
-        raise ValueError("Formato inesperado: o arquivo root deve ser uma lista de ONGs")
-    results = []
-    for ong in data:
-        nome = ong.get('nome') or ong.get('title') or 'sem_nome'
-        url = ong.get('url', '')
+        raise ValueError("Formato inesperado: o arquivo root deve ser uma lista de OSCs")
 
-        # 1) Info gerais
-        info_gerais = calcular_info_gerais(ong)
+    results = [calcular_score_osc(osc) for osc in data]
 
-        # 2) Termos por tipo (municipio, estado, uniao, emendas_parlamentares)
-        termos = ong.get('termos') or {}
-        termos_scores = {}
-        componentes = {}
-
-        for tipo in ['municipio', 'estado', 'uniao', 'emendas_parlamentares']:
-            arr = []
-            if isinstance(termos.get(tipo), dict) and 'termos' in termos.get(tipo):
-                arr = termos.get(tipo).get('termos') or []
-            elif isinstance(termos.get(tipo), list):
-                arr = termos.get(tipo)
-
-            termos_scores[tipo] = calcular_termos_tipo(arr, tipo)
-            componentes[tipo] = termos_scores[tipo]['media_percentual']
-
-        # incluir gerais como componente
-        componentes['gerais'] = info_gerais['percentual']
-
-        # preparar termos_info (número de termos por tipo)
-        termos_info = {
-            'municipio': termos_scores['municipio']['n_termos'],
-            'estado': termos_scores['estado']['n_termos'],
-            'uniao': termos_scores['uniao']['n_termos'],
-            'emendas_parlamentares': termos_scores['emendas_parlamentares']['n_termos']
-        }
-
-        # 3) Agregar score geral (só inclui tipos que existem)
-        geral = calcular_score_geral(componentes, termos_info)
-
-        result = {
-            'nome': nome,
-            'url': url,
-            'gerais': info_gerais,
-            'termos': termos_scores,
-            'componentes': componentes,
-            'nota_percentual': geral['percentual'],
-            'classificacao': geral['classificacao']
-        }
-        results.append(result)
-
-    summary = {
+    return {
         'arquivo_analisado': os.path.basename(filepath),
-        'total_ongs': len(results),
+        'total_oscs': len(results),
         'gerado_em': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'resultados': results
+        'resultados': results,
     }
-    return summary
 
 
 def save_summary(summary: Dict[str, Any], output_dir: str = SCORES_DIR) -> str:
@@ -365,7 +356,7 @@ def main():
 
     outpath = save_summary(summary)
     print(f"Relatório de pontuações salvo em: {outpath}")
-    print(f"Total de ONGs analisadas: {summary['total_ongs']}")
+    print(f"Total de OSCs analisadas: {summary['total_oscs']}")
 
 
 if __name__ == '__main__':

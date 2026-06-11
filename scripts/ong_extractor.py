@@ -42,6 +42,7 @@ class Documentos:
     """Estrutura para documentos categorizados"""
     cneas: str = ""
     cebas: str = ""
+    utilidade_publica: str = ""
     relatorio_atividades: str = ""
     plano_acao: str = ""
     estatuto: str = ""
@@ -155,6 +156,7 @@ class WebScraper:
         categorias = {
             'cneas': '',
             'cebas': '',
+            'utilidade_publica': '',
             'relatorio_atividades': '',
             'plano_acao': '',
             'estatuto': '',
@@ -176,6 +178,9 @@ class WebScraper:
             # CEBAS
             elif 'cebas' in doc_lower:
                 categorias['cebas'] = doc
+            # Utilidade Pública
+            elif 'utilidade' in doc_lower:
+                categorias['utilidade_publica'] = doc
             # Relatório de Atividades
             elif 'relatorio' in doc_lower and ('atividade' in doc_lower or 'atividades' in doc_lower):
                 categorias['relatorio_atividades'] = doc
@@ -450,6 +455,7 @@ class WebScraper:
                 'documentos': {
                     'cneas': docs_categorizados['cneas'],
                     'cebas': docs_categorizados['cebas'],
+                    'utilidade_publica': docs_categorizados['utilidade_publica'],
                     'relatorio_atividades': docs_categorizados['relatorio_atividades'],
                     'plano_acao': docs_categorizados['plano_acao'],
                     'estatuto': docs_categorizados['estatuto'],
@@ -543,7 +549,10 @@ class APIExtractor:
                             if valor:
                                 # Limpar o nome do campo (remover sufixo do tipo)
                                 nome_limpo = campo
-                                for sufixo in ['_municipio', '_estado', '_uniao', '_parlamentares']:
+                                sufixos = ['_municipio', '_estado', '_uniao', '_parlamentares']
+                                if tipo_termo == 'emendas_parlamentares':
+                                    sufixos = ['_emenda']
+                                for sufixo in sufixos:
                                     if nome_limpo.endswith(sufixo):
                                         nome_limpo = nome_limpo.replace(sufixo, '')
                                         break
