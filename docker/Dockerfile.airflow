@@ -34,6 +34,14 @@ RUN wget -q https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-
 
 USER airflow
 
-# As dependências Python serão instaladas via _PIP_ADDITIONAL_REQUIREMENTS
-# definido no docker-compose.yml
+RUN pip install --no-cache-dir \
+    pdfkit \
+    requests \
+    pandas \
+    beautifulsoup4 \
+    openpyxl \
+    plotly \
+    streamlit \
+    pillow \
+    qrcode
 
