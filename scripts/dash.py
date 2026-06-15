@@ -414,22 +414,24 @@ def gerar_dashboard_html(osc, score=None):
                 body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
                 .container {{ box-shadow: none; }}
             }}
-            html, body {{ width: 1414px; height: 2000px; margin: 0; padding: 0; font-family: 'MontserratLocal', 'Montserrat', sans-serif; }}
-            .page-wrapper {{ position: relative; width: 1414px; height: 2000px; }}
+            @page {{ size: 210mm auto; margin: 0; }}
+            html, body {{ margin: 0; padding: 0; font-family: 'MontserratLocal', 'Montserrat', sans-serif; }}
+            .page-wrapper {{ position: relative; width: 100%; }}
             .bg-header {{
-                width: 1414px;
-                height: 2000px;
-                position: absolute;
-                top: 0; left: 0;
-                z-index: 0; display: block;
+                width: 100%;
+                height: 90px;
+                object-fit: cover;
+                object-position: top center;
+                display: block;
             }}
             .container {{
-                position: relative; z-index: 1;
-                margin: 85px 18px 20px;
-                background: rgba(255, 255, 255, 0.97);
-                padding: 24px 28px 28px;
+                position: relative;
+                margin: -10px 16px 0px;
+                background: #fff;
                 border-radius: 8px;
-                box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+                box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+                padding: 20px 22px 30px;
+                z-index: 1;
             }}
             .content-main {{ display: block; }}
             .header {{ margin-bottom: 18px; border-bottom: 2px solid #1e3a8a; padding-bottom: 16px; }}
@@ -685,9 +687,9 @@ def main():
                         page.wait_for_timeout(500)
                         page.pdf(
                             path=pdf_file,
-                            width="1414px",
-                            height="2000px",
+                            width="210mm",
                             print_background=True,
+                            prefer_css_page_size=False,
                         )
                         browser.close()
                     pdf_count += 1
