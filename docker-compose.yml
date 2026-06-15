@@ -32,6 +32,8 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
       - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=false
+      - GOOGLE_APPLICATION_CREDENTIALS=/etc/google/wif-credential.json
+      - GA4_PROPERTY_ID=414902979
     command: airflow scheduler
     volumes:
       - airflow_home:/home/airflow
@@ -40,6 +42,7 @@ services:
       - ./assets:/home/airflow/assets
       - ./output:/home/airflow/output
       - ./logs:/home/airflow/logs
+      - /etc/google:/etc/google:ro
     restart: always
 
   airflow-webserver:
@@ -56,6 +59,8 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
       - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=false
+      - GOOGLE_APPLICATION_CREDENTIALS=/etc/google/wif-credential.json
+      - GA4_PROPERTY_ID=414902979
     command: airflow webserver -p 8080
     volumes:
       - airflow_home:/home/airflow
@@ -64,6 +69,7 @@ services:
       - ./assets:/home/airflow/assets
       - ./output:/home/airflow/output
       - ./logs:/home/airflow/logs
+      - /etc/google:/etc/google:ro
     ports:
       - "8080:8080"
     restart: always
