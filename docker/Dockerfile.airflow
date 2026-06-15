@@ -2,10 +2,9 @@ FROM apache/airflow:2.8.3-python3.11
 
 USER root
 
-# Instalar dependências básicas primeiro
+# Dependências básicas
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
-    libcairo2 \
     fonts-dejavu \
     fonts-liberation \
     fontconfig \
@@ -22,15 +21,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar libssl1.1 do Bullseye (necessário para wkhtmltopdf)
-RUN wget -q http://ftp.debian.org/debian/pool/main/o/openssl/libssl1.1_1.1.1w-0+deb11u1_amd64.deb -O /tmp/libssl1.1.deb \
-    && dpkg -i /tmp/libssl1.1.deb \
-    && rm /tmp/libssl1.1.deb
-
-# Instalar wkhtmltopdf
-RUN wget -q https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.bullseye_amd64.deb -O /tmp/wkhtmltox.deb \
-    && dpkg -i /tmp/wkhtmltox.deb \
-    && rm /tmp/wkhtmltox.deb
+# Dependências do sistema para Playwright/Chromium (instaladas como root, sem sudo)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpango-1.0-0 \
+    libcairo2 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 USER airflow
 
@@ -48,7 +56,4 @@ RUN pip install --no-cache-dir \
     google-analytics-data \
     playwright
 
-# Instalar Playwright e Chromium
-RUN playwright install chromium && \
-    playwright install-deps chromium
-
+RUN playwright install chromium
