@@ -43,5 +43,7 @@ RUN pip install --no-cache-dir \
     plotly \
     streamlit \
     pillow \
-    qrcode
+    qrcode \
+    google-auth \
+    google-analytics-data
 
