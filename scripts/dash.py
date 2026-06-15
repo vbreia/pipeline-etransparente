@@ -1,27 +1,49 @@
 """
 Small utility to render one HTML dashboard per ONG (from the latest
 `oscs_etransparente_*.json` in `output/`). Saves HTML files under
-`output/dashboards/<timestamp>/html` and (optionally) PDFs under
-`output/dashboards/<timestamp>/pdf` when `pdfkit` + `wkhtmltopdf` are available.
+`output/dashboards/<timestamp>/html` and PDFs under
+`output/dashboards/<timestamp>/pdf` using Playwright/Chromium.
 
 Usage: run `python scripts/dash.py` from repository root. The script will
 locate the newest `output/oscs_etransparente_*.json` automatically.
 """
 
+import base64
+import glob
+import hashlib
+import html as _html
+import io
 import json
 import os
-import glob
-import random
 import re
-import shutil
-import html as _html
 from datetime import datetime
 
 try:
-    import pdfkit  # optional
-    PDFKIT_AVAILABLE = True
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
 except Exception:
-    PDFKIT_AVAILABLE = False
+    PLAYWRIGHT_AVAILABLE = False
+
+try:
+    import qrcode as _qrcode  # optional
+    QRCODE_AVAILABLE = True
+except Exception:
+    QRCODE_AVAILABLE = False
+
+
+_SCORE_DEFAULTS = {
+    'nota_final': 0,
+    'max_nota': 30,
+    'classificacao': 'Regular',
+    'tag': 'sem_termos_emendas',
+    'badges': {'cebas': False, 'utilidade_publica': False},
+}
+
+_COR_CLASSIFICACAO = {
+    'Regular': '#dc2626',
+    'Bom': '#d97706',
+    'Ótimo': '#16a34a',
+}
 
 
 def find_latest_input():
@@ -30,6 +52,32 @@ def find_latest_input():
         raise FileNotFoundError('Nenhum arquivo oscs_etransparente_*.json em output/')
     files.sort(key=os.path.getmtime, reverse=True)
     return files[0]
+
+
+def find_latest_scores():
+    files = glob.glob(os.path.join('output', 'scores', 'transparency_scores_*.json'))
+    if not files:
+        return None
+    files.sort(key=os.path.getmtime, reverse=True)
+    return files[0]
+
+
+def _gerar_hash(nome: str, data_emissao: str, nota_final, max_nota, classificacao: str) -> str:
+    raw = f"{nome}{data_emissao}{nota_final}{max_nota}{classificacao}"
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()
+
+
+def _gerar_qr_data_uri(url: str) -> str:
+    """Gera QR code em memória e retorna data URI base64 (ou '' se falhar)."""
+    if not QRCODE_AVAILABLE:
+        return ''
+    try:
+        buf = io.BytesIO()
+        _qrcode.make(url).save(buf, format='PNG')
+        b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        return f'data:image/png;base64,{b64}'
+    except Exception:
+        return ''
 
 
 # fields to show in the "Informações principais" box
@@ -65,17 +113,42 @@ def contar_termos(osc):
     return total
 
 
-def gerar_dashboard_html(osc):
+def gerar_dashboard_html(osc, score=None):
     nome = osc.get('nome', 'Sem nome')
     url = osc.get('url', '#')
 
+    # Score data — use defaults when score is absent
+    s = score or {}
+    nota_final = s.get('nota_final', _SCORE_DEFAULTS['nota_final'])
+    max_nota = s.get('max_nota', _SCORE_DEFAULTS['max_nota'])
+    classificacao = s.get('classificacao', _SCORE_DEFAULTS['classificacao'])
+    tag = s.get('tag', _SCORE_DEFAULTS['tag'])
+    badges = s.get('badges') or _SCORE_DEFAULTS['badges']
+
+    cor_classificacao = _COR_CLASSIFICACAO.get(classificacao, '#6b7280')
+    tag_texto = 'Com termos/emendas' if tag == 'com_termos_emendas' else 'Sem termos/emendas'
+
+    badges_html_parts = []
+    if badges.get('cebas'):
+        badges_html_parts.append('<span class="badge badge-cebas">CEBAS</span>')
+    if badges.get('utilidade_publica'):
+        badges_html_parts.append('<span class="badge badge-utilidade">Utilidade Pública</span>')
+    badges_html = ''.join(badges_html_parts)
+
+    data_emissao = datetime.now().strftime('%Y-%m')
+    hash_hex = _gerar_hash(nome, data_emissao, nota_final, max_nota, classificacao)
+    hash_curto = hash_hex[:12]
+    qr_url = f'https://etransparente.org/verificar/{hash_hex}'
+    qr_data_uri = _gerar_qr_data_uri(qr_url)
+
     descricao = osc.get('descricao_objeto_social', '') or ''
+    descricao_obj = _html.escape(descricao[:400] + '...' if len(descricao) > 400 else descricao) if descricao else ''
     telefone = osc.get('telefone', '') or ''
     email = osc.get('email', '') or ''
     website = osc.get('website', '') or ''
     localizacao = osc.get('localizacao', '') or ''
     cnpj = osc.get('cnpj', '') or ''
-    
+
     # Buscar logo local da ONG
     logo_local_path = osc.get('logo_local_path', '') or ''
 
@@ -104,9 +177,6 @@ def gerar_dashboard_html(osc):
 
     documentos_presentes = [k for k, v in documentos.items() if v]
     documentos_labels = [doc_label(k) for k in documentos_presentes]
-
-    nivel = random.choice(['Bronze', 'Prata', 'Ouro', 'Platina'])
-    nota_geral = round(random.uniform(6.0, 10.0), 1)
 
     info_preenchida = contar_info_preenchida(osc)
     total_termos = contar_termos(osc)
@@ -180,13 +250,18 @@ def gerar_dashboard_html(osc):
     # Documents list HTML (minimalist)
     if documentos_labels:
         docs_html_items = ''.join(f'<li>{_html.escape(lbl)}</li>' for lbl in documentos_labels)
-        docs_html = f'<ul class="docs">{docs_html_items}</ul>'
+        docs_html = f'<ul class="docs-list">{docs_html_items}</ul>'
     else:
         docs_html = '<div class="none">Nenhum</div>'
-    
+
+    descricao_block = (
+        f'<div class="desc-box"><strong>Sobre a organização</strong>'
+        f'<p>{_html.escape(descricao)}</p></div>'
+    ) if descricao.strip() else ''
+
     # Identificar campos faltantes
     campos_faltantes = []
-    
+
     # Verificar informações básicas
     if not telefone:
         campos_faltantes.append('Telefone')
@@ -198,7 +273,7 @@ def gerar_dashboard_html(osc):
         campos_faltantes.append('Localização')
     if not cnpj:
         campos_faltantes.append('CNPJ')
-    
+
     # Verificar redes sociais
     if not instagram:
         campos_faltantes.append('Instagram')
@@ -206,7 +281,7 @@ def gerar_dashboard_html(osc):
         campos_faltantes.append('LinkedIn')
     if not youtube:
         campos_faltantes.append('YouTube')
-    
+
     # Verificar documentos importantes
     if not documentos.get('cneas'):
         campos_faltantes.append('CNEAS')
@@ -218,18 +293,19 @@ def gerar_dashboard_html(osc):
         campos_faltantes.append('Relatório de Atividades')
     if not documentos.get('plano_acao'):
         campos_faltantes.append('Plano de Ação')
-    
+
     # Verificar balanços (últimos 3 anos)
     for ano in ['2024', '2023', '2022']:
         if not documentos.get(f'balanco_{ano}'):
             campos_faltantes.append(f'Balanço {ano}')
-    
+
     # Construir HTML de campos faltantes
     if campos_faltantes:
         faltantes_texto = ', '.join(campos_faltantes)
         faltantes_html = f'<div style="color:#dc2626; font-size:0.9rem; line-height:1.6;">{_html.escape(faltantes_texto)}</div>'
     else:
         faltantes_html = '<div style="color:#16a34a; font-weight:500; font-size:0.95rem;">🎉 Parabéns! Todos os dados de transparência estão disponíveis.</div>'
+
     # Resolve absolute paths for local fonts and background so wkhtmltopdf can load them
     repo_root = os.path.abspath(os.getcwd())
     font_dir = os.path.join(repo_root, 'assets', 'fonts')
@@ -262,7 +338,7 @@ def gerar_dashboard_html(osc):
     # 2. Se não existir, tentar buscar na pasta de logos usando slug da URL
     # 3. Fallback: logo padrão ou placeholder
     logo_url = ""
-    
+
     if logo_local_path and os.path.exists(logo_local_path):
         # Usar caminho absoluto do logo local
         logo_url = f'file://{os.path.abspath(logo_local_path)}'
@@ -273,18 +349,18 @@ def gerar_dashboard_html(osc):
         if match:
             slug = match.group(1)
             logo_path = os.path.join(repo_root, 'assets', 'img', 'logos-ongs', f'{slug}.jpg')
-            
+
             if os.path.exists(logo_path):
                 logo_url = f'file://{logo_path}'
-        
+
         # Se ainda não encontrou, tentar fallback com nome seguro
         if not logo_url:
             safe_name = re.sub(r'[^A-Za-z0-9_-]+', '_', nome).strip('_') or 'logo'
             logo_path = os.path.join(repo_root, 'assets', 'img', 'logos-ongs', f'{safe_name}.jpg')
-            
+
             if os.path.exists(logo_path):
                 logo_url = f'file://{logo_path}'
-        
+
         # Fallback: usar logo padrão se existir
         if not logo_url:
             default_logo = os.path.join(repo_root, 'assets', 'img', 'logo-default.png')
@@ -293,6 +369,11 @@ def gerar_dashboard_html(osc):
             else:
                 # Última opção: usar placeholder de teste (pode ser removido depois)
                 logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
+
+    if qr_data_uri:
+        qr_img_tag = f'<img src="{qr_data_uri}" width="80" height="80" style="display:block;" alt="QR Code de verificação"/>'
+    else:
+        qr_img_tag = '<div style="width:80px;height:80px;background:#f1f5f9;border-radius:4px;"></div>'
 
     html = f"""
         <!DOCTYPE html>
@@ -323,66 +404,88 @@ def gerar_dashboard_html(osc):
                             font-display: swap;
                         }}
 
-            /* Forçar impressão de cores e ajustes de impressão */
-            * {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                        @media print {{
-                            /* Garantir que o fundo seja impresso */
-                            body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-                            .container {{ box-shadow: none; }}
-                        }}
-                        body {{
-                            font-family: 'MontserratLocal', 'Montserrat', sans-serif;
-                            margin: 0;
-                            padding: 0;
-                            position: relative; /* cria contexto para .page-bg absoluta */
-                        }}
-                        /* Fundo ocupa toda a página (viewport) e imprime ponta a ponta */
-                        .page-bg {{
-                            position: absolute;
-                            top: 0;
-                            left: 0;
-                            width: 210mm;   /* A4 */
-                            height: 297mm;
-                            z-index: 0;
-                            border: 0;
-                            display: block;
-                        }}
-                        /* Garantir que o conteúdo fique sobre o fundo */
-                        .container {{ position: relative; z-index: 1; }}
-            .container {{ max-width: 840px; margin: 24px 20px 56px; background: #fff; padding: 8px 22px 72px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
-            .header {{ margin-bottom: 30px; border-bottom: 2px solid #1e3a8a; padding-bottom: 20px; }}
+            /* Forçar impressão de cores */
+            * {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }}
+            @media print {{
+                body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+                .container {{ box-shadow: none; }}
+            }}
+            html, body {{ width: 1414px; height: 2000px; margin: 0; padding: 0; font-family: 'MontserratLocal', 'Montserrat', sans-serif; }}
+            .page-wrapper {{ position: relative; width: 1414px; height: 2000px; }}
+            .bg-header {{
+                width: 1414px;
+                height: 2000px;
+                position: absolute;
+                top: 0; left: 0;
+                z-index: 0; display: block;
+            }}
+            .container {{
+                position: relative; z-index: 1;
+                margin: 85px 18px 20px;
+                background: rgba(255, 255, 255, 0.97);
+                padding: 24px 28px 28px;
+                border-radius: 8px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+            }}
+            .content-main {{ display: block; }}
+            .header {{ margin-bottom: 18px; border-bottom: 2px solid #1e3a8a; padding-bottom: 16px; }}
             .header-table {{ width: 100%; border-collapse: collapse; table-layout: fixed; }}
             .header-table td {{ vertical-align: middle; padding: 0; }}
-            .logo-cell {{ width: 100px; padding-right: 18px; }}
+            .logo-cell {{ width: 96px; padding-right: 16px; }}
             .text-cell {{ width: auto; }}
-            .logo {{ width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: block; flex-shrink: 0; }}
-            .logo-link {{ display: inline-block; margin-right: 18px; text-decoration: none; }}
+            .logo {{ width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: block; }}
+            .logo-link {{ display: inline-block; text-decoration: none; }}
             .title-area {{ display: block; }}
             .title-area .nome-ong {{ margin-bottom: 8px; }}
-            .nome-ong {{ font-size: 1.4rem; font-weight: bold; color: #1e3a8a; word-break: break-word; }}
+            .nome-ong {{ font-size: 1.35rem; font-weight: 700; color: #1e3a8a; word-break: break-word; }}
             .nome-ong a {{ color: inherit; text-decoration: none; }}
-            .meta {{ display: flex; gap: 20px; font-size: 0.95rem; color: #374151; }}
-            /* wkhtmltopdf may not support flex gap reliably; add explicit margins for PDF */
-            .meta span {{ display: inline-block; margin-right: 18px; }}
-            /* Use flexbox instead of CSS grid for better wkhtmltopdf compatibility */
-            .body {{ display: -webkit-box; display: -ms-flexbox; display: flex; -ms-flex-wrap: wrap; flex-wrap: wrap; gap: 20px; margin-top: 20px; }}
-            .info-box {{ background: linear-gradient(135deg, #f0f4ff 0%, #f9fafb 100%); padding: 16px; border-radius: 8px; border-left: 4px solid #1e3a8a; flex: 1 1 calc(50% - 10px); box-sizing: border-box; min-width: 260px; }}
-            .info-box strong {{ display: block; margin-bottom: 8px; color: #1e3a8a; font-size: 0.95rem; }}
-            .info-box .valor {{ font-size: 1.3rem; color: #374151; font-weight: bold; }}
-            .link-area {{ margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }}
-            .link-area p {{ margin: 0 0 8px 0; color: #6b7280; font-size: 0.9rem; }}
-            .link-area a {{ color: #1e3a8a; text-decoration: none; word-break: break-all; }}
-            .link-area a:hover {{ text-decoration: underline; }}
-            .social-list {{ list-style: none; padding-left: 0; margin: 6px 0 0 0; }}
-            .social-list li {{ display: flex; align-items: center; gap: 8px; margin: 6px 0; }}
-            .social-list .index {{ color: #6b7280; margin-right: 6px; font-weight: 600; }}
-            .social {{ display:inline-flex; align-items:center; gap:6px; color:#1e3a8a; text-decoration:none; }}
+            .meta {{ display: -webkit-box; display: -ms-flexbox; display: flex; -ms-flex-wrap: wrap; flex-wrap: wrap; font-size: 0.9rem; color: #374151; -webkit-box-align: center; -ms-flex-align: center; align-items: center; }}
+            .meta span {{ display: inline-block; margin-right: 10px; margin-bottom: 4px; }}
+            .classificacao-badge {{ font-weight: 700; font-size: 0.95rem; }}
+            .tag-pill {{ display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; background: #e0f2fe; color: #0369a1; font-weight: 500; }}
+            .badge {{ display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }}
+            .badge-cebas {{ background: #fef3c7; color: #92400e; }}
+            .badge-utilidade {{ background: #dcfce7; color: #166534; }}
+            .desc-box {{ background: #f8fafc; border-left: 4px solid #64748b; border-radius: 6px; padding: 12px 16px; margin-bottom: 14px; }}
+            .desc-box strong {{ display: block; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }}
+            .desc-box p {{ margin: 0; font-size: 0.9rem; color: #374151; line-height: 1.6; }}
+            .body {{ display: -webkit-box; display: -ms-flexbox; display: flex; -ms-flex-wrap: wrap; flex-wrap: wrap; gap: 12px; }}
+            .info-box {{ background: linear-gradient(135deg, #f0f4ff 0%, #f9fafb 100%); padding: 16px 18px; border-radius: 8px; border-left: 4px solid #1e3a8a; -webkit-box-flex: 1; -ms-flex: 1 1 calc(50% - 6px); flex: 1 1 calc(50% - 6px); min-width: 220px; }}
+            .info-box > strong {{ display: block; margin-bottom: 10px; color: #1e3a8a; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }}
+            .info-box .valor {{ font-size: 1.5rem; color: #1e3a8a; font-weight: 700; margin-bottom: 10px; }}
+            .info-row {{ font-size: 0.87rem; color: #374151; padding: 4px 0; border-bottom: 1px solid #e2e8f0; line-height: 1.4; }}
+            .info-row:last-child {{ border-bottom: none; }}
+            .info-row b {{ color: #1e3a8a; margin-right: 4px; }}
+            .link-area {{ margin-top: 12px; padding: 14px 16px; border-radius: 8px; background: #fff7ed; border-left: 4px solid #f59e0b; }}
+            .link-area > p {{ margin: 0 0 8px 0; color: #92400e; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }}
+            .social-list {{ list-style: none; padding: 0; margin: 0; }}
+            .social-list li {{ display: -webkit-box; display: -ms-flexbox; display: flex; -webkit-box-align: center; -ms-flex-align: center; align-items: center; padding: 4px 0; border-bottom: 1px solid #e2e8f0; font-size: 0.87rem; }}
+            .social-list li:last-child {{ border-bottom: none; }}
+            .social-list .index {{ color: #9ca3af; margin-right: 8px; font-size: 0.78rem; }}
+            .social {{ display:-webkit-inline-box; display:-ms-inline-flexbox; display:inline-flex; -webkit-box-align:center; -ms-flex-align:center; align-items:center; gap:5px; color:#1e3a8a; text-decoration:none; }}
             .social svg {{ flex-shrink:0; }}
+            .docs-list {{ list-style: none; padding: 0; margin: 0; }}
+            .docs-list li {{ font-size: 0.85rem; color: #374151; padding: 4px 0; border-bottom: 1px solid #e2e8f0; line-height: 1.4; }}
+            .docs-list li:last-child {{ border-bottom: none; }}
+            .docs-list li::before {{ content: "✓ "; color: #16a34a; font-weight: 700; }}
+            .none {{ font-size: 0.87rem; color: #9ca3af; }}
+            .institutional-footer {{ margin-top: 28px; }}
+            .institutional-divider {{ border-top: 2px solid #1e3a8a; margin-bottom: 20px; }}
+            .institutional-content {{ display: table; width: 100%; border-collapse: collapse; }}
+            .institutional-left {{ display: table-cell; width: 50%; padding-right: 20px; vertical-align: top; font-size: 0.88rem; color: #374151; }}
+            .institutional-right {{ display: table-cell; width: 50%; padding-left: 20px; border-left: 1px solid #e5e7eb; vertical-align: top; font-size: 0.88rem; color: #374151; }}
+            .institutional-left strong, .institutional-right strong {{ display: block; color: #1e3a8a; margin-bottom: 8px; font-size: 0.9rem; }}
+            .institutional-left p, .institutional-right p {{ margin: 0; line-height: 1.6; }}
+            .footer-verificacao {{ margin-top: 30px; padding-top: 14px; border-top: 2px solid #e5e7eb; display: -webkit-box; display: -ms-flexbox; display: flex; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 16px; font-size: 0.8rem; color: #6b7280; }}
+            .footer-text {{ -webkit-box-flex: 1; -ms-flex: 1; flex: 1; }}
+            .hash-curto {{ font-family: monospace; font-size: 0.82rem; color: #374151; font-weight: 600; margin-bottom: 4px; }}
         </style>
     </head>
     <body>
-        <img class="page-bg" src="{bg_url}" alt=""/><br><br>
+        <div class="page-wrapper">
+        <img class="bg-header" src="{bg_url}" alt=""/>
         <div class="container">
+
             <div class="header">
                 <table class="header-table">
                     <tr>
@@ -393,8 +496,10 @@ def gerar_dashboard_html(osc):
                             <div class="title-area">
                                 <div class="nome-ong"><a href="{_html.escape(url)}" target="_blank" rel="noopener noreferrer">{_html.escape(nome)}</a></div>
                                 <div class="meta">
-                                    <span><strong>Nível:</strong> { _html.escape(nivel) }</span>
-                                    <span><strong>Nota:</strong> { nota_geral }</span>
+                                    <span class="classificacao-badge" style="color:{cor_classificacao};">{_html.escape(classificacao)}</span>
+                                    <span><strong>Nota:</strong> {nota_final}/{max_nota}</span>
+                                    <span class="tag-pill">{_html.escape(tag_texto)}</span>
+                                    {badges_html}
                                 </div>
                             </div>
                         </td>
@@ -402,40 +507,71 @@ def gerar_dashboard_html(osc):
                 </table>
             </div>
 
-            <div class="body">
-                <div class="info-box">
-                    <strong>Informações Principais</strong>
-                    <div class="valor">{info_preenchida}/{TOTAL_INFO}</div>
-                    <div style="margin-top:10px; font-size:0.95rem; color:#374151;">
-                        <div><strong>Telefone:</strong> {_html.escape(telefone)}</div>
-                        <div><strong>Email:</strong> {_html.escape(email)}</div>
-                        <div><strong>Website:</strong> <a href="{_html.escape(website)}">{_html.escape(website)}</a></div>
-                        <div><strong>Localização:</strong> {_html.escape(localizacao)}</div>
-                        <div><strong>CNPJ:</strong> {_html.escape(cnpj)}</div>
+            <div class="content-main">
+                {descricao_block}
+                <div class="body">
+                    <div class="info-box">
+                        <strong>Informações</strong>
+                        <div class="info-row"><b>Telefone</b> {_html.escape(telefone) or '—'}</div>
+                        <div class="info-row"><b>E-mail</b> {_html.escape(email) or '—'}</div>
+                        <div class="info-row"><b>Website</b> <a href="{_html.escape(website)}">{_html.escape(website) or '—'}</a></div>
+                        <div class="info-row"><b>Localização</b> {_html.escape(localizacao) or '—'}</div>
+                        <div class="info-row"><b>CNPJ</b> {_html.escape(cnpj) or '—'}</div>
+                    </div>
+                    <div class="info-box">
+                        <strong>Contratos e Parcerias</strong>
+                        <div class="valor">{total_termos}</div>
+                        <div class="info-row"><b>Município</b> {municipio_disp}</div>
+                        <div class="info-row"><b>Estado</b> {estado_disp}</div>
+                        <div class="info-row"><b>União</b> {uniao_disp}</div>
+                        <div class="info-row"><b>Emendas parl.</b> {emendas_disp}</div>
+                    </div>
+                    <div class="info-box">
+                        <strong>Redes Sociais</strong>
+                        {socials_html}
+                    </div>
+                    <div class="info-box">
+                        <strong>Documentos ({len(documentos_labels)})</strong>
+                        {docs_html}
                     </div>
                 </div>
-                <div class="info-box">
-                    <strong>Termos</strong>
-                    <div class="valor">{total_termos}</div>
-                    <div style="margin-top:10px; font-size:0.95rem; color:#374151;">
-                        <div><strong>Município:</strong> {municipio_disp}</div>
-                        <div><strong>Estado:</strong> {estado_disp}</div>
-                        <div><strong>União:</strong> {uniao_disp}</div>
-                        <div><strong>Emendas:</strong> {emendas_disp}</div>
+
+                <div class="link-area">
+                    <p>Dados ou documentos pendentes</p>
+                    {faltantes_html}
+                </div>
+            </div>
+
+            <div class="institutional-footer">
+                <div class="institutional-divider"></div>
+                <div class="institutional-content">
+                    <div class="institutional-left">
+                        <strong>Sobre a instituição</strong>
+                        <p>{descricao_obj}</p>
+                    </div>
+                    <div class="institutional-right">
+                        <strong>O Índice de Transparência</strong>
+                        <p>O Índice de Transparência do etransparente.org avalia o nível de prestação de contas e abertura institucional das organizações da sociedade civil cadastradas na plataforma. A pontuação é calculada com base no preenchimento de informações públicas, documentos institucionais e contratos com o poder público.</p>
+                        <p style="margin-top:8px;">Acesse <strong>etransparente.org</strong> para mais informações.</p>
                     </div>
                 </div>
             </div>
 
-            <div class="link-area">
-                <p><strong>Campos, dados ou documentos faltantes:</strong></p>
-                <div class="faltantes-area">{faltantes_html}</div>
+            <div class="footer-verificacao">
+                {qr_img_tag}
+                <div class="footer-text">
+                    <div class="hash-curto">Código: {hash_curto}</div>
+                    <div>Documento oficial emitido pelo IDC. Verifique em <strong>etransparente.org/verificar</strong></div>
+                </div>
             </div>
+
+        </div>
         </div>
     </body>
     </html>
     """
 
-    return html
+    return html, hash_hex
 
 
 def main():
@@ -443,7 +579,25 @@ def main():
     with open(input_file, 'r', encoding='utf-8') as f:
         oscs = json.load(f)
 
+    # Load scores and build lookup by ONG name
+    scores_file = find_latest_scores()
+    scores_by_nome = {}
+    if scores_file:
+        try:
+            with open(scores_file, 'r', encoding='utf-8') as f:
+                scores_data = json.load(f)
+            for r in scores_data.get('resultados', []):
+                nome_score = r.get('nome', '')
+                if nome_score:
+                    scores_by_nome[nome_score] = r
+            print(f"Scores carregados: {scores_file} ({len(scores_by_nome)} ONGs)")
+        except Exception as e:
+            print(f"Aviso: erro ao carregar scores: {e}. Usando valores padrão.")
+    else:
+        print("Aviso: nenhum arquivo de scores encontrado. Usando valores padrão.")
+
     ts = datetime.now().strftime('%Y%m%d%H%M%S')
+    data_emissao = datetime.now().strftime('%Y-%m')
     base_out = os.path.join('output', 'dashboards', ts)
     html_dir = os.path.join(base_out, 'html')
     pdf_dir = os.path.join(base_out, 'pdf')
@@ -451,7 +605,7 @@ def main():
     os.makedirs(pdf_dir, exist_ok=True)
 
     # Obter data para nome do arquivo: Relatório-etransparente-{mês}-de-{ano}-{slug}
-    mes_nome = datetime.now().strftime('%B').lower()  # janeiro, fevereiro, etc
+    mes_nome = datetime.now().strftime('%B').lower()  # january, february, etc
     # Mapear para português
     meses_pt = {
         'january': 'janeiro', 'february': 'fevereiro', 'march': 'março', 'april': 'abril',
@@ -460,12 +614,15 @@ def main():
     }
     mes_nome = meses_pt.get(mes_nome, datetime.now().strftime('%B').lower())
     ano = datetime.now().strftime('%Y')
+    ciclo = f"{mes_nome}-{ano}"
 
+    verificacoes = []
     pdf_count = 0
     for idx, osc in enumerate(oscs, 1):
         nome = osc.get('nome', 'Sem nome')
         url = osc.get('url', '')
-        
+        score = scores_by_nome.get(nome)
+
         # Extrair slug da URL
         slug = ''
         match = re.search(r'/oscs/([^/]+)/?$', url)
@@ -484,7 +641,18 @@ def main():
 
         try:
             try:
-                html_content = gerar_dashboard_html(osc)
+                html_content, hash_hex = gerar_dashboard_html(osc, score)
+                # Registrar verificação apenas quando o HTML foi gerado com sucesso
+                s = score or {}
+                verificacoes.append({
+                    'hash': hash_hex,
+                    'nome': nome,
+                    'nota_final': s.get('nota_final', _SCORE_DEFAULTS['nota_final']),
+                    'max_nota': s.get('max_nota', _SCORE_DEFAULTS['max_nota']),
+                    'classificacao': s.get('classificacao', _SCORE_DEFAULTS['classificacao']),
+                    'data_emissao': data_emissao,
+                    'ciclo': ciclo,
+                })
             except Exception as e:
                 print(f"✗ Erro ao gerar HTML para {nome}: {e}")
                 html_content = f"""<!doctype html>
@@ -502,59 +670,43 @@ def main():
                 # If we can't save HTML, skip PDF generation for this ONG
                 continue
 
-            if PDFKIT_AVAILABLE:
+            if PLAYWRIGHT_AVAILABLE:
                 try:
-                    options = {
-                        'page-size': 'A4',
-                        'margin-top': '0mm',
-                        'margin-right': '0mm',
-                        'margin-bottom': '0mm',
-                        'margin-left': '0mm',
-                        'encoding': 'UTF-8',
-                        'enable-local-file-access': None,   # permite carregar assets locais
-                        'background': None,                 # renderiza fundos
-                        'print-media-type': None,           # usa estilos de impressão, mantendo fundos
-                        'disable-smart-shrinking': None,    # evita encolhimento inesperado
-                        'zoom': '1.0',
-                        'javascript-delay': '200',
-                        'load-error-handling': 'ignore',
-                        'load-media-error-handling': 'ignore'
-                    }
-
-                    # Tentar localizar automaticamente o executável wkhtmltopdf
-                    wk_path = shutil.which('wkhtmltopdf')
-                    if not wk_path:
-                        common = ['/usr/local/bin/wkhtmltopdf', '/usr/bin/wkhtmltopdf', '/snap/bin/wkhtmltopdf', '/opt/bin/wkhtmltopdf']
-                        for p in common:
-                            if os.path.exists(p) and os.access(p, os.X_OK):
-                                wk_path = p
-                                break
-
-                    config = None
-                    if wk_path:
-                        try:
-                            config = pdfkit.configuration(wkhtmltopdf=wk_path)
-                            print(f"Usando wkhtmltopdf: {wk_path}")
-                        except Exception:
-                            config = None
-                    else:
-                        print("Aviso: wkhtmltopdf não encontrado no PATH ou em locais comuns. Tentarei sem configuração explícita (pode falhar).")
-
-                    pdfkit.from_file(html_file, pdf_file, options=options, configuration=config)
+                    with sync_playwright() as p:
+                        browser = p.chromium.launch()
+                        page = browser.new_page()
+                        page.goto(f"file://{os.path.abspath(html_file)}")
+                        page.wait_for_timeout(500)
+                        page.pdf(
+                            path=pdf_file,
+                            width="1414px",
+                            height="2000px",
+                            print_background=True,
+                        )
+                        browser.close()
                     pdf_count += 1
                     print(f"✓ PDF criado: {pdf_file}")
                 except Exception as e:
-                    # Mensagem mais amigável quando o binário não existe
-                    msg = str(e)
-                    if 'No wkhtmltopdf executable found' in msg or 'No wkhtmltopdf' in msg:
-                        print(f"✗ Erro ao gerar PDF para {nome}: wkhtmltopdf não encontrado. Instale-o e certifique-se de que está no PATH. Veja https://wkhtmltopdf.org/downloads.html")
-                    else:
-                        print(f"✗ Erro ao gerar PDF para {nome}: {e}")
+                    print(f"✗ Erro ao gerar PDF para {nome}: {e}")
             else:
-                print(f"⚠️  pdfkit não disponível: pulando conversão para {nome}. HTML salvo em {html_file}")
+                print(f"⚠️  playwright não disponível: pulando conversão para {nome}. HTML salvo em {html_file}")
         except Exception as e:
             print(f"✗ Erro inesperado processando {nome}: {e}")
             continue
+
+    # Salvar registros de verificação (acumula entradas do mesmo mês)
+    verificacoes_path = os.path.join('output', f'verificacoes_{data_emissao}.json')
+    try:
+        existing = []
+        if os.path.exists(verificacoes_path):
+            with open(verificacoes_path, 'r', encoding='utf-8') as f:
+                existing = json.load(f)
+        existing.extend(verificacoes)
+        with open(verificacoes_path, 'w', encoding='utf-8') as f:
+            json.dump(existing, f, ensure_ascii=False, indent=2)
+        print(f"Verificações salvas: {verificacoes_path} ({len(verificacoes)} registros)")
+    except Exception as e:
+        print(f"Aviso: erro ao salvar verificações: {e}")
 
     print('\n' + '=' * 60)
     print(f"Total de PDFs gerados: {pdf_count}/{len(oscs)}")
@@ -563,4 +715,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

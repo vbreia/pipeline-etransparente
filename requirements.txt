@@ -13,7 +13,7 @@ plotly>=5.18.0
 streamlit>=1.28.0
 
 # Geração de PDF
-pdfkit>=1.0.0
+playwright>=1.40.0
 
 # Processamento de imagens
 Pillow>=10.0.0

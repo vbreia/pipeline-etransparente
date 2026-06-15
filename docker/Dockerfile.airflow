@@ -36,7 +36,6 @@ USER airflow
 
 ARG CACHE_BUST=1
 RUN pip install --no-cache-dir \
-    pdfkit \
     requests \
     pandas \
     beautifulsoup4 \
@@ -46,5 +45,10 @@ RUN pip install --no-cache-dir \
     pillow \
     qrcode \
     google-auth \
-    google-analytics-data
+    google-analytics-data \
+    playwright
+
+# Instalar Playwright e Chromium
+RUN playwright install chromium && \
+    playwright install-deps chromium
 
