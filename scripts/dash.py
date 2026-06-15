@@ -602,7 +602,9 @@ def main():
 
     ts = datetime.now().strftime('%Y%m%d%H%M%S')
     data_emissao = datetime.now().strftime('%Y-%m')
-    base_out = os.path.join('output', 'dashboards', ts)
+    # Usar /home/airflow como base se existir (volume Docker), fallback para cwd
+    _base = '/home/airflow' if os.path.exists('/home/airflow/output') else os.getcwd()
+    base_out = os.path.join(_base, 'output', 'dashboards', ts)
     html_dir = os.path.join(base_out, 'html')
     pdf_dir = os.path.join(base_out, 'pdf')
     os.makedirs(html_dir, exist_ok=True)
@@ -699,7 +701,7 @@ def main():
             continue
 
     # Salvar registros de verificação (acumula entradas do mesmo mês)
-    verificacoes_path = os.path.join('output', f'verificacoes_{data_emissao}.json')
+    verificacoes_path = os.path.join(_base, 'output', f'verificacoes_{data_emissao}.json')
     try:
         existing = []
         if os.path.exists(verificacoes_path):
