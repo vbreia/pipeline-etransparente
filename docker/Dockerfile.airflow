@@ -56,4 +56,4 @@ RUN pip install --no-cache-dir \
     google-analytics-data \
     playwright
 
-RUN playwright install chromium
+RUN python3 -m playwright install chromium
