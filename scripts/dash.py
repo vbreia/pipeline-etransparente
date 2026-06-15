@@ -306,8 +306,12 @@ def gerar_dashboard_html(osc, score=None):
     else:
         faltantes_html = '<div style="color:#16a34a; font-weight:500; font-size:0.95rem;">🎉 Parabéns! Todos os dados de transparência estão disponíveis.</div>'
 
-    # Resolve absolute paths for local fonts and background so wkhtmltopdf can load them
-    repo_root = os.path.abspath(os.getcwd())
+    # Tentar /home/airflow primeiro (volume Docker), fallback para cwd
+    _home_airflow = '/home/airflow'
+    if os.path.exists(os.path.join(_home_airflow, 'assets')):
+        repo_root = _home_airflow
+    else:
+        repo_root = os.path.abspath(os.getcwd())
     font_dir = os.path.join(repo_root, 'assets', 'fonts')
     regular_path = os.path.join(font_dir, 'Montserrat-Regular.woff2')
     medium_path = os.path.join(font_dir, 'Montserrat-Medium.woff2')
