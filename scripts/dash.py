@@ -476,10 +476,16 @@ def gerar_dashboard_html(osc, score=None):
 @page {{ margin:0; }}
 * {{ font-family:'Montserrat','Segoe UI',Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; box-sizing:border-box; }}
 @media print {{ body {{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }} }}
-html,body {{ margin:0; padding:16px 0; background:#f1f5f9; font-size:13px; color:#1e293b; }}
-.wrapper {{ max-width:900px; margin:0 auto; }}
+html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e293b; }}
+.wrapper {{ max-width:900px; margin:0 auto; padding:0 0 140px 0; }}
 
-.header-strip {{ background:#0f172a; padding:20px 32px; display:table; width:100%; }}
+.header-strip {{
+    background:#0f172a;
+    padding:20px 32px;
+    width:100%;
+    box-sizing:border-box;
+    display:table;
+}}
 .header-left, .header-right {{ display:table-cell; vertical-align:middle; }}
 .header-right {{ text-align:right; }}
 .header-bar {{ border-left:4px solid #3b82f6; height:60px; display:inline-block; margin-right:12px; vertical-align:middle; }}
@@ -490,7 +496,7 @@ html,body {{ margin:0; padding:16px 0; background:#f1f5f9; font-size:13px; color
 .header-date {{ font-size:13px; color:#fff; font-weight:700; }}
 .header-period {{ font-size:10px; color:#fff; opacity:0.7; margin-top:2px; }}
 
-.card {{ background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin:0 16px 12px; padding:16px 24px; }}
+.card {{ background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin:0 24px 8px; padding:16px 24px; }}
 .card-header {{ margin-bottom:10px; }}
 .card-icon {{ margin-right:6px; }}
 .card-title {{ font-size:10px; letter-spacing:1.5px; color:#1e3a8a; font-weight:700; }}
@@ -535,7 +541,16 @@ html,body {{ margin:0; padding:16px 0; background:#f1f5f9; font-size:13px; color
 .social-row:last-child {{ border-bottom:none; }}
 .social-icon {{ display:table-cell; width:24px; vertical-align:middle; }}
 .social-name {{ display:table-cell; width:70px; color:#1e293b; font-weight:600; vertical-align:middle; }}
-.social-handle {{ display:table-cell; color:#1e3a8a; text-decoration:none; word-break:break-all; vertical-align:middle; }}
+.social-handle {{
+    display:table-cell;
+    color:#1e3a8a;
+    text-decoration:none;
+    max-width:200px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    vertical-align:middle;
+}}
 .social-check {{ display:table-cell; width:24px; text-align:right; vertical-align:middle; }}
 
 .docs-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; }}
@@ -543,7 +558,7 @@ html,body {{ margin:0; padding:16px 0; background:#f1f5f9; font-size:13px; color
 
 .none-box {{ color:#94a3b8; font-size:12px; text-align:center; padding:16px 0; }}
 
-.alert-box {{ border-radius:8px; padding:16px 24px; margin:0 16px 12px; }}
+.alert-box {{ border-radius:8px; padding:16px 24px; margin:0 24px 8px; }}
 .alert-warning {{ background:#fff7ed; border-left:4px solid #f97316; }}
 .alert-success {{ background:#f0fdf4; border-left:4px solid #22c55e; }}
 .alert-header {{ font-size:10px; letter-spacing:1px; color:#c2410c; font-weight:700; margin-bottom:6px; }}
@@ -551,7 +566,21 @@ html,body {{ margin:0; padding:16px 0; background:#f1f5f9; font-size:13px; color
 .alert-text {{ font-size:12px; color:#9a3412; }}
 .alert-text-success {{ font-size:12px; color:#15803d; }}
 
-.footer {{ border-top:2px solid #e2e8f0; margin:0 16px 16px; padding:20px 24px 0; }}
+.footer {{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    background:#ffffff;
+    border-top:2px solid #1e3a8a;
+    padding:12px 24px;
+    z-index:1000;
+}}
+.page-number::after {{
+    content: "Página " counter(page) " de " counter(pages);
+    font-size:9px;
+    color:#94a3b8;
+}}
 .footer-table {{ width:100%; border-collapse:collapse; }}
 .auth-title {{ font-size:10px; letter-spacing:1px; color:#1e3a8a; font-weight:700; margin-bottom:6px; }}
 .auth-text {{ font-size:11px; color:#374151; line-height:1.5; }}
@@ -670,6 +699,7 @@ html,body {{ margin:0; padding:16px 0; background:#f1f5f9; font-size:13px; color
         <td style="width:160px;vertical-align:top;" class="idc-col">
             <div class="idc-label">DOCUMENTO OFICIAL</div>
             <div class="idc-text">Este relatório é emitido mensalmente pelo IDC com base nas informações públicas disponibilizadas pela organização na plataforma etransparente.org.</div>
+            <div class="page-number"></div>
             {idc_logo_tag}
             <div class="idc-site">etransparente.org</div>
         </td>
@@ -827,6 +857,7 @@ def main():
                         browser = p.chromium.launch()
                         page = browser.new_page()
                         page.goto(f"file://{os.path.abspath(html_file)}")
+                        page.wait_for_load_state('networkidle')
                         page.wait_for_timeout(2000)  # aguardar Chart.js renderizar
                         page.pdf(
                             path=pdf_file,
