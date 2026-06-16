@@ -146,6 +146,7 @@ def gerar_dashboard_html(osc, score=None):
     tag_texto = 'Com termos/emendas' if tag == 'com_termos_emendas' else 'Sem termos/emendas'
 
     data_emissao = datetime.now().strftime('%Y-%m')
+    data_emissao_formatada = datetime.now().strftime('%d/%m/%Y')
     hash_hex = _gerar_hash(nome, data_emissao, nota_final, max_nota, classificacao)
     qr_url = f'https://etransparente.org/verificar/{hash_hex}'
     qr_data_uri = _gerar_qr_data_uri(qr_url)
@@ -322,7 +323,7 @@ def gerar_dashboard_html(osc, score=None):
     if descricao.strip():
         sobre_card_html = f"""
     <div class="card">
-        <div class="card-header"><span class="card-icon"><i class="ph ph-file-text"></i></span><span class="card-title">SOBRE A ORGANIZAÇÃO</span></div>
+        <div class="card-header"><span class="icon-circle"><i class="ph ph-file-text"></i></span><span class="card-title">SOBRE A ORGANIZAÇÃO</span></div>
         <p class="about-text">{_html.escape(descricao)}</p>
     </div>"""
 
@@ -399,7 +400,7 @@ def gerar_dashboard_html(osc, score=None):
         ('<i class="ph ph-buildings"></i>', 'CNPJ', cnpj_disp),
     ]
     contatos_html = ''.join(
-        f'<div class="contact-row"><span class="contact-icon">{icone}</span>'
+        f'<div class="contact-row"><span class="contact-icon"><span class="icon-circle-sm">{icone}</span></span>'
         f'<span class="contact-label">{rotulo}</span><span class="contact-val">{valor}</span></div>'
         for icone, rotulo, valor in _contatos_rows
     )
@@ -443,7 +444,7 @@ def gerar_dashboard_html(osc, score=None):
 
     if social_items:
         social_rows_html = ''.join(
-            f'<div class="social-row"><span class="social-icon">{phosphor_icon(kind)}</span>'
+            f'<div class="social-row"><span class="social-icon"><span class="icon-circle-sm">{phosphor_icon(kind)}</span></span>'
             f'<span class="social-name">{_html.escape(label)}</span>'
             f'<a class="social-handle" href="{_html.escape(href)}" target="_blank">{_html.escape(href)}</a>'
             f'<span class="social-check"><i class="ph ph-check-circle" style="color:#16a34a;"></i></span></div>'
@@ -524,12 +525,18 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .header-period {{ font-size:10px; color:#fff; opacity:0.7; margin-top:2px; }}
 
 .card {{ background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin:0 24px 8px; padding:16px 24px; break-inside:avoid; page-break-inside:avoid; }}
-.card-header {{ margin-bottom:10px; }}
-.card-icon {{ margin-right:6px; }}
+.card-header {{ margin-bottom:10px; display:flex; align-items:center; gap:8px; }}
 .ph {{ font-size:16px; color:#1e3a8a; vertical-align:middle; }}
-.card-header .ph {{ font-size:14px; margin-right:6px; }}
-.contact-icon .ph {{ font-size:15px; }}
-.social-icon .ph {{ font-size:18px; }}
+.icon-circle {{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:32px; height:32px; border-radius:50%; background:#e0e7ff; flex-shrink:0;
+}}
+.icon-circle .ph {{ font-size:16px; color:#1e3a8a; }}
+.icon-circle-sm {{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:24px; height:24px; border-radius:50%; background:#e0e7ff; flex-shrink:0;
+}}
+.icon-circle-sm .ph {{ font-size:13px; color:#1e3a8a; }}
 .card-title {{ font-size:10px; letter-spacing:1.5px; color:#1e3a8a; font-weight:700; }}
 .about-text {{ font-size:12px; color:#374151; line-height:1.7; margin:0; }}
 
@@ -545,8 +552,8 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .metrics-divider {{ display:table-cell; width:1px; background:#e2e8f0; }}
 .metrics-label {{ font-size:8px; letter-spacing:1.5px; color:#64748b; font-weight:600; margin-bottom:6px; }}
 .metrics-value {{ display:flex; align-items:center; gap:6px; }}
-.metrics-nota {{ font-size:22px; font-weight:700; color:#1e3a8a; line-height:1; }}
-.metrics-max {{ font-size:13px; font-weight:400; color:#94a3b8; }}
+.metrics-nota {{ font-size:28px; font-weight:700; color:#1e3a8a; line-height:1; }}
+.metrics-max {{ font-size:14px; font-weight:400; color:#94a3b8; }}
 .pill {{ display:inline-block; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:600; }}
 
 .chart-note {{ font-size:9px; color:#94a3b8; margin-top:6px; }}
@@ -564,7 +571,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 .contact-row {{ display:table; width:100%; padding:7px 0; border-bottom:1px solid #f1f5f9; font-size:12px; }}
 .contact-row:last-child {{ border-bottom:none; }}
-.contact-icon {{ display:table-cell; width:22px; }}
+.contact-icon {{ display:table-cell; width:32px; vertical-align:middle; }}
 .contact-label {{ display:table-cell; width:90px; color:#1e3a8a; font-weight:600; }}
 .contact-val {{ display:table-cell; color:#374151; word-break:break-word; }}
 
@@ -575,7 +582,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 .social-row {{ display:table; width:100%; padding:6px 0; border-bottom:1px solid #f1f5f9; font-size:12px; }}
 .social-row:last-child {{ border-bottom:none; }}
-.social-icon {{ display:table-cell; width:24px; vertical-align:middle; }}
+.social-icon {{ display:table-cell; width:32px; vertical-align:middle; }}
 .social-name {{ display:table-cell; width:70px; color:#1e293b; font-weight:600; vertical-align:middle; }}
 .social-handle {{
     display:table-cell;
@@ -629,6 +636,120 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .idc-text {{ font-size:10px; color:#64748b; line-height:1.5; margin-bottom:6px; }}
 .idc-date {{ font-size:10px; color:#6b7280; }}
 .idc-site {{ color:#1e3a8a; font-size:11px; font-weight:700; margin-top:6px; text-align:right; }}
+
+.final-page {{
+    break-before:page;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    background:#ffffff;
+    padding:0;
+}}
+.final-hero {{
+    background:#0f172a;
+    background-image:linear-gradient(135deg, #0f172a 60%, #1e3a8a 100%);
+    padding:28px 40px 22px;
+    text-align:center;
+    color:#fff;
+}}
+.final-hero-icon {{
+    width:48px; height:48px;
+    border:2px solid #bfa76a;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 12px;
+}}
+.final-hero-icon .ph {{ font-size:24px; color:#bfa76a; }}
+.final-title-light {{ font-size:20px; font-weight:400; color:#fff; margin:0; letter-spacing:1px; }}
+.final-title-gold {{ font-size:22px; font-weight:700; color:#bfa76a; margin:4px 0 10px; letter-spacing:1px; }}
+.final-subtitle {{ font-size:10px; color:rgba(255,255,255,0.75); line-height:1.5; max-width:500px; margin:0 auto; }}
+.final-divider {{ height:3px; background:linear-gradient(90deg, #bfa76a, #1e3a8a, #bfa76a); }}
+
+.final-three-cols {{ display:table; width:100%; padding:18px 40px; box-sizing:border-box; }}
+.final-col {{ display:table-cell; width:33%; vertical-align:top; padding:0 16px; text-align:center; }}
+.final-col:first-child {{ padding-left:0; }}
+.final-col:last-child {{ padding-right:0; }}
+.final-col-icon {{
+    width:44px; height:44px;
+    border:1.5px solid #bfa76a;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 8px;
+}}
+.final-col-icon .ph {{ font-size:20px; color:#1e3a8a; }}
+.final-col-title {{ font-size:11px; font-weight:700; color:#1e3a8a; letter-spacing:1px; margin-bottom:6px; }}
+.final-col-text {{ font-size:10px; color:#374151; line-height:1.5; margin:0; }}
+
+.final-who-box {{
+    background:#f8fafc;
+    margin:0 40px;
+    border-radius:10px;
+    padding:16px 32px;
+    text-align:center;
+}}
+.final-who-title {{ font-size:11px; font-weight:700; color:#1e3a8a; letter-spacing:1.5px; margin-bottom:6px; }}
+.final-who-divider {{ width:40px; height:2px; background:#bfa76a; margin:0 auto 12px; }}
+.final-who-cols {{ display:table; width:100%; }}
+.final-who-item {{ display:table-cell; vertical-align:top; text-align:center; padding:0 8px; }}
+.final-who-icon {{
+    width:44px; height:44px;
+    border:1.5px solid #cbd5e1;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 6px;
+}}
+.final-who-icon .ph {{ font-size:20px; color:#1e3a8a; }}
+.final-who-label {{ font-size:9px; font-weight:700; color:#374151; letter-spacing:0.5px; line-height:1.4; }}
+
+.final-auth-box {{
+    margin:14px 40px;
+    background:#0f172a;
+    border-radius:10px;
+    padding:18px 28px;
+    color:#fff;
+}}
+.final-auth-title {{ font-size:11px; font-weight:700; letter-spacing:1.5px; color:#fff; margin-bottom:12px; text-align:center; }}
+.final-auth-grid {{ display:table; width:100%; }}
+.final-auth-shield {{ display:table-cell; width:80px; vertical-align:middle; text-align:center; }}
+.final-auth-items {{ display:table-cell; vertical-align:top; padding:0 20px; }}
+.final-auth-item {{ display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; }}
+.final-auth-item:last-child {{ margin-bottom:0; }}
+.final-auth-item-icon {{
+    width:26px; height:26px;
+    background:rgba(255,255,255,0.1);
+    border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+}}
+.final-auth-item-icon .ph {{ font-size:13px; color:#bfa76a; }}
+.final-auth-item-title {{ font-size:9px; font-weight:700; letter-spacing:1px; color:#bfa76a; margin-bottom:2px; }}
+.final-auth-item-text {{ font-size:9px; color:rgba(255,255,255,0.7); line-height:1.35; }}
+.final-auth-qr {{ display:table-cell; width:120px; vertical-align:middle; text-align:center; }}
+.final-auth-qr img {{ border-radius:6px; background:#fff; padding:4px; }}
+.final-auth-qr-text {{ font-size:9px; color:rgba(255,255,255,0.7); margin-top:6px; line-height:1.35; }}
+.final-auth-qr-url {{ font-size:9px; font-weight:700; color:#bfa76a; margin-top:4px; }}
+.final-auth-note {{ font-size:9px; color:rgba(255,255,255,0.5); margin-top:10px; margin-bottom:0; line-height:1.4; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; }}
+
+.final-footer {{
+    display:table;
+    width:100%;
+    padding:14px 40px;
+    box-sizing:border-box;
+    border-top:1px solid #e2e8f0;
+    margin-top:auto;
+}}
+.final-footer-left {{ display:table-cell; width:30%; vertical-align:top; padding-right:20px; }}
+.final-footer-center {{ display:table-cell; width:40%; vertical-align:top; padding:0 20px; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; }}
+.final-footer-right {{ display:table-cell; width:30%; vertical-align:middle; text-align:right; padding-left:20px; }}
+.final-footer-idc-name {{ font-size:11px; font-weight:700; color:#1e3a8a; margin-top:8px; }}
+.final-footer-idc-desc {{ font-size:9px; color:#64748b; line-height:1.5; margin:4px 0 8px; }}
+.final-footer-contact {{ font-size:9px; color:#64748b; margin-bottom:3px; }}
+.final-footer-contact .ph {{ font-size:10px; color:#1e3a8a; margin-right:4px; }}
+.final-footer-doc-title {{ font-size:10px; font-weight:700; letter-spacing:0.5px; color:#1e3a8a; margin-bottom:6px; }}
+.final-footer-doc-text {{ font-size:9px; color:#64748b; line-height:1.5; margin:0 0 8px; }}
+.final-footer-date {{ font-size:10px; color:#374151; }}
+.final-footer-brand {{ font-size:16px; font-weight:700; color:#1e3a8a; }}
+.final-footer-slogan {{ font-size:9px; color:#64748b; line-height:1.5; margin-top:4px; }}
 </style>
 </head>
 <body>
@@ -691,17 +812,23 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 {sobre_card_html}
 
 <div class="card">
-    <div class="card-header"><span class="card-icon"><i class="ph ph-chart-line-up"></i></span><span class="card-title">VISUALIZAÇÕES DA SUA OSC NA PLATAFORMA — ÚLTIMO MÊS</span></div>
+    <div class="card-header"><span class="icon-circle"><i class="ph ph-chart-line-up"></i></span><span class="card-title">VISUALIZAÇÕES DA SUA OSC NA PLATAFORMA — ÚLTIMO MÊS</span></div>
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
         <td style="width:75%;vertical-align:top;">
             <canvas id="viewsChart" height="140"></canvas>
         </td>
         <td style="width:25%;vertical-align:top;padding-left:12px;">
             <div class="views-side">
-                <div class="views-label"><i class="ph ph-eye"></i> TOTAL DE VISUALIZAÇÕES</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;">
+                    <div class="icon-circle"><i class="ph ph-eye"></i></div>
+                    <span class="views-label">TOTAL DE VISUALIZAÇÕES</span>
+                </div>
                 <div class="views-val">{total_visualizacoes}</div>
                 <div class="views-sep"></div>
-                <div class="views-label"><i class="ph ph-chart-bar"></i> MÉDIA DIÁRIA</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;">
+                    <div class="icon-circle"><i class="ph ph-chart-bar"></i></div>
+                    <span class="views-label">MÉDIA DIÁRIA</span>
+                </div>
                 <div class="views-val-sm">{media_diaria}</div>
             </div>
         </td>
@@ -711,22 +838,22 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 <div class="two-col">
     <div class="col"><div class="card">
-        <div class="card-header"><span class="card-icon"><i class="ph ph-user"></i></span><span class="card-title">INFORMAÇÕES DE CONTATO</span></div>
+        <div class="card-header"><span class="icon-circle"><i class="ph ph-user"></i></span><span class="card-title">INFORMAÇÕES DE CONTATO</span></div>
         {contatos_html}
     </div></div>
     <div class="col"><div class="card">
-        <div class="card-header"><span class="card-icon"><i class="ph ph-handshake"></i></span><span class="card-title">CONTRATOS E PARCERIAS</span></div>
+        <div class="card-header"><span class="icon-circle"><i class="ph ph-handshake"></i></span><span class="card-title">CONTRATOS E PARCERIAS</span></div>
         {contratos_chart_html}
     </div></div>
 </div>
 
 <div class="two-col">
     <div class="col"><div class="card">
-        <div class="card-header"><span class="card-icon"><i class="ph ph-share-network"></i></span><span class="card-title">REDES SOCIAIS</span></div>
+        <div class="card-header"><span class="icon-circle"><i class="ph ph-share-network"></i></span><span class="card-title">REDES SOCIAIS</span></div>
         {social_rows_html}
     </div></div>
     <div class="col"><div class="card">
-        <div class="card-header"><span class="card-icon"><i class="ph ph-folder-open"></i></span><span class="card-title">DOCUMENTOS DISPONÍVEIS ({n_docs})</span></div>
+        <div class="card-header"><span class="icon-circle"><i class="ph ph-folder-open"></i></span><span class="card-title">DOCUMENTOS DISPONÍVEIS ({n_docs})</span></div>
         {docs_grid_html}
     </div></div>
 </div>
@@ -764,6 +891,136 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 </div>
 </div>
 
+<div class="final-page">
+
+  <!-- Seção hero -->
+  <div class="final-hero">
+    <div class="final-hero-icon">
+      <i class="ph ph-shield-check"></i>
+    </div>
+    <h1 class="final-title-light">TRANSPARÊNCIA QUE FORTALECE.</h1>
+    <h1 class="final-title-gold">CONFIANÇA QUE TRANSFORMA.</h1>
+    <p class="final-subtitle">Esta é a última página do seu Relatório Mensal do Índice de Transparência.<br>Conheça mais sobre o eTransparente e a autenticidade deste documento.</p>
+  </div>
+
+  <!-- Linha dourada separadora -->
+  <div class="final-divider"></div>
+
+  <!-- Três colunas: Sobre / Emendas / Finalidade -->
+  <div class="final-three-cols">
+    <div class="final-col">
+      <div class="final-col-icon"><i class="ph ph-users-three"></i></div>
+      <div class="final-col-title">SOBRE O<br>ETRANSPARENTE.ORG</div>
+      <p class="final-col-text">Iniciativa do Instituto de Direito Coletivo que apoia organizações da sociedade civil na promoção da transparência, da boa gestão e da prestação de contas, em conformidade com o MROSC.</p>
+    </div>
+    <div class="final-col">
+      <div class="final-col-icon"><i class="ph ph-magnifying-glass"></i></div>
+      <div class="final-col-title">EMENDAS<br>PARLAMENTARES</div>
+      <p class="final-col-text">Módulo dedicado ao acompanhamento das emendas recebidas, registro da aplicação dos recursos e organização da prestação de contas, alinhado às exigências de transparência e às decisões do STF.</p>
+    </div>
+    <div class="final-col">
+      <div class="final-col-icon"><i class="ph ph-target"></i></div>
+      <div class="final-col-title">FINALIDADE<br>DESTE RELATÓRIO</div>
+      <p class="final-col-text">Consolida de forma objetiva as informações públicas da organização disponíveis na plataforma, podendo ser utilizado como instrumento de prestação de contas perante parceiros, financiadores e órgãos públicos.</p>
+    </div>
+  </div>
+
+  <!-- Quem utiliza este relatório -->
+  <div class="final-who-box">
+    <div class="final-who-title">QUEM UTILIZA ESTE RELATÓRIO?</div>
+    <div class="final-who-divider"></div>
+    <div class="final-who-cols">
+      <div class="final-who-item">
+        <div class="final-who-icon"><i class="ph ph-bank"></i></div>
+        <div class="final-who-label">ÓRGÃOS<br>PÚBLICOS</div>
+      </div>
+      <div class="final-who-item">
+        <div class="final-who-icon"><i class="ph ph-handshake"></i></div>
+        <div class="final-who-label">FINANCIADORES E<br>DOADORES</div>
+      </div>
+      <div class="final-who-item">
+        <div class="final-who-icon"><i class="ph ph-microphone-stage"></i></div>
+        <div class="final-who-label">PARLAMENTARES</div>
+      </div>
+      <div class="final-who-item">
+        <div class="final-who-icon"><i class="ph ph-magnifying-glass"></i></div>
+        <div class="final-who-label">ÓRGÃOS DE<br>CONTROLE</div>
+      </div>
+      <div class="final-who-item">
+        <div class="final-who-icon"><i class="ph ph-users"></i></div>
+        <div class="final-who-label">SOCIEDADE E<br>PARCEIROS</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Autenticidade e validação -->
+  <div class="final-auth-box">
+    <div class="final-auth-title">AUTENTICIDADE E VALIDAÇÃO</div>
+    <div class="final-auth-grid">
+      <div class="final-auth-shield">
+        <i class="ph ph-shield-check" style="font-size:60px;color:#bfa76a;"></i>
+      </div>
+      <div class="final-auth-items">
+        <div class="final-auth-item">
+          <div class="final-auth-item-icon"><i class="ph ph-lock-key"></i></div>
+          <div>
+            <div class="final-auth-item-title">CÓDIGO ÚNICO</div>
+            <div class="final-auth-item-text">Identifica o relatório de forma exclusiva na plataforma.</div>
+          </div>
+        </div>
+        <div class="final-auth-item">
+          <div class="final-auth-item-icon"><i class="ph ph-fingerprint"></i></div>
+          <div>
+            <div class="final-auth-item-title">INTEGRIDADE</div>
+            <div class="final-auth-item-text">Hash criptográfico garante que o conteúdo não foi alterado após a emissão.</div>
+          </div>
+        </div>
+        <div class="final-auth-item">
+          <div class="final-auth-item-icon"><i class="ph ph-qr-code"></i></div>
+          <div>
+            <div class="final-auth-item-title">QR CODE</div>
+            <div class="final-auth-item-text">Permite a consulta da versão digital e a verificação da autenticidade.</div>
+          </div>
+        </div>
+        <div class="final-auth-item">
+          <div class="final-auth-item-icon"><i class="ph ph-calendar-check"></i></div>
+          <div>
+            <div class="final-auth-item-title">DATA E HORA</div>
+            <div class="final-auth-item-text">Registro automático do momento exato da geração do relatório.</div>
+          </div>
+        </div>
+      </div>
+      <div class="final-auth-qr">
+        {qr_img_tag}
+        <div class="final-auth-qr-text">Escaneie para validar<br>este documento</div>
+        <div class="final-auth-qr-url">etransparente.org/validar</div>
+      </div>
+    </div>
+    <p class="final-auth-note">Qualquer alteração posterior nos dados da organização não modifica retroativamente este relatório, preservando sua integridade documental.</p>
+  </div>
+
+  <!-- Rodapé institucional -->
+  <div class="final-footer">
+    <div class="final-footer-left">
+      {idc_logo_tag}
+      <div class="final-footer-idc-name">Instituto de Direito Coletivo</div>
+      <p class="final-footer-idc-desc">Organização da sociedade civil que atua pelo fortalecimento da democracia, da justiça e dos direitos coletivos.</p>
+      <div class="final-footer-contact"><i class="ph ph-envelope"></i> contato@direitocoletivo.org.br</div>
+      <div class="final-footer-contact"><i class="ph ph-globe"></i> www.direitocoletivo.org.br</div>
+    </div>
+    <div class="final-footer-center">
+      <div class="final-footer-doc-title">DOCUMENTO OFICIAL EMITIDO PELO IDC</div>
+      <p class="final-footer-doc-text">Relatório gerado automaticamente pela plataforma eTransparente.org com base nas informações públicas da organização.</p>
+      <div class="final-footer-date"><strong>Data de emissão:</strong> {data_emissao_formatada}</div>
+    </div>
+    <div class="final-footer-right">
+      <div class="final-footer-brand">etransparente.org</div>
+      <div class="final-footer-slogan">Organizações mais transparentes.<br>Sociedade mais forte.</div>
+    </div>
+  </div>
+
+</div>
+
 </div>
 
 <script>
@@ -786,7 +1043,7 @@ new Chart(ctx, {{
         responsive: true,
         plugins: {{ legend: {{ display: false }} }},
         scales: {{
-            x: {{ grid: {{ display: false }}, ticks: {{ font: {{ size: 9 }} }} }},
+            x: {{ grid: {{ display: false }}, ticks: {{ font: {{ size: 9 }}, maxTicksLimit: 5, maxRotation: 0 }} }},
             y: {{ grid: {{ color: '#f1f5f9' }}, ticks: {{ font: {{ size: 9 }} }} }}
         }}
     }}
