@@ -106,13 +106,22 @@ def contar_info_preenchida(osc):
     return preenchidos
 
 
+_CAMPOS_PADRAO_TERMO = {'situacao_do_termo', 'resultado_da_prestacao_de_contas', 'prestacao_de_contas_da_parceria'}
+
+
+def _termo_e_real(termo):
+    return bool({k for k, v in termo.items() if k not in _CAMPOS_PADRAO_TERMO and v})
+
+
+def _contar_termos_reais(bloco):
+    lista = bloco.get('termos', []) or [] if isinstance(bloco, dict) else []
+    return sum(1 for t in lista if isinstance(t, dict) and _termo_e_real(t))
+
+
 def contar_termos(osc):
     termos = osc.get('termos', {}) or {}
-    total = 0
-    for chave in ['municipio', 'estado', 'uniao', 'emendas_parlamentares']:
-        bloco = termos.get(chave, {}) or {}
-        total += int(bloco.get('quantidade', 0) or 0)
-    return total
+    return sum(_contar_termos_reais(termos.get(c, {}) or {})
+               for c in ['municipio', 'estado', 'uniao', 'emendas_parlamentares'])
 
 
 def gerar_dashboard_html(osc, score=None):
@@ -175,10 +184,11 @@ def gerar_dashboard_html(osc, score=None):
     info_preenchida = contar_info_preenchida(osc)  # noqa: F841
     total_termos = contar_termos(osc)
 
-    municipio_q = int(osc.get('termos', {}).get('municipio', {}).get('quantidade', 0) or 0)
-    estado_q = int(osc.get('termos', {}).get('estado', {}).get('quantidade', 0) or 0)
-    uniao_q = int(osc.get('termos', {}).get('uniao', {}).get('quantidade', 0) or 0)
-    emendas_q = int(osc.get('termos', {}).get('emendas_parlamentares', {}).get('quantidade', 0) or 0)
+    _termos_raw = osc.get('termos', {}) or {}
+    municipio_q = _contar_termos_reais(_termos_raw.get('municipio', {}) or {})
+    estado_q = _contar_termos_reais(_termos_raw.get('estado', {}) or {})
+    uniao_q = _contar_termos_reais(_termos_raw.get('uniao', {}) or {})
+    emendas_q = _contar_termos_reais(_termos_raw.get('emendas_parlamentares', {}) or {})
 
     _PH_SOCIAL_ICONS = {
         'instagram': 'ph-instagram-logo',
