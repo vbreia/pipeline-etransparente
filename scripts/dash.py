@@ -495,7 +495,7 @@ def gerar_dashboard_html(osc, score=None):
     src:url('{bold_url}') format('woff2');
     font-weight:700; font-style:normal;
 }}
-@page {{ margin:0; }}
+@page {{ size:auto; }}
 * {{ font-family:'Montserrat','Segoe UI',Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; box-sizing:border-box; }}
 @media print {{ body {{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }} }}
 html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e293b; }}
@@ -610,16 +610,13 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 .final-page {{
     break-before:page;
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
     background:#ffffff;
     padding:0;
 }}
 .final-hero {{
     background:#0f172a;
     background-image:linear-gradient(135deg, #0f172a 60%, #1e3a8a 100%);
-    padding:28px 40px 22px;
+    padding:18px 40px 14px;
     text-align:center;
     color:#fff;
 }}
@@ -636,7 +633,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .final-subtitle {{ font-size:10px; color:rgba(255,255,255,0.75); line-height:1.5; max-width:500px; margin:0 auto; }}
 .final-divider {{ height:3px; background:linear-gradient(90deg, #bfa76a, #1e3a8a, #bfa76a); }}
 
-.final-three-cols {{ display:table; width:100%; padding:18px 40px; box-sizing:border-box; }}
+.final-three-cols {{ display:table; width:100%; padding:12px 40px; box-sizing:border-box; }}
 .final-col {{ display:table-cell; width:33%; vertical-align:top; padding:0 16px; text-align:center; }}
 .final-col:first-child {{ padding-left:0; }}
 .final-col:last-child {{ padding-right:0; }}
@@ -655,7 +652,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
     background:#f8fafc;
     margin:0 40px;
     border-radius:10px;
-    padding:16px 32px;
+    padding:10px 32px;
     text-align:center;
 }}
 .final-who-title {{ font-size:11px; font-weight:700; color:#1e3a8a; letter-spacing:1.5px; margin-bottom:6px; }}
@@ -673,17 +670,17 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .final-who-label {{ font-size:9px; font-weight:700; color:#374151; letter-spacing:0.5px; line-height:1.4; }}
 
 .final-auth-box {{
-    margin:14px 40px;
+    margin:6px 40px;
     background:#0f172a;
     border-radius:10px;
-    padding:18px 28px;
+    padding:12px 28px;
     color:#fff;
 }}
-.final-auth-title {{ font-size:11px; font-weight:700; letter-spacing:1.5px; color:#fff; margin-bottom:12px; text-align:center; }}
+.final-auth-title {{ font-size:11px; font-weight:700; letter-spacing:1.5px; color:#fff; margin-bottom:8px; text-align:center; }}
 .final-auth-grid {{ display:table; width:100%; }}
 .final-auth-shield {{ display:table-cell; width:80px; vertical-align:middle; text-align:center; }}
 .final-auth-items {{ display:table-cell; vertical-align:top; padding:0 20px; }}
-.final-auth-item {{ display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; }}
+.final-auth-item {{ display:flex; align-items:flex-start; gap:10px; margin-bottom:5px; }}
 .final-auth-item:last-child {{ margin-bottom:0; }}
 .final-auth-item-icon {{
     width:26px; height:26px;
@@ -707,8 +704,28 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
     padding:14px 40px;
     box-sizing:border-box;
     border-top:1px solid #e2e8f0;
-    margin-top:auto;
-    margin-bottom:100px;
+    page-break-before:avoid;
+    break-before:avoid;
+    page-break-inside:avoid;
+    break-inside:avoid;
+}}
+.final-footer-col {{
+    display:table-cell;
+    vertical-align:top;
+}}
+.final-footer-col-border {{
+    display:table-cell;
+    vertical-align:top;
+    width:30%;
+    border-right:1px solid #e2e8f0;
+    padding-right:20px;
+}}
+.final-footer-col-last {{
+    display:table-cell;
+    vertical-align:middle;
+    width:30%;
+    text-align:right;
+    padding-left:20px;
 }}
 .final-footer-idc-name {{ font-size:10px; font-weight:700; color:#1e3a8a; }}
 .final-footer-idc-desc {{ font-size:8px; color:#64748b; line-height:1.4; margin-top:2px; }}
@@ -942,32 +959,26 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
   <!-- Rodapé institucional -->
   <div class="final-footer">
-    <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td style="width:30%;vertical-align:top;padding-right:20px;border-right:1px solid #e2e8f0;">
-          <table cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="vertical-align:middle;padding-right:12px;">{idc_logo_tag}</td>
-              <td style="vertical-align:middle;">
-                <div class="final-footer-idc-name">Instituto de Direito Coletivo</div>
-                <div class="final-footer-idc-desc">Organização da sociedade civil que atua pelo fortalecimento da democracia, da justiça e dos direitos coletivos.</div>
-              </td>
-            </tr>
-          </table>
-          <div class="final-footer-contact" style="margin-top:8px;"><i class="ph ph-envelope"></i> contato@direitocoletivo.org.br</div>
-          <div class="final-footer-contact"><i class="ph ph-globe"></i> www.direitocoletivo.org.br</div>
-        </td>
-        <td style="width:40%;vertical-align:top;padding:0 20px;border-right:1px solid #e2e8f0;">
-          <div class="final-footer-doc-title">DOCUMENTO OFICIAL EMITIDO PELO IDC</div>
-          <p class="final-footer-doc-text">Relatório gerado automaticamente pela plataforma eTransparente.org com base nas informações públicas da organização.</p>
-          <div class="final-footer-date"><strong>Data de emissão:</strong> {data_emissao_formatada}</div>
-        </td>
-        <td style="width:30%;vertical-align:middle;text-align:right;padding-left:20px;">
-          <div class="final-footer-brand">etransparente.org</div>
-          <div class="final-footer-slogan">Organizações mais transparentes.<br>Sociedade mais forte.</div>
-        </td>
-      </tr>
-    </table>
+    <div class="final-footer-col-border">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+        {idc_logo_tag}
+        <div>
+          <div class="final-footer-idc-name">Instituto de Direito Coletivo</div>
+          <div class="final-footer-idc-desc">Organização da sociedade civil que atua pelo fortalecimento da democracia, da justiça e dos direitos coletivos.</div>
+        </div>
+      </div>
+      <div class="final-footer-contact"><i class="ph ph-envelope"></i> contato@direitocoletivo.org.br</div>
+      <div class="final-footer-contact"><i class="ph ph-globe"></i> www.direitocoletivo.org.br</div>
+    </div>
+    <div class="final-footer-col" style="border-right:1px solid #e2e8f0;padding-right:20px;">
+      <div class="final-footer-doc-title">DOCUMENTO OFICIAL EMITIDO PELO IDC</div>
+      <p class="final-footer-doc-text">Relatório gerado automaticamente pela plataforma eTransparente.org com base nas informações públicas da organização.</p>
+      <div class="final-footer-date"><strong>Data de emissão:</strong> {data_emissao_formatada}</div>
+    </div>
+    <div class="final-footer-col-last">
+      <div class="final-footer-brand">etransparente.org</div>
+      <div class="final-footer-slogan">Organizações mais transparentes.<br>Sociedade mais forte.</div>
+    </div>
   </div>
 
 </div>
@@ -1160,7 +1171,7 @@ def main():
                             display_header_footer=bool(mini_footer_template_html),
                             header_template='<div></div>',
                             footer_template=mini_footer_template_html or '<div></div>',
-                            margin={'top': '28px', 'bottom': '60px', 'left': '0px', 'right': '0px'},
+                            margin={'top': '28px', 'bottom': '50px', 'left': '0px', 'right': '0px'},
                         )
                         browser.close()
                     pdf_count += 1
