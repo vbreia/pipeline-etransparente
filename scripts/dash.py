@@ -129,16 +129,8 @@ def gerar_dashboard_html(osc, score=None):
     cor_classificacao = _COR_CLASSIFICACAO.get(classificacao, '#6b7280')  # noqa: F841
     tag_texto = 'Com termos/emendas' if tag == 'com_termos_emendas' else 'Sem termos/emendas'
 
-    badges_html_parts = []
-    if badges.get('cebas'):
-        badges_html_parts.append('<span class="pill pill-badge">CEBAS</span>')
-    if badges.get('utilidade_publica'):
-        badges_html_parts.append('<span class="pill pill-badge">Utilidade Pública</span>')
-    badges_html = ''.join(badges_html_parts)
-
     data_emissao = datetime.now().strftime('%Y-%m')
     hash_hex = _gerar_hash(nome, data_emissao, nota_final, max_nota, classificacao)
-    hash_curto = hash_hex[:12]
     qr_url = f'https://etransparente.org/verificar/{hash_hex}'
     qr_data_uri = _gerar_qr_data_uri(qr_url)
 
@@ -186,11 +178,6 @@ def gerar_dashboard_html(osc, score=None):
     uniao_q = int(osc.get('termos', {}).get('uniao', {}).get('quantidade', 0) or 0)
     emendas_q = int(osc.get('termos', {}).get('emendas_parlamentares', {}).get('quantidade', 0) or 0)
 
-    municipio_disp = municipio_q if municipio_q else 'Nenhum'
-    estado_disp = estado_q if estado_q else 'Nenhum'
-    uniao_disp = uniao_q if uniao_q else 'Nenhum'
-    emendas_disp = emendas_q if emendas_q else 'Nenhuma'
-
     def icon_svg(kind):
         if kind == 'instagram':
             return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#1e293b" stroke-width="1.2" fill="none"/><circle cx="12" cy="12" r="3" stroke="#1e293b" stroke-width="1.2" fill="none"/><circle cx="17.5" cy="6.5" r="0.8" fill="#1e293b"/></svg>'
@@ -230,22 +217,6 @@ def gerar_dashboard_html(osc, score=None):
                 name = 'Site'
             social_items.append((name, p, 'other'))
 
-    socials_html = ''
-    if social_items:
-        items = []
-        for idx, (label, href, kind) in enumerate(social_items, start=1):
-            icon = icon_svg(kind)
-            items.append(f'<li><span class="index">{idx}.</span> <a class="social" href="{_html.escape(href)}" target="_blank">{icon} {_html.escape(label)}</a></li>')
-        socials_html = '<ol class="social-list">' + '\n'.join(items) + '</ol>'
-    else:
-        socials_html = '<div class="none">Nenhum</div>'
-
-    if documentos_labels:
-        docs_html_items = ''.join(f'<li>{_html.escape(lbl)}</li>' for lbl in documentos_labels)
-        docs_html = f'<ul class="docs-list">{docs_html_items}</ul>'
-    else:
-        docs_html = '<div class="none">Nenhum</div>'
-
     # Identificar campos faltantes
     campos_faltantes = []
     if not telefone:
@@ -277,11 +248,6 @@ def gerar_dashboard_html(osc, score=None):
     for ano in ['2024', '2023', '2022']:
         if not documentos.get(f'balanco_{ano}'):
             campos_faltantes.append(f'Balanço {ano}')
-
-    if campos_faltantes:
-        faltantes_html = f'<div style="color:#dc2626;font-size:0.9rem;line-height:1.6;">{_html.escape(", ".join(campos_faltantes))}</div>'
-    else:
-        faltantes_html = '<div style="color:#16a34a;font-weight:500;font-size:0.95rem;">Todos os dados de transparência estão disponíveis.</div>'
 
     # Tentar /home/airflow primeiro (volume Docker), fallback para cwd
     _home_airflow = '/home/airflow'
@@ -326,55 +292,163 @@ def gerar_dashboard_html(osc, score=None):
                 logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
 
     if qr_data_uri:
-        qr_img_tag = f'<img src="{qr_data_uri}" width="70" height="70" style="display:block;" alt="QR Code"/>'
+        qr_img_tag = f'<img src="{qr_data_uri}" width="80" height="80" style="display:block;" alt="QR Code"/>'
     else:
-        qr_img_tag = '<div style="width:70px;height:70px;background:#f1f5f9;border-radius:4px;"></div>'
+        qr_img_tag = '<div style="width:80px;height:80px;background:#f1f5f9;border-radius:4px;"></div>'
 
-    # ── variáveis para o novo layout ─────────────────────────────────────────
-    sobre_card = ''
+    # ── pré-cálculos para o novo layout ESG ────────────────────────────────────
+    sobre_card_html = ''
     if descricao.strip():
-        sobre_card = (
-            f'<div class="card about-card">'
-            f'<div class="section-title">SOBRE A ORGANIZAÇÃO</div>'
-            f'<p class="about-text">{_html.escape(descricao)}</p>'
-            f'</div>'
-        )
+        sobre_card_html = f"""
+    <div class="card">
+        <div class="card-header"><span class="card-icon">📋</span><span class="card-title">SOBRE A ORGANIZAÇÃO</span></div>
+        <p class="about-text">{_html.escape(descricao)}</p>
+    </div>"""
+
+    descricao_curta = _html.escape(descricao[:120] + '...' if len(descricao) > 120 else descricao) if descricao else ''
 
     _hoje = datetime.now()
     _chart_labels = [(_hoje - timedelta(days=29 - i)).strftime('%d/%m') for i in range(30)]
-    _chart_data = [random.randint(10, 80) for _ in range(30)]
+    _chart_data = [random.randint(50, 800) for _ in range(30)]
     chart_labels_js = json.dumps(_chart_labels)
-    chart_data_js = str(_chart_data)
+    chart_data_js = json.dumps(_chart_data)
+    total_visualizacoes = sum(_chart_data)
+    media_diaria = round(total_visualizacoes / len(_chart_data))
+
+    _meses_pt = {
+        'january': 'janeiro', 'february': 'fevereiro', 'march': 'março', 'april': 'abril',
+        'may': 'maio', 'june': 'junho', 'july': 'julho', 'august': 'agosto',
+        'september': 'setembro', 'october': 'outubro', 'november': 'novembro', 'december': 'dezembro'
+    }
+    mes_extenso = _meses_pt.get(_hoje.strftime('%B').lower(), _hoje.strftime('%B').lower())
+    ano_atual = _hoje.strftime('%Y')
+    mm_atual = _hoje.strftime('%m')
+    _primeiro_dia_prox_mes = (_hoje.replace(day=28) + timedelta(days=4)).replace(day=1)
+    _ultimo_dia_mes = (_primeiro_dia_prox_mes - timedelta(days=1)).strftime('%d')
+    periodo_referencia = f"Período de referência: 01/{mm_atual}/{ano_atual} a {_ultimo_dia_mes}/{mm_atual}/{ano_atual}"
 
     idc_logo_path = os.path.join(repo_root, 'assets', 'img', 'LOGOIDC.png')
     idc_logo_tag = (
-        f'<img src="file://{idc_logo_path}" alt="IDC" style="height:50px;display:block;margin-left:auto;">'
+        f'<img src="file://{idc_logo_path}" alt="IDC" style="height:40px;display:block;margin-left:auto;">'
         if os.path.exists(idc_logo_path) else ''
     )
 
     _PILL_BG = {
-        'Regular': 'background:#fee2e2;color:#dc2626',
-        'Bom':     'background:#fef9c3;color:#ca8a04',
-        'Ótimo':   'background:#dcfce7;color:#16a34a',
+        'Regular': 'background:#fee2e2;color:#dc2626;border:1px solid #fca5a5',
+        'Bom':     'background:#fef9c3;color:#ca8a04;border:1px solid #fde047',
+        'Ótimo':   'background:#dcfce7;color:#16a34a;border:1px solid #86efac',
     }
-    pill_style = _PILL_BG.get(classificacao, 'background:#f1f5f9;color:#374151')
+    pill_style = _PILL_BG.get(classificacao, 'background:#f1f5f9;color:#374151;border:1px solid #e2e8f0')
+    tag_pill_style = 'background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc'
+    badge_pill_style = 'background:#f3e8ff;color:#7c3aed;border:1px solid #c4b5fd'
 
-    if campos_faltantes:
-        _pc_style = 'background:#fff7ed;border-left:4px solid #f97316;border-radius:8px;padding:16px 20px;margin-bottom:12px;'
-        _pt_style = 'color:#c2410c'
-    else:
-        _pc_style = 'background:#f0fdf4;border-left:4px solid #22c55e;border-radius:8px;padding:16px 20px;margin-bottom:12px;'
-        _pt_style = 'color:#16a34a'
+    _badges_parts = []
+    if badges.get('cebas'):
+        _badges_parts.append(f'<span class="pill" style="{badge_pill_style}">CEBAS</span>')
+    if badges.get('utilidade_publica'):
+        _badges_parts.append(f'<span class="pill" style="{badge_pill_style}">Utilidade Pública Federal</span>')
+    certificacoes_html = ''
+    if _badges_parts:
+        certificacoes_html = (
+            '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0;">'
+            '<span style="font-size:9px;letter-spacing:1px;color:#64748b;margin-right:8px;">CERTIFICAÇÕES</span>'
+            + ''.join(_badges_parts) + '</div>'
+        )
 
-    tel_disp   = _html.escape(telefone)    if telefone    else '—'
-    email_disp = _html.escape(email)       if email       else '—'
+    tel_disp   = _html.escape(telefone)    if telefone    else '<span style="color:#cbd5e1;">—</span>'
+    email_disp = _html.escape(email)       if email       else '<span style="color:#cbd5e1;">—</span>'
     website_link = (
         f'<a href="{_html.escape(website)}" style="color:#1e3a8a;word-break:break-all;">'
         f'{_html.escape(website)}</a>'
-    ) if website else '—'
-    loc_disp  = _html.escape(localizacao)  if localizacao else '—'
-    cnpj_disp = _html.escape(cnpj)         if cnpj        else '—'
+    ) if website else '<span style="color:#cbd5e1;">—</span>'
+    loc_disp  = _html.escape(localizacao)  if localizacao else '<span style="color:#cbd5e1;">—</span>'
+    cnpj_disp = _html.escape(cnpj)         if cnpj        else '<span style="color:#cbd5e1;">—</span>'
     n_docs = len(documentos_labels)
+
+    _contatos_rows = [
+        ('📞', 'Telefone', tel_disp),
+        ('✉', 'E-mail', email_disp),
+        ('🌐', 'Website', website_link),
+        ('📍', 'Localização', loc_disp),
+        ('🏢', 'CNPJ', cnpj_disp),
+    ]
+    contatos_html = ''.join(
+        f'<div class="contact-row"><span class="contact-icon">{icone}</span>'
+        f'<span class="contact-label">{rotulo}</span><span class="contact-val">{valor}</span></div>'
+        for icone, rotulo, valor in _contatos_rows
+    )
+
+    _esferas = [
+        ('Município', municipio_q, '#1e3a8a'),
+        ('Estado', estado_q, '#3b82f6'),
+        ('União', uniao_q, '#93c5fd'),
+        ('Emendas parlamentares', emendas_q, '#bfdbfe'),
+    ]
+    _esferas_presentes = [e for e in _esferas if e[1] > 0]
+
+    if total_termos > 0:
+        doughnut_labels_js = json.dumps([e[0] for e in _esferas_presentes])
+        doughnut_data_js = json.dumps([e[1] for e in _esferas_presentes])
+        doughnut_colors_js = json.dumps([e[2] for e in _esferas_presentes])
+        _legenda_items = ''.join(
+            f'<div class="legend-row"><span class="legend-dot" style="background:{cor};"></span>'
+            f'<span class="legend-label">{_html.escape(nome_esfera)}</span>'
+            f'<span class="legend-val">{qtd} ({round(qtd / total_termos * 100)}%)</span></div>'
+            for nome_esfera, qtd, cor in _esferas_presentes
+        )
+        contratos_chart_html = f"""
+            <table width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td style="width:130px;vertical-align:middle;">
+                    <div style="position:relative;width:130px;height:130px;">
+                        <canvas id="contratosChart" width="130" height="130"></canvas>
+                        <div style="position:absolute;top:0;left:0;width:130px;height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                            <div style="font-size:22px;font-weight:700;color:#1e3a8a;">{total_termos}</div>
+                            <div style="font-size:9px;color:#64748b;">contratos</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="vertical-align:middle;padding-left:16px;">{_legenda_items}</td>
+            </tr></table>"""
+    else:
+        doughnut_labels_js = '[]'
+        doughnut_data_js = '[]'
+        doughnut_colors_js = '[]'
+        contratos_chart_html = '<div class="none-box">Nenhum contrato registrado</div>'
+
+    if social_items:
+        social_rows_html = ''.join(
+            f'<div class="social-row"><span class="social-icon">{icon_svg(kind)}</span>'
+            f'<span class="social-name">{_html.escape(label)}</span>'
+            f'<a class="social-handle" href="{_html.escape(href)}" target="_blank">{_html.escape(href)}</a>'
+            f'<span class="social-check">✅</span></div>'
+            for label, href, kind in social_items
+        )
+    else:
+        social_rows_html = '<div class="none-box">Nenhuma rede social cadastrada</div>'
+
+    if documentos_labels:
+        docs_grid_html = '<div class="docs-grid">' + ''.join(
+            f'<div class="doc-item">✅ {_html.escape(lbl)}</div>' for lbl in documentos_labels
+        ) + '</div>'
+    else:
+        docs_grid_html = '<div class="none-box">Nenhum documento cadastrado</div>'
+
+    if campos_faltantes:
+        alerta_html = f"""
+    <div class="alert-box alert-warning">
+        <div class="alert-header">⚠️ DADOS OU DOCUMENTOS PENDENTES</div>
+        <div class="alert-text">{_html.escape(', '.join(campos_faltantes))}</div>
+    </div>"""
+    else:
+        alerta_html = """
+    <div class="alert-box alert-success">
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td>
+                <div class="alert-header alert-header-success">🏆 PARABÉNS!</div>
+                <div class="alert-text alert-text-success">Sua organização está com todas as informações e documentos obrigatórios preenchidos e atualizados.</div>
+            </td>
+            <td style="width:50px;text-align:right;font-size:28px;">✅</td>
+        </tr></table>"""
     # ─────────────────────────────────────────────────────────────────────────
 
     html = f"""<!DOCTYPE html>
@@ -385,169 +459,222 @@ def gerar_dashboard_html(osc, score=None):
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 @font-face {{
-    font-family:'MontserratLocal';
+    font-family:'Montserrat';
     src:url('{regular_url}') format('woff2');
     font-weight:400; font-style:normal;
 }}
 @font-face {{
-    font-family:'MontserratLocal';
+    font-family:'Montserrat';
     src:url('{medium_url}') format('woff2');
     font-weight:500; font-style:normal;
 }}
 @font-face {{
-    font-family:'MontserratLocal';
+    font-family:'Montserrat';
     src:url('{bold_url}') format('woff2');
     font-weight:700; font-style:normal;
 }}
-@page {{ size:210mm auto; margin:0; }}
-* {{ -webkit-print-color-adjust:exact; print-color-adjust:exact; box-sizing:border-box; }}
+@page {{ margin:0; }}
+* {{ font-family:'Montserrat','Segoe UI',Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; box-sizing:border-box; }}
 @media print {{ body {{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }} }}
-html,body {{
-    margin:0; padding:0; background:#f1f5f9;
-    font-family:'MontserratLocal','Montserrat','Segoe UI',Arial,sans-serif;
-    font-size:13px; color:#1e293b;
-}}
-.header-strip {{ background:#1e3a8a; padding:16px 24px; }}
-.header-strip-title {{
-    color:#fff; font-weight:700; font-size:13px;
-    letter-spacing:1px; text-transform:uppercase; margin-bottom:4px;
-}}
-.header-strip-sub {{ color:rgba(255,255,255,0.8); font-size:10px; }}
-.page-content {{ padding:16px; }}
-.card {{
-    background:#fff; border-radius:8px;
-    box-shadow:0 1px 4px rgba(0,0,0,0.08);
-    padding:16px 20px; margin-bottom:12px;
-}}
-.about-card {{ background:#f8fafc; }}
-.section-title {{
-    text-transform:uppercase; font-size:10px; letter-spacing:1px;
-    color:#64748b; margin-bottom:8px; font-weight:600;
-}}
-.ong-logo {{ width:60px; height:60px; border-radius:50%; object-fit:cover; display:block; }}
-.ong-nome {{ font-size:20px; font-weight:700; color:#1e3a8a; margin-bottom:8px; word-break:break-word; }}
-.ong-nome a {{ color:inherit; text-decoration:none; }}
-.ong-meta {{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; }}
-.pill {{ display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600; }}
-.pill-tag {{ background:#e0f2fe; color:#0369a1; }}
-.pill-badge {{ background:#f3e8ff; color:#7c3aed; }}
-.nota-text {{ font-size:12px; color:#374151; }}
-.nota-text b {{ color:#1e3a8a; }}
-.about-text {{ margin:0; font-size:12px; color:#374151; line-height:1.7; }}
-.chart-note {{ font-size:10px; color:#94a3b8; margin-top:6px; }}
-.row-2col {{ display:table; width:100%; margin-bottom:12px; }}
-.col-half {{ display:table-cell; width:50%; vertical-align:top; }}
-.col-half:first-child {{ padding-right:6px; }}
-.col-half:last-child {{ padding-left:6px; }}
-.col-half .card {{ margin-bottom:0; }}
-.info-row {{ display:table; width:100%; padding:5px 0; border-bottom:1px solid #f1f5f9; font-size:12px; }}
-.info-row:last-child {{ border-bottom:none; }}
-.info-label {{ display:table-cell; color:#1e3a8a; font-weight:600; width:85px; padding-right:8px; vertical-align:top; }}
-.info-val {{ display:table-cell; color:#374151; word-break:break-word; vertical-align:top; }}
-.contracts-total {{ font-size:28px; font-weight:700; color:#1e3a8a; margin-bottom:8px; line-height:1; }}
-.social-list {{ list-style:none; padding:0; margin:0; }}
-.social-list li {{ padding:4px 0; border-bottom:1px solid #f1f5f9; font-size:12px; }}
-.social-list li:last-child {{ border-bottom:none; }}
-.social {{ color:#1e3a8a; text-decoration:none; display:inline-flex; align-items:center; gap:5px; }}
-.social svg {{ flex-shrink:0; }}
-.index {{ color:#9ca3af; margin-right:4px; font-size:11px; }}
-.docs-list {{ list-style:none; padding:0; margin:0; }}
-.docs-list li {{ font-size:11px; color:#374151; padding:4px 0; border-bottom:1px solid #f1f5f9; line-height:1.4; }}
-.docs-list li:last-child {{ border-bottom:none; }}
-.docs-list li::before {{ content:"✓ "; color:#16a34a; font-weight:700; }}
-.none {{ font-size:12px; color:#9ca3af; }}
-.footer {{ border-top:2px solid #e2e8f0; padding-top:14px; margin-top:4px; }}
+html,body {{ margin:0; padding:16px 0; background:#f1f5f9; font-size:13px; color:#1e293b; }}
+.wrapper {{ max-width:900px; margin:0 auto; }}
+
+.header-strip {{ background:#0f172a; padding:20px 32px; display:table; width:100%; }}
+.header-left, .header-right {{ display:table-cell; vertical-align:middle; }}
+.header-right {{ text-align:right; }}
+.header-bar {{ border-left:4px solid #3b82f6; height:60px; display:inline-block; margin-right:12px; vertical-align:middle; }}
+.header-text {{ display:inline-block; vertical-align:middle; }}
+.header-line1 {{ font-size:11px; letter-spacing:2px; color:#fff; opacity:0.7; }}
+.header-line2 {{ font-size:22px; font-weight:700; color:#fff; }}
+.header-line3 {{ font-size:10px; color:#93c5fd; }}
+.header-date {{ font-size:13px; color:#fff; font-weight:700; }}
+.header-period {{ font-size:10px; color:#fff; opacity:0.7; margin-top:2px; }}
+
+.card {{ background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin:0 16px 12px; padding:16px 24px; }}
+.card-header {{ margin-bottom:10px; }}
+.card-icon {{ margin-right:6px; }}
+.card-title {{ font-size:10px; letter-spacing:1.5px; color:#1e3a8a; font-weight:700; }}
+.about-text {{ font-size:12px; color:#374151; line-height:1.7; margin:0; }}
+
+.id-card {{ border-radius:10px; }}
+.id-logo {{ width:80px; height:80px; border-radius:50%; object-fit:cover; border:3px solid #e2e8f0; display:block; }}
+.id-nome {{ font-size:22px; font-weight:700; color:#1e3a8a; }}
+.id-nome a {{ color:inherit; text-decoration:none; }}
+.id-desc {{ font-size:11px; color:#64748b; margin-top:4px; }}
+.metrics-box {{ background:#f8fafc; border-radius:8px; padding:12px 16px; }}
+.metrics-col {{ text-align:center; padding:0 4px; }}
+.metrics-label {{ font-size:9px; letter-spacing:0.5px; color:#64748b; margin-bottom:4px; }}
+.metrics-nota {{ font-size:18px; font-weight:700; color:#1e3a8a; }}
+.pill {{ display:inline-block; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:600; }}
+
+.chart-note {{ font-size:9px; color:#94a3b8; margin-top:6px; }}
+.views-side {{ background:#f8fafc; border-radius:8px; padding:12px; text-align:center; }}
+.views-label {{ font-size:9px; color:#64748b; }}
+.views-val {{ font-size:20px; font-weight:700; color:#1e3a8a; margin:2px 0 8px; }}
+.views-val-sm {{ font-size:16px; font-weight:700; color:#1e3a8a; margin-top:2px; }}
+.views-sep {{ border-top:1px solid #e2e8f0; margin:6px 0; }}
+
+.two-col {{ display:table; width:100%; }}
+.two-col .col {{ display:table-cell; width:48%; vertical-align:top; }}
+.two-col .col:first-child {{ padding-right:2%; }}
+.two-col .col:last-child {{ padding-left:2%; }}
+.two-col .card {{ margin:0; height:100%; }}
+
+.contact-row {{ display:table; width:100%; padding:7px 0; border-bottom:1px solid #f1f5f9; font-size:12px; }}
+.contact-row:last-child {{ border-bottom:none; }}
+.contact-icon {{ display:table-cell; width:22px; }}
+.contact-label {{ display:table-cell; width:90px; color:#1e3a8a; font-weight:600; }}
+.contact-val {{ display:table-cell; color:#374151; word-break:break-word; }}
+
+.legend-row {{ font-size:11px; color:#374151; padding:3px 0; }}
+.legend-dot {{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }}
+.legend-label {{ margin-right:4px; }}
+.legend-val {{ color:#64748b; }}
+
+.social-row {{ display:table; width:100%; padding:6px 0; border-bottom:1px solid #f1f5f9; font-size:12px; }}
+.social-row:last-child {{ border-bottom:none; }}
+.social-icon {{ display:table-cell; width:24px; vertical-align:middle; }}
+.social-name {{ display:table-cell; width:70px; color:#1e293b; font-weight:600; vertical-align:middle; }}
+.social-handle {{ display:table-cell; color:#1e3a8a; text-decoration:none; word-break:break-all; vertical-align:middle; }}
+.social-check {{ display:table-cell; width:24px; text-align:right; vertical-align:middle; }}
+
+.docs-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; }}
+.doc-item {{ font-size:11px; color:#374151; }}
+
+.none-box {{ color:#94a3b8; font-size:12px; text-align:center; padding:16px 0; }}
+
+.alert-box {{ border-radius:8px; padding:16px 24px; margin:0 16px 12px; }}
+.alert-warning {{ background:#fff7ed; border-left:4px solid #f97316; }}
+.alert-success {{ background:#f0fdf4; border-left:4px solid #22c55e; }}
+.alert-header {{ font-size:10px; letter-spacing:1px; color:#c2410c; font-weight:700; margin-bottom:6px; }}
+.alert-header-success {{ color:#15803d; }}
+.alert-text {{ font-size:12px; color:#9a3412; }}
+.alert-text-success {{ font-size:12px; color:#15803d; }}
+
+.footer {{ border-top:2px solid #e2e8f0; margin:0 16px 16px; padding:20px 24px 0; }}
 .footer-table {{ width:100%; border-collapse:collapse; }}
-.hash-code {{ font-family:monospace; font-size:11px; color:#374151; font-weight:600; margin-bottom:3px; }}
-.verify-text {{ font-size:11px; color:#6b7280; line-height:1.4; }}
+.auth-title {{ font-size:10px; letter-spacing:1px; color:#1e3a8a; font-weight:700; margin-bottom:6px; }}
+.auth-text {{ font-size:11px; color:#374151; line-height:1.5; }}
+.auth-hash {{ font-family:monospace; font-size:9px; color:#64748b; word-break:break-all; margin-top:6px; }}
+.auth-date {{ font-size:10px; color:#6b7280; margin-top:4px; }}
+.idc-col {{ border-left:1px solid #e2e8f0; padding-left:20px; text-align:right; }}
+.idc-label {{ font-size:9px; letter-spacing:1px; color:#64748b; margin-bottom:6px; }}
+.idc-text {{ font-size:10px; color:#64748b; line-height:1.5; margin-bottom:8px; }}
+.idc-site {{ color:#1e3a8a; font-size:11px; font-weight:700; margin-top:6px; }}
 </style>
 </head>
 <body>
+<div class="wrapper">
 
 <div class="header-strip">
-    <div class="header-strip-title">RELATÓRIO MENSAL DO ÍNDICE DE TRANSPARÊNCIA</div>
-    <div class="header-strip-sub">Elaborado com dados da plataforma etransparente.org — Instituto de Direito Coletivo ©</div>
+    <div class="header-left">
+        <span class="header-bar"></span>
+        <span class="header-text">
+            <div class="header-line1">RELATÓRIO MENSAL DO</div>
+            <div class="header-line2">ÍNDICE DE TRANSPARÊNCIA</div>
+            <div class="header-line3">Emitido pelo Instituto de Direito Coletivo – IDC</div>
+        </span>
+    </div>
+    <div class="header-right">
+        <div class="header-date">📅 {mes_extenso}/{ano_atual}</div>
+        <div class="header-period">{periodo_referencia}</div>
+    </div>
 </div>
 
-<div class="page-content">
+<div class="card id-card">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td style="width:90px;vertical-align:middle;">
+            <a href="{_html.escape(url)}" target="_blank" rel="noopener noreferrer">
+                <img src="{logo_url}" class="id-logo" alt="Logo">
+            </a>
+        </td>
+        <td style="vertical-align:middle;padding:0 20px;">
+            <div class="id-nome"><a href="{_html.escape(url)}" target="_blank" rel="noopener noreferrer">{_html.escape(nome)}</a></div>
+            <div class="id-desc">{descricao_curta}</div>
+        </td>
+        <td style="width:280px;vertical-align:middle;">
+            <div class="metrics-box">
+                <table width="100%" cellpadding="0" cellspacing="0"><tr>
+                    <td class="metrics-col">
+                        <div class="metrics-label">CLASSIFICAÇÃO</div>
+                        <span class="pill" style="{pill_style}">{_html.escape(classificacao)}</span>
+                    </td>
+                    <td class="metrics-col">
+                        <div class="metrics-label">NOTA OBTIDA</div>
+                        <div class="metrics-nota">{nota_final}/{max_nota}</div>
+                    </td>
+                    <td class="metrics-col">
+                        <div class="metrics-label">STATUS</div>
+                        <span class="pill" style="{tag_pill_style}">{_html.escape(tag_texto)}</span>
+                    </td>
+                </tr></table>
+                {certificacoes_html}
+            </div>
+        </td>
+    </tr></table>
+</div>
+{sobre_card_html}
 
-    <div class="card">
-        <table width="100%" cellpadding="0" cellspacing="0"><tr>
-            <td width="76" style="vertical-align:middle;padding-right:16px;">
-                <a href="{_html.escape(url)}" target="_blank" rel="noopener noreferrer">
-                    <img src="{logo_url}" class="ong-logo" alt="Logo">
-                </a>
-            </td>
-            <td style="vertical-align:middle;">
-                <div class="ong-nome">
-                    <a href="{_html.escape(url)}" target="_blank" rel="noopener noreferrer">{_html.escape(nome)}</a>
-                </div>
-                <div class="ong-meta">
-                    <span class="pill" style="{pill_style}">{_html.escape(classificacao)}</span>
-                    <span class="nota-text"><b>Nota:</b> {nota_final}/{max_nota}</span>
-                    <span class="pill pill-tag">{_html.escape(tag_texto)}</span>
-                    {badges_html}
-                </div>
-            </td>
-        </tr></table>
-    </div>
+<div class="card">
+    <div class="card-header"><span class="card-icon">📈</span><span class="card-title">VISUALIZAÇÕES DO SITE — ÚLTIMO MÊS</span></div>
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td style="width:75%;vertical-align:top;">
+            <canvas id="viewsChart" height="140"></canvas>
+        </td>
+        <td style="width:25%;vertical-align:top;padding-left:12px;">
+            <div class="views-side">
+                <div class="views-label">👁 TOTAL DE VISUALIZAÇÕES</div>
+                <div class="views-val">{total_visualizacoes}</div>
+                <div class="views-sep"></div>
+                <div class="views-label">📊 MÉDIA DIÁRIA</div>
+                <div class="views-val-sm">{media_diaria}</div>
+            </div>
+        </td>
+    </tr></table>
+    <div class="chart-note">* Dados de visualização do etransparente.org via Google Analytics</div>
+</div>
 
-    {sobre_card}
+<div class="two-col">
+    <div class="col"><div class="card">
+        <div class="card-header"><span class="card-icon">👤</span><span class="card-title">INFORMAÇÕES DE CONTATO</span></div>
+        {contatos_html}
+    </div></div>
+    <div class="col"><div class="card">
+        <div class="card-header"><span class="card-icon">🤝</span><span class="card-title">CONTRATOS E PARCERIAS</span></div>
+        {contratos_chart_html}
+    </div></div>
+</div>
 
-    <div class="card">
-        <div class="section-title">VISUALIZAÇÕES NO SITE — ÚLTIMO MÊS</div>
-        <canvas id="viewsChart" height="120"></canvas>
-        <div class="chart-note">* Dados de visualização do etransparente.org via Google Analytics</div>
-    </div>
+<div class="two-col">
+    <div class="col"><div class="card">
+        <div class="card-header"><span class="card-icon">🔗</span><span class="card-title">REDES SOCIAIS</span></div>
+        {social_rows_html}
+    </div></div>
+    <div class="col"><div class="card">
+        <div class="card-header"><span class="card-icon">📁</span><span class="card-title">DOCUMENTOS DISPONÍVEIS ({n_docs})</span></div>
+        {docs_grid_html}
+    </div></div>
+</div>
 
-    <div class="row-2col">
-        <div class="col-half"><div class="card">
-            <div class="section-title">INFORMAÇÕES</div>
-            <div class="info-row"><span class="info-label">Telefone</span><span class="info-val">{tel_disp}</span></div>
-            <div class="info-row"><span class="info-label">E-mail</span><span class="info-val">{email_disp}</span></div>
-            <div class="info-row"><span class="info-label">Website</span><span class="info-val">{website_link}</span></div>
-            <div class="info-row"><span class="info-label">Localização</span><span class="info-val">{loc_disp}</span></div>
-            <div class="info-row"><span class="info-label">CNPJ</span><span class="info-val">{cnpj_disp}</span></div>
-        </div></div>
-        <div class="col-half"><div class="card">
-            <div class="section-title">CONTRATOS E PARCERIAS</div>
-            <div class="contracts-total">{total_termos}</div>
-            <div class="info-row"><span class="info-label">Município</span><span class="info-val">{municipio_disp}</span></div>
-            <div class="info-row"><span class="info-label">Estado</span><span class="info-val">{estado_disp}</span></div>
-            <div class="info-row"><span class="info-label">União</span><span class="info-val">{uniao_disp}</span></div>
-            <div class="info-row"><span class="info-label">Emendas parl.</span><span class="info-val">{emendas_disp}</span></div>
-        </div></div>
-    </div>
+{alerta_html}
 
-    <div class="row-2col">
-        <div class="col-half"><div class="card">
-            <div class="section-title">REDES SOCIAIS</div>
-            {socials_html}
-        </div></div>
-        <div class="col-half"><div class="card">
-            <div class="section-title">DOCUMENTOS ({n_docs})</div>
-            {docs_html}
-        </div></div>
-    </div>
-
-    <div style="{_pc_style}">
-        <div class="section-title" style="{_pt_style}">DADOS OU DOCUMENTOS PENDENTES</div>
-        {faltantes_html}
-    </div>
-
-    <div class="footer">
-        <table class="footer-table"><tr>
-            <td style="vertical-align:middle;width:80px;">{qr_img_tag}</td>
-            <td style="vertical-align:middle;padding-left:12px;">
-                <div class="hash-code">Código: {hash_curto}</div>
-                <div class="verify-text">Documento oficial emitido pelo IDC. Verifique em <b>etransparente.org/verificar</b></div>
-            </td>
-            <td style="vertical-align:middle;text-align:right;">
-                {idc_logo_tag}
-                <div style="color:#64748b;font-size:11px;margin-top:4px;">etransparente.org</div>
-            </td>
-        </tr></table>
-    </div>
+<div class="footer">
+    <table class="footer-table"><tr>
+        <td style="width:90px;vertical-align:top;">{qr_img_tag}</td>
+        <td style="vertical-align:top;padding:0 20px;">
+            <div class="auth-title">🛡 AUTENTICIDADE DO DOCUMENTO</div>
+            <div class="auth-text">Escaneie o QR Code ao lado ou acesse <a href="https://etransparente.org/verificar" style="color:#1e3a8a;">etransparente.org/verificar</a></div>
+            <div class="auth-hash"><b>Código Hash (SHA-256):</b> {hash_hex}</div>
+            <div class="auth-date">Data de emissão: {data_emissao}</div>
+        </td>
+        <td style="width:160px;vertical-align:top;" class="idc-col">
+            <div class="idc-label">DOCUMENTO OFICIAL</div>
+            <div class="idc-text">Este relatório é emitido mensalmente pelo IDC com base nas informações públicas disponibilizadas pela organização na plataforma etransparente.org.</div>
+            {idc_logo_tag}
+            <div class="idc-site">etransparente.org</div>
+        </td>
+    </tr></table>
+</div>
 
 </div>
 
@@ -560,7 +687,7 @@ new Chart(ctx, {{
         datasets: [{{
             data: {chart_data_js},
             borderColor: '#1e3a8a',
-            backgroundColor: 'rgba(30,58,138,0.1)',
+            backgroundColor: 'rgba(30,58,138,0.08)',
             fill: true,
             tension: 0.4,
             pointRadius: 0,
@@ -576,6 +703,25 @@ new Chart(ctx, {{
         }}
     }}
 }});
+
+const contratosCanvas = document.getElementById('contratosChart');
+if (contratosCanvas) {{
+    new Chart(contratosCanvas.getContext('2d'), {{
+        type: 'doughnut',
+        data: {{
+            labels: {doughnut_labels_js},
+            datasets: [{{
+                data: {doughnut_data_js},
+                backgroundColor: {doughnut_colors_js},
+                borderWidth: 0
+            }}]
+        }},
+        options: {{
+            cutout: '65%',
+            plugins: {{ legend: {{ display: false }}, tooltip: {{ enabled: false }} }}
+        }}
+    }});
+}}
 </script>
 
 </body>
@@ -681,7 +827,7 @@ def main():
                         browser = p.chromium.launch()
                         page = browser.new_page()
                         page.goto(f"file://{os.path.abspath(html_file)}")
-                        page.wait_for_timeout(1500)
+                        page.wait_for_timeout(2000)  # aguardar Chart.js renderizar
                         page.pdf(
                             path=pdf_file,
                             width="210mm",
