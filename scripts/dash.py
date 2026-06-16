@@ -542,12 +542,12 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .pill {{ display:inline-block; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:600; }}
 
 .chart-note {{ font-size:9px; color:#94a3b8; margin-top:6px; }}
-#viewsChart {{ max-height:120px; }}
-.views-side {{ background:#f8fafc; border-radius:8px; padding:12px; text-align:center; }}
+#viewsChart {{ max-height:100px; }}
+.views-side {{ background:#f8fafc; border-radius:8px; padding:10px; text-align:center; }}
 .views-label {{ font-size:9px; color:#64748b; }}
-.views-val {{ font-size:20px; font-weight:700; color:#1e3a8a; margin:2px 0 8px; }}
-.views-val-sm {{ font-size:16px; font-weight:700; color:#1e3a8a; margin-top:2px; }}
-.views-sep {{ border-top:1px solid #e2e8f0; margin:6px 0; }}
+.views-val {{ font-size:18px; font-weight:700; color:#1e3a8a; margin:2px 0 5px; }}
+.views-val-sm {{ font-size:14px; font-weight:700; color:#1e3a8a; margin-top:1px; }}
+.views-sep {{ border-top:1px solid #e2e8f0; margin:4px 0; }}
 
 .two-col {{
     display:table; width:100%; table-layout:fixed; margin-bottom:8px;
@@ -775,18 +775,18 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
     <div class="card-header"><span class="icon-circle"><i class="ph ph-chart-line-up"></i></span><span class="card-title">VISUALIZAÇÕES DA SUA OSC NA PLATAFORMA — ÚLTIMO MÊS</span></div>
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
         <td style="width:75%;vertical-align:top;">
-            <canvas id="viewsChart" style="height:120px;"></canvas>
+            <canvas id="viewsChart" style="height:100px;"></canvas>
         </td>
         <td style="width:25%;vertical-align:top;padding-left:12px;">
             <div class="views-side">
-                <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;">
-                    <div class="icon-circle"><i class="ph ph-eye"></i></div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;">
+                    <div class="icon-circle-sm"><i class="ph ph-eye"></i></div>
                     <span class="views-label">TOTAL DE VISUALIZAÇÕES</span>
                 </div>
                 <div class="views-val">{total_visualizacoes}</div>
                 <div class="views-sep"></div>
-                <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;">
-                    <div class="icon-circle"><i class="ph ph-chart-bar"></i></div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;">
+                    <div class="icon-circle-sm"><i class="ph ph-chart-bar"></i></div>
                     <span class="views-label">MÉDIA DIÁRIA</span>
                 </div>
                 <div class="views-val-sm">{media_diaria}</div>
