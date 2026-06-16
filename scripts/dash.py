@@ -299,9 +299,9 @@ def gerar_dashboard_html(osc, score=None):
                 logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
 
     if qr_data_uri:
-        qr_img_tag = f'<img src="{qr_data_uri}" width="80" height="80" style="display:block;" alt="QR Code"/>'
+        qr_img_tag = f'<img src="{qr_data_uri}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/>'
     else:
-        qr_img_tag = '<div style="width:80px;height:80px;background:#f1f5f9;border-radius:4px;"></div>'
+        qr_img_tag = '<div style="width:80px;height:80px;background:#f1f5f9;border-radius:4px;margin:0 auto;"></div>'
 
     # ── pré-cálculos para o novo layout ESG ────────────────────────────────────
     sobre_card_html = ''
@@ -543,10 +543,10 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 .chart-note {{ font-size:9px; color:#94a3b8; margin-top:6px; }}
 #viewsChart {{ max-height:100px; }}
-.views-side {{ background:#f8fafc; border-radius:8px; padding:10px; text-align:center; }}
+.views-side {{ background:#f8fafc; border-radius:8px; padding:10px; text-align:left; }}
 .views-label {{ font-size:9px; color:#64748b; }}
-.views-val {{ font-size:18px; font-weight:700; color:#1e3a8a; margin:2px 0 5px; }}
-.views-val-sm {{ font-size:14px; font-weight:700; color:#1e3a8a; margin-top:1px; }}
+.views-val {{ font-size:18px; font-weight:700; color:#1e3a8a; margin:2px 0 5px; padding-left:30px; }}
+.views-val-sm {{ font-size:14px; font-weight:700; color:#1e3a8a; margin-top:1px; padding-left:30px; }}
 .views-sep {{ border-top:1px solid #e2e8f0; margin:4px 0; }}
 
 .two-col {{
@@ -779,13 +779,13 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
         </td>
         <td style="width:35%;vertical-align:top;padding-left:12px;">
             <div class="views-side">
-                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;">
+                <div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;margin-bottom:3px;">
                     <div class="icon-circle-sm"><i class="ph ph-eye"></i></div>
                     <span class="views-label">TOTAL DE VISUALIZAÇÕES</span>
                 </div>
                 <div class="views-val">{total_visualizacoes}</div>
                 <div class="views-sep"></div>
-                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;">
+                <div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;margin-bottom:3px;">
                     <div class="icon-circle-sm"><i class="ph ph-chart-bar"></i></div>
                     <span class="views-label">MÉDIA DIÁRIA</span>
                 </div>
