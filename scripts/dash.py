@@ -82,21 +82,6 @@ def _gerar_qr_data_uri(url: str) -> str:
         return ''
 
 
-def _file_to_data_uri(path: str, mime: str = 'image/png') -> str:
-    """Lê um arquivo local e retorna data URI base64 (ou '' se não existir/falhar).
-
-    Necessário para imagens usadas no footerTemplate do Playwright: esse
-    template roda em um frame isolado sem acesso a file://, então qualquer
-    imagem precisa estar embutida como data URI.
-    """
-    try:
-        with open(path, 'rb') as f:
-            b64 = base64.b64encode(f.read()).decode('utf-8')
-        return f'data:{mime};base64,{b64}'
-    except Exception:
-        return ''
-
-
 # fields to show in the "Informações principais" box
 INFO_CAMPOS = [
     "nome",
@@ -355,10 +340,9 @@ def gerar_dashboard_html(osc, score=None):
 
     idc_logo_path = os.path.join(repo_root, 'assets', 'img', 'LOGOIDC.png')
     idc_logo_tag = (
-        f'<img src="file://{idc_logo_path}" alt="IDC" style="height:40px;display:block;margin-left:auto;">'
+        f'<img src="file://{idc_logo_path}" alt="IDC" style="height:32px;display:block;">'
         if os.path.exists(idc_logo_path) else ''
     )
-    idc_logo_data_uri = _file_to_data_uri(idc_logo_path, 'image/png') if os.path.exists(idc_logo_path) else ''
 
     _PILL_BG = {
         'Regular': 'background:#fee2e2;color:#dc2626;border:1px solid #fca5a5',
@@ -506,6 +490,7 @@ def gerar_dashboard_html(osc, score=None):
 @media print {{ body {{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }} }}
 html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e293b; }}
 .wrapper {{ max-width:900px; margin:0 auto; }}
+.content-wrapper {{ padding-bottom:80px; }}
 
 .header-strip {{
     background:#0f172a;
@@ -557,16 +542,20 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .pill {{ display:inline-block; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:600; }}
 
 .chart-note {{ font-size:9px; color:#94a3b8; margin-top:6px; }}
+#viewsChart {{ max-height:120px; }}
 .views-side {{ background:#f8fafc; border-radius:8px; padding:12px; text-align:center; }}
 .views-label {{ font-size:9px; color:#64748b; }}
 .views-val {{ font-size:20px; font-weight:700; color:#1e3a8a; margin:2px 0 8px; }}
 .views-val-sm {{ font-size:16px; font-weight:700; color:#1e3a8a; margin-top:2px; }}
 .views-sep {{ border-top:1px solid #e2e8f0; margin:6px 0; }}
 
-.two-col {{ display:table; width:100%; break-inside:avoid; page-break-inside:avoid; }}
-.two-col .col {{ display:table-cell; width:48%; vertical-align:top; }}
-.two-col .col:first-child {{ padding-right:2%; }}
-.two-col .col:last-child {{ padding-left:2%; }}
+.two-col {{
+    display:table; width:100%; table-layout:fixed; margin-bottom:8px;
+    break-inside:avoid; page-break-inside:avoid;
+}}
+.two-col .col {{ display:table-cell; width:50%; vertical-align:top; padding:0 4px; box-sizing:border-box; }}
+.two-col .col:first-child {{ padding-left:0; }}
+.two-col .col:last-child {{ padding-right:0; }}
 .two-col .card {{ margin:0; height:100%; }}
 
 .contact-row {{ display:table; width:100%; padding:7px 0; border-bottom:1px solid #f1f5f9; font-size:12px; }}
@@ -608,34 +597,6 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .alert-header-success {{ color:#15803d; }}
 .alert-text {{ font-size:12px; color:#9a3412; }}
 .alert-text-success {{ font-size:12px; color:#15803d; }}
-
-.footer-page {{
-    break-before:page;
-    page-break-before:always;
-    min-height:900px;
-    display:flex;
-    flex-direction:column;
-    justify-content:flex-end;
-}}
-.footer {{
-    background:#ffffff;
-    border-top:2px solid #1e3a8a;
-    margin:0 24px;
-    padding:16px 0 4px;
-    break-inside:avoid;
-    page-break-inside:avoid;
-}}
-.footer-table {{ width:100%; border-collapse:collapse; }}
-.footer-left {{ width:56%; vertical-align:top; }}
-.footer-divider {{ width:1px; background:#e2e8f0; }}
-.footer-right {{ width:44%; vertical-align:top; padding-left:20px; }}
-.auth-title {{ font-size:10px; letter-spacing:1px; color:#1e3a8a; font-weight:700; margin-bottom:6px; }}
-.auth-text {{ font-size:11px; color:#374151; line-height:1.5; }}
-.auth-hash {{ font-family:monospace; font-size:9px; color:#64748b; word-break:break-all; margin-top:6px; line-height:1.6; }}
-.idc-label {{ font-size:9px; letter-spacing:1px; color:#64748b; margin-bottom:6px; }}
-.idc-text {{ font-size:10px; color:#64748b; line-height:1.5; margin-bottom:6px; }}
-.idc-date {{ font-size:10px; color:#6b7280; }}
-.idc-site {{ color:#1e3a8a; font-size:11px; font-weight:700; margin-top:6px; text-align:right; }}
 
 .final-page {{
     break-before:page;
@@ -737,12 +698,10 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
     box-sizing:border-box;
     border-top:1px solid #e2e8f0;
     margin-top:auto;
+    margin-bottom:100px;
 }}
-.final-footer-left {{ display:table-cell; width:30%; vertical-align:top; padding-right:20px; }}
-.final-footer-center {{ display:table-cell; width:40%; vertical-align:top; padding:0 20px; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; }}
-.final-footer-right {{ display:table-cell; width:30%; vertical-align:middle; text-align:right; padding-left:20px; }}
-.final-footer-idc-name {{ font-size:11px; font-weight:700; color:#1e3a8a; margin-top:8px; }}
-.final-footer-idc-desc {{ font-size:9px; color:#64748b; line-height:1.5; margin:4px 0 8px; }}
+.final-footer-idc-name {{ font-size:10px; font-weight:700; color:#1e3a8a; }}
+.final-footer-idc-desc {{ font-size:8px; color:#64748b; line-height:1.4; margin-top:2px; }}
 .final-footer-contact {{ font-size:9px; color:#64748b; margin-bottom:3px; }}
 .final-footer-contact .ph {{ font-size:10px; color:#1e3a8a; margin-right:4px; }}
 .final-footer-doc-title {{ font-size:10px; font-weight:700; letter-spacing:0.5px; color:#1e3a8a; margin-bottom:6px; }}
@@ -754,6 +713,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 </head>
 <body>
 <div class="wrapper">
+<div class="content-wrapper">
 
 <div class="header-strip">
     <div class="header-left">
@@ -815,7 +775,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
     <div class="card-header"><span class="icon-circle"><i class="ph ph-chart-line-up"></i></span><span class="card-title">VISUALIZAÇÕES DA SUA OSC NA PLATAFORMA — ÚLTIMO MÊS</span></div>
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
         <td style="width:75%;vertical-align:top;">
-            <canvas id="viewsChart" height="140"></canvas>
+            <canvas id="viewsChart" style="height:120px;"></canvas>
         </td>
         <td style="width:25%;vertical-align:top;padding-left:12px;">
             <div class="views-side">
@@ -860,35 +820,6 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 {alerta_html}
 
-<div class="footer-page">
-<div class="footer">
-    <table class="footer-table"><tr>
-        <td class="footer-left">
-            <table width="100%" cellpadding="0" cellspacing="0"><tr>
-                <td style="width:70px;vertical-align:top;">{qr_img_tag}</td>
-                <td style="vertical-align:top;padding-left:14px;">
-                    <div class="auth-title"><i class="ph ph-shield-check"></i> AUTENTICIDADE DO DOCUMENTO</div>
-                    <div class="auth-text">Escaneie o QR Code ao lado ou acesse <a href="https://etransparente.org/verificar" style="color:#1e3a8a;">etransparente.org/verificar</a> para validar a autenticidade deste relatório.</div>
-                    <div class="auth-hash"><b>Código Hash (SHA-256):</b><br>{hash_hex}</div>
-                </td>
-            </tr></table>
-        </td>
-        <td class="footer-divider"></td>
-        <td class="footer-right">
-            <table width="100%" cellpadding="0" cellspacing="0"><tr>
-                <td style="vertical-align:top;">
-                    <div class="idc-label">DOCUMENTO OFICIAL</div>
-                    <div class="idc-text">Este relatório é emitido mensalmente pelo IDC com base nas informações públicas disponibilizadas pela organização na plataforma etransparente.org.</div>
-                    <div class="idc-date">Data de emissão: {data_emissao}</div>
-                </td>
-                <td style="width:90px;vertical-align:top;text-align:right;">
-                    {idc_logo_tag}
-                    <div class="idc-site">etransparente.org</div>
-                </td>
-            </tr></table>
-        </td>
-    </tr></table>
-</div>
 </div>
 
 <div class="final-page">
@@ -1001,22 +932,32 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
   <!-- Rodapé institucional -->
   <div class="final-footer">
-    <div class="final-footer-left">
-      {idc_logo_tag}
-      <div class="final-footer-idc-name">Instituto de Direito Coletivo</div>
-      <p class="final-footer-idc-desc">Organização da sociedade civil que atua pelo fortalecimento da democracia, da justiça e dos direitos coletivos.</p>
-      <div class="final-footer-contact"><i class="ph ph-envelope"></i> contato@direitocoletivo.org.br</div>
-      <div class="final-footer-contact"><i class="ph ph-globe"></i> www.direitocoletivo.org.br</div>
-    </div>
-    <div class="final-footer-center">
-      <div class="final-footer-doc-title">DOCUMENTO OFICIAL EMITIDO PELO IDC</div>
-      <p class="final-footer-doc-text">Relatório gerado automaticamente pela plataforma eTransparente.org com base nas informações públicas da organização.</p>
-      <div class="final-footer-date"><strong>Data de emissão:</strong> {data_emissao_formatada}</div>
-    </div>
-    <div class="final-footer-right">
-      <div class="final-footer-brand">etransparente.org</div>
-      <div class="final-footer-slogan">Organizações mais transparentes.<br>Sociedade mais forte.</div>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="width:30%;vertical-align:top;padding-right:20px;border-right:1px solid #e2e8f0;">
+          <table cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="vertical-align:middle;padding-right:12px;">{idc_logo_tag}</td>
+              <td style="vertical-align:middle;">
+                <div class="final-footer-idc-name">Instituto de Direito Coletivo</div>
+                <div class="final-footer-idc-desc">Organização da sociedade civil que atua pelo fortalecimento da democracia, da justiça e dos direitos coletivos.</div>
+              </td>
+            </tr>
+          </table>
+          <div class="final-footer-contact" style="margin-top:8px;"><i class="ph ph-envelope"></i> contato@direitocoletivo.org.br</div>
+          <div class="final-footer-contact"><i class="ph ph-globe"></i> www.direitocoletivo.org.br</div>
+        </td>
+        <td style="width:40%;vertical-align:top;padding:0 20px;border-right:1px solid #e2e8f0;">
+          <div class="final-footer-doc-title">DOCUMENTO OFICIAL EMITIDO PELO IDC</div>
+          <p class="final-footer-doc-text">Relatório gerado automaticamente pela plataforma eTransparente.org com base nas informações públicas da organização.</p>
+          <div class="final-footer-date"><strong>Data de emissão:</strong> {data_emissao_formatada}</div>
+        </td>
+        <td style="width:30%;vertical-align:middle;text-align:right;padding-left:20px;">
+          <div class="final-footer-brand">etransparente.org</div>
+          <div class="final-footer-slogan">Organizações mais transparentes.<br>Sociedade mais forte.</div>
+        </td>
+      </tr>
+    </table>
   </div>
 
 </div>
@@ -1041,6 +982,7 @@ new Chart(ctx, {{
     }},
     options: {{
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {{ legend: {{ display: false }} }},
         scales: {{
             x: {{ grid: {{ display: false }}, ticks: {{ font: {{ size: 9 }}, maxTicksLimit: 5, maxRotation: 0 }} }},
@@ -1076,18 +1018,13 @@ if (contratosCanvas) {{
     # Chromium não repete elementos position:fixed em todas as páginas do PDF
     # (só renderiza onde calham no fluxo normal). A única forma suportada de
     # ter algo fixo em TODA página é o footerTemplate nativo do Playwright
-    # (ver main()). Aqui ele só leva QR Code + hash (esquerda) e logo do IDC
-    # (direita) — o rodapé completo (acima) fica no fluxo normal do HTML e,
-    # por ser o último elemento do documento, aparece sozinho na última
-    # página, exatamente como pedido.
+    # (ver main()). Aqui ele leva apenas QR Code + hash — sem logo do IDC,
+    # que já aparece em destaque na .final-page (evita redundância visual
+    # quando o footerTemplate também aparece sobre a última página).
     _mini_qr_tag = (
         f'<img src="{qr_data_uri}" width="34" height="34" style="display:block;">'
         if qr_data_uri else
         '<div style="width:34px;height:34px;background:#f1f5f9;border-radius:4px;"></div>'
-    )
-    _mini_idc_tag = (
-        f'<img src="{idc_logo_data_uri}" alt="IDC" style="height:20px;display:block;">'
-        if idc_logo_data_uri else ''
     )
     mini_footer_template_html = f"""
 <div style="width:100%;font-family:Arial,sans-serif;font-size:8px;color:#64748b;border-top:1px solid #e2e8f0;margin:0 24px;padding:6px 0 0;box-sizing:border-box;">
@@ -1097,7 +1034,6 @@ if (contratosCanvas) {{
             <td style="vertical-align:middle;padding-left:10px;">
                 <div style="font-family:monospace;font-size:7px;color:#64748b;word-break:break-all;">Hash: {hash_hex}</div>
             </td>
-            <td style="width:70px;vertical-align:middle;text-align:right;">{_mini_idc_tag}</td>
         </tr>
     </table>
 </div>"""
