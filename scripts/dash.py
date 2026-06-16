@@ -596,20 +596,17 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
     padding:12px 24px;
     z-index:1000;
 }}
-.page-number::after {{
-    content: "Página " counter(page) " de " counter(pages);
-    font-size:9px;
-    color:#94a3b8;
-}}
 .footer-table {{ width:100%; border-collapse:collapse; }}
+.footer-left {{ width:56%; vertical-align:top; }}
+.footer-divider {{ width:1px; background:#e2e8f0; }}
+.footer-right {{ width:44%; vertical-align:top; padding-left:20px; }}
 .auth-title {{ font-size:10px; letter-spacing:1px; color:#1e3a8a; font-weight:700; margin-bottom:6px; }}
 .auth-text {{ font-size:11px; color:#374151; line-height:1.5; }}
-.auth-hash {{ font-family:monospace; font-size:9px; color:#64748b; word-break:break-all; margin-top:6px; }}
-.auth-date {{ font-size:10px; color:#6b7280; margin-top:4px; }}
-.idc-col {{ border-left:1px solid #e2e8f0; padding-left:20px; text-align:right; }}
+.auth-hash {{ font-family:monospace; font-size:9px; color:#64748b; word-break:break-all; margin-top:6px; line-height:1.6; }}
 .idc-label {{ font-size:9px; letter-spacing:1px; color:#64748b; margin-bottom:6px; }}
-.idc-text {{ font-size:10px; color:#64748b; line-height:1.5; margin-bottom:8px; }}
-.idc-site {{ color:#1e3a8a; font-size:11px; font-weight:700; margin-top:6px; }}
+.idc-text {{ font-size:10px; color:#64748b; line-height:1.5; margin-bottom:6px; }}
+.idc-date {{ font-size:10px; color:#6b7280; }}
+.idc-site {{ color:#1e3a8a; font-size:11px; font-weight:700; margin-top:6px; text-align:right; }}
 </style>
 </head>
 <body>
@@ -716,19 +713,29 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 <div class="footer">
     <table class="footer-table"><tr>
-        <td style="width:90px;vertical-align:top;">{qr_img_tag}</td>
-        <td style="vertical-align:top;padding:0 20px;">
-            <div class="auth-title"><i class="ph ph-shield-check"></i> AUTENTICIDADE DO DOCUMENTO</div>
-            <div class="auth-text">Escaneie o QR Code ao lado ou acesse <a href="https://etransparente.org/verificar" style="color:#1e3a8a;">etransparente.org/verificar</a></div>
-            <div class="auth-hash"><b>Código Hash (SHA-256):</b> {hash_hex}</div>
-            <div class="auth-date">Data de emissão: {data_emissao}</div>
+        <td class="footer-left">
+            <table width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td style="width:70px;vertical-align:top;">{qr_img_tag}</td>
+                <td style="vertical-align:top;padding-left:14px;">
+                    <div class="auth-title"><i class="ph ph-shield-check"></i> AUTENTICIDADE DO DOCUMENTO</div>
+                    <div class="auth-text">Escaneie o QR Code ao lado ou acesse <a href="https://etransparente.org/verificar" style="color:#1e3a8a;">etransparente.org/verificar</a> para validar a autenticidade deste relatório.</div>
+                    <div class="auth-hash"><b>Código Hash (SHA-256):</b><br>{hash_hex}</div>
+                </td>
+            </tr></table>
         </td>
-        <td style="width:160px;vertical-align:top;" class="idc-col">
-            <div class="idc-label">DOCUMENTO OFICIAL</div>
-            <div class="idc-text">Este relatório é emitido mensalmente pelo IDC com base nas informações públicas disponibilizadas pela organização na plataforma etransparente.org.</div>
-            <div class="page-number"></div>
-            {idc_logo_tag}
-            <div class="idc-site">etransparente.org</div>
+        <td class="footer-divider"></td>
+        <td class="footer-right">
+            <table width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td style="vertical-align:top;">
+                    <div class="idc-label">DOCUMENTO OFICIAL</div>
+                    <div class="idc-text">Este relatório é emitido mensalmente pelo IDC com base nas informações públicas disponibilizadas pela organização na plataforma etransparente.org.</div>
+                    <div class="idc-date">Data de emissão: {data_emissao}</div>
+                </td>
+                <td style="width:90px;vertical-align:top;text-align:right;">
+                    {idc_logo_tag}
+                    <div class="idc-site">etransparente.org</div>
+                </td>
+            </tr></table>
         </td>
     </tr></table>
 </div>
