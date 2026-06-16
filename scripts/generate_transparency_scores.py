@@ -248,8 +248,9 @@ def calcular_bloco_termos(osc: Dict[str, Any]) -> Dict[str, Any]:
         for termo in arr:
             if not isinstance(termo, dict):
                 continue
-            # Ignorar termos fantasma: só têm situacao_do_termo preenchido
-            if not {k for k in termo if k != 'situacao_do_termo' and is_filled(termo[k])}:
+            # Ignorar termos fantasma: só têm dropdowns padrão do WordPress
+            _CAMPOS_PADRAO = {'situacao_do_termo', 'resultado_da_prestacao_de_contas', 'prestacao_de_contas_da_parceria'}
+            if not {k for k in termo if k not in _CAMPOS_PADRAO and is_filled(termo[k])}:
                 continue
             res = calcular_termo_individual(termo, tipo)
             individuais.append(res)

@@ -562,9 +562,11 @@ class APIExtractor:
                                 termo_limpo[nome_limpo] = valor
                         
                         # Ignorar termos fantasma: criados acidentalmente na
-                        # plataforma, ficam só com situacao_do_termo='Em aprovação'
-                        # (valor padrão do WordPress) e nenhum campo real preenchido.
-                        campos_reais = {k for k in termo_limpo if k != 'situacao_do_termo'}
+                        # plataforma, ficam só com dropdowns de valor padrão do
+                        # WordPress (situacao_do_termo, resultado_da_prestacao_de_contas)
+                        # e nenhum campo de conteúdo real preenchido.
+                        _CAMPOS_PADRAO = {'situacao_do_termo', 'resultado_da_prestacao_de_contas', 'prestacao_de_contas_da_parceria'}
+                        campos_reais = {k for k in termo_limpo if k not in _CAMPOS_PADRAO}
                         if campos_reais:
                             termos_lista.append(termo_limpo)
                 
