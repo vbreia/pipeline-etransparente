@@ -774,10 +774,10 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 <div class="card">
     <div class="card-header"><span class="icon-circle"><i class="ph ph-chart-line-up"></i></span><span class="card-title">VISUALIZAÇÕES DA SUA OSC NA PLATAFORMA — ÚLTIMO MÊS</span></div>
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td style="width:75%;vertical-align:top;">
+        <td style="width:65%;vertical-align:top;">
             <canvas id="viewsChart" style="height:100px;"></canvas>
         </td>
-        <td style="width:25%;vertical-align:top;padding-left:12px;">
+        <td style="width:35%;vertical-align:top;padding-left:12px;">
             <div class="views-side">
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;">
                     <div class="icon-circle-sm"><i class="ph ph-eye"></i></div>
