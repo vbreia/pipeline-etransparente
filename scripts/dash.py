@@ -81,6 +81,21 @@ def _gerar_qr_data_uri(url: str) -> str:
         return ''
 
 
+def _file_to_data_uri(path: str, mime: str = 'image/png') -> str:
+    """Lê um arquivo local e retorna data URI base64 (ou '' se não existir/falhar).
+
+    Necessário para imagens usadas no footerTemplate do Playwright: esse
+    template roda em um frame isolado sem acesso a file://, então qualquer
+    imagem precisa estar embutida como data URI.
+    """
+    try:
+        with open(path, 'rb') as f:
+            b64 = base64.b64encode(f.read()).decode('utf-8')
+        return f'data:{mime};base64,{b64}'
+    except Exception:
+        return ''
+
+
 # fields to show in the "Informações principais" box
 INFO_CAMPOS = [
     "nome",
@@ -332,6 +347,7 @@ def gerar_dashboard_html(osc, score=None):
         f'<img src="file://{idc_logo_path}" alt="IDC" style="height:40px;display:block;margin-left:auto;">'
         if os.path.exists(idc_logo_path) else ''
     )
+    idc_logo_data_uri = _file_to_data_uri(idc_logo_path, 'image/png') if os.path.exists(idc_logo_path) else ''
 
     _PILL_BG = {
         'Regular': 'background:#fee2e2;color:#dc2626;border:1px solid #fca5a5',
@@ -477,7 +493,7 @@ def gerar_dashboard_html(osc, score=None):
 * {{ font-family:'Montserrat','Segoe UI',Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; box-sizing:border-box; }}
 @media print {{ body {{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }} }}
 html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e293b; }}
-.wrapper {{ max-width:900px; margin:0 auto; padding:0 0 140px 0; }}
+.wrapper {{ max-width:900px; margin:0 auto; }}
 
 .header-strip {{
     background:#0f172a;
@@ -496,7 +512,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .header-date {{ font-size:13px; color:#fff; font-weight:700; }}
 .header-period {{ font-size:10px; color:#fff; opacity:0.7; margin-top:2px; }}
 
-.card {{ background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin:0 24px 8px; padding:16px 24px; }}
+.card {{ background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin:0 24px 8px; padding:16px 24px; break-inside:avoid; page-break-inside:avoid; }}
 .card-header {{ margin-bottom:10px; }}
 .card-icon {{ margin-right:6px; }}
 .card-title {{ font-size:10px; letter-spacing:1.5px; color:#1e3a8a; font-weight:700; }}
@@ -520,7 +536,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .views-val-sm {{ font-size:16px; font-weight:700; color:#1e3a8a; margin-top:2px; }}
 .views-sep {{ border-top:1px solid #e2e8f0; margin:6px 0; }}
 
-.two-col {{ display:table; width:100%; }}
+.two-col {{ display:table; width:100%; break-inside:avoid; page-break-inside:avoid; }}
 .two-col .col {{ display:table-cell; width:48%; vertical-align:top; }}
 .two-col .col:first-child {{ padding-right:2%; }}
 .two-col .col:last-child {{ padding-left:2%; }}
@@ -567,19 +583,17 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .alert-text-success {{ font-size:12px; color:#15803d; }}
 
 .footer {{
-    position:fixed;
-    bottom:0;
-    left:0;
-    right:0;
     background:#ffffff;
     border-top:2px solid #1e3a8a;
-    padding:12px 24px;
-    z-index:1000;
+    margin:24px 24px 0;
+    padding:16px 0 24px;
 }}
-.page-number::after {{
-    content: "Página " counter(page) " de " counter(pages);
-    font-size:9px;
-    color:#94a3b8;
+/* O rodapé real e repetido em cada página do PDF vem do footerTemplate do
+   Playwright (ver main()) — ele é a única forma suportada pelo Chromium de
+   repetir conteúdo rico e numerar páginas corretamente. Este bloco serve
+   apenas para quem abrir o HTML diretamente no navegador. */
+@media print {{
+    .footer {{ display:none !important; }}
 }}
 .footer-table {{ width:100%; border-collapse:collapse; }}
 .auth-title {{ font-size:10px; letter-spacing:1px; color:#1e3a8a; font-weight:700; margin-bottom:6px; }}
@@ -699,7 +713,6 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
         <td style="width:160px;vertical-align:top;" class="idc-col">
             <div class="idc-label">DOCUMENTO OFICIAL</div>
             <div class="idc-text">Este relatório é emitido mensalmente pelo IDC com base nas informações públicas disponibilizadas pela organização na plataforma etransparente.org.</div>
-            <div class="page-number"></div>
             {idc_logo_tag}
             <div class="idc-site">etransparente.org</div>
         </td>
@@ -757,7 +770,41 @@ if (contratosCanvas) {{
 </body>
 </html>"""
 
-    return html, hash_hex
+    # ── footer real do PDF ──────────────────────────────────────────────────
+    # Chromium não suporta @page margin boxes com conteúdo rico; a única forma
+    # de repetir um rodapé com QR/hash/logo em todas as páginas e ter números
+    # de página reais é via footerTemplate do Playwright (usado em main()).
+    # As classes "pageNumber"/"totalPages" são preenchidas automaticamente
+    # pelo próprio Chromium durante a geração do PDF.
+    _footer_qr_tag = (
+        f'<img src="{qr_data_uri}" width="56" height="56" style="display:block;">'
+        if qr_data_uri else
+        '<div style="width:56px;height:56px;background:#f1f5f9;border-radius:4px;"></div>'
+    )
+    _footer_idc_tag = (
+        f'<img src="{idc_logo_data_uri}" alt="IDC" style="height:26px;display:block;margin-left:auto;">'
+        if idc_logo_data_uri else ''
+    )
+    footer_template_html = f"""
+<div style="width:100%;font-family:Arial,sans-serif;font-size:9px;color:#374151;border-top:2px solid #1e3a8a;margin:0 24px;padding:8px 0 0;box-sizing:border-box;">
+    <table style="width:100%;border-collapse:collapse;">
+        <tr>
+            <td style="width:56px;vertical-align:top;">{_footer_qr_tag}</td>
+            <td style="vertical-align:top;padding:0 14px;">
+                <div style="font-size:9px;letter-spacing:1px;color:#1e3a8a;font-weight:700;margin-bottom:3px;">AUTENTICIDADE DO DOCUMENTO</div>
+                <div style="font-size:8px;color:#374151;">Escaneie o QR Code ao lado ou acesse etransparente.org/verificar</div>
+                <div style="font-family:monospace;font-size:7px;color:#64748b;word-break:break-all;margin-top:2px;">Hash: {hash_hex}</div>
+                <div style="font-size:8px;color:#6b7280;margin-top:2px;">Emissão: {data_emissao} — Página <span class="pageNumber"></span> de <span class="totalPages"></span></div>
+            </td>
+            <td style="width:110px;vertical-align:top;text-align:right;">
+                {_footer_idc_tag}
+                <div style="color:#1e3a8a;font-size:9px;font-weight:700;margin-top:2px;">etransparente.org</div>
+            </td>
+        </tr>
+    </table>
+</div>"""
+
+    return html, hash_hex, footer_template_html
 
 
 def main():
@@ -823,8 +870,9 @@ def main():
         pdf_file = os.path.join(pdf_dir, f"{nome_arquivo}.pdf")
 
         try:
+            footer_template_html = ''
             try:
-                html_content, hash_hex = gerar_dashboard_html(osc, score)
+                html_content, hash_hex, footer_template_html = gerar_dashboard_html(osc, score)
                 s = score or {}
                 verificacoes.append({
                     'hash': hash_hex,
@@ -864,6 +912,10 @@ def main():
                             width="210mm",
                             print_background=True,
                             prefer_css_page_size=False,
+                            display_header_footer=bool(footer_template_html),
+                            header_template='<div></div>',
+                            footer_template=footer_template_html or '<div></div>',
+                            margin={'top': '10px', 'bottom': '110px', 'left': '0px', 'right': '0px'},
                         )
                         browser.close()
                     pdf_count += 1
