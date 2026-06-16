@@ -82,6 +82,21 @@ def _gerar_qr_data_uri(url: str) -> str:
         return ''
 
 
+def _file_to_data_uri(path: str, mime: str = 'image/png') -> str:
+    """Lê um arquivo local e retorna data URI base64 (ou '' se não existir/falhar).
+
+    Necessário para imagens usadas no footerTemplate do Playwright: esse
+    template roda em um frame isolado sem acesso a file://, então qualquer
+    imagem precisa estar embutida como data URI.
+    """
+    try:
+        with open(path, 'rb') as f:
+            b64 = base64.b64encode(f.read()).decode('utf-8')
+        return f'data:{mime};base64,{b64}'
+    except Exception:
+        return ''
+
+
 # fields to show in the "Informações principais" box
 INFO_CAMPOS = [
     "nome",
@@ -342,6 +357,7 @@ def gerar_dashboard_html(osc, score=None):
         f'<img src="file://{idc_logo_path}" alt="IDC" style="height:40px;display:block;margin-left:auto;">'
         if os.path.exists(idc_logo_path) else ''
     )
+    idc_logo_data_uri = _file_to_data_uri(idc_logo_path, 'image/png') if os.path.exists(idc_logo_path) else ''
 
     _PILL_BG = {
         'Regular': 'background:#fee2e2;color:#dc2626;border:1px solid #fca5a5',
@@ -488,7 +504,7 @@ def gerar_dashboard_html(osc, score=None):
 * {{ font-family:'Montserrat','Segoe UI',Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; box-sizing:border-box; }}
 @media print {{ body {{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }} }}
 html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e293b; }}
-.wrapper {{ max-width:900px; margin:0 auto; padding:0 0 140px 0; }}
+.wrapper {{ max-width:900px; margin:0 auto; }}
 
 .header-strip {{
     background:#0f172a;
@@ -587,14 +603,12 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .alert-text-success {{ font-size:12px; color:#15803d; }}
 
 .footer {{
-    position:fixed;
-    bottom:0;
-    left:0;
-    right:0;
     background:#ffffff;
     border-top:2px solid #1e3a8a;
-    padding:12px 24px;
-    z-index:1000;
+    margin:24px 24px 0;
+    padding:16px 0 4px;
+    break-inside:avoid;
+    page-break-inside:avoid;
 }}
 .footer-table {{ width:100%; border-collapse:collapse; }}
 .footer-left {{ width:56%; vertical-align:top; }}
@@ -791,7 +805,37 @@ if (contratosCanvas) {{
 </body>
 </html>"""
 
-    return html, hash_hex
+    # ── rodapé mini, repetido em todas as páginas via footerTemplate ────────
+    # Chromium não repete elementos position:fixed em todas as páginas do PDF
+    # (só renderiza onde calham no fluxo normal). A única forma suportada de
+    # ter algo fixo em TODA página é o footerTemplate nativo do Playwright
+    # (ver main()). Aqui ele só leva QR Code + hash (esquerda) e logo do IDC
+    # (direita) — o rodapé completo (acima) fica no fluxo normal do HTML e,
+    # por ser o último elemento do documento, aparece sozinho na última
+    # página, exatamente como pedido.
+    _mini_qr_tag = (
+        f'<img src="{qr_data_uri}" width="34" height="34" style="display:block;">'
+        if qr_data_uri else
+        '<div style="width:34px;height:34px;background:#f1f5f9;border-radius:4px;"></div>'
+    )
+    _mini_idc_tag = (
+        f'<img src="{idc_logo_data_uri}" alt="IDC" style="height:20px;display:block;">'
+        if idc_logo_data_uri else ''
+    )
+    mini_footer_template_html = f"""
+<div style="width:100%;font-family:Arial,sans-serif;font-size:8px;color:#64748b;border-top:1px solid #e2e8f0;margin:0 24px;padding:6px 0 0;box-sizing:border-box;">
+    <table style="width:100%;border-collapse:collapse;">
+        <tr>
+            <td style="width:34px;vertical-align:middle;">{_mini_qr_tag}</td>
+            <td style="vertical-align:middle;padding-left:10px;">
+                <div style="font-family:monospace;font-size:7px;color:#64748b;word-break:break-all;">Hash: {hash_hex}</div>
+            </td>
+            <td style="width:70px;vertical-align:middle;text-align:right;">{_mini_idc_tag}</td>
+        </tr>
+    </table>
+</div>"""
+
+    return html, hash_hex, mini_footer_template_html
 
 
 def main():
@@ -857,8 +901,9 @@ def main():
         pdf_file = os.path.join(pdf_dir, f"{nome_arquivo}.pdf")
 
         try:
+            mini_footer_template_html = ''
             try:
-                html_content, hash_hex = gerar_dashboard_html(osc, score)
+                html_content, hash_hex, mini_footer_template_html = gerar_dashboard_html(osc, score)
                 s = score or {}
                 verificacoes.append({
                     'hash': hash_hex,
@@ -899,6 +944,10 @@ def main():
                             width="210mm",
                             print_background=True,
                             prefer_css_page_size=False,
+                            display_header_footer=bool(mini_footer_template_html),
+                            header_template='<div></div>',
+                            footer_template=mini_footer_template_html or '<div></div>',
+                            margin={'top': '10px', 'bottom': '60px', 'left': '0px', 'right': '0px'},
                         )
                         browser.close()
                     pdf_count += 1
