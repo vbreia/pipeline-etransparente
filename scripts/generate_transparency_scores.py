@@ -38,7 +38,7 @@ FILENAME_RE = re.compile(r"^oscs_etransparente_(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d
 # String simples indica campo direto na OSC.
 # 'redes_sociais' tem tratamento especial: qualquer subcampo preenchido = 1 pt.
 GERAIS_SCORE_FIELDS: List = [
-    'logo_local_path',
+    'logo_url',
     'descricao_objeto_social',
     'telefone',
     'email',
@@ -246,10 +246,14 @@ def calcular_bloco_termos(osc: Dict[str, Any]) -> Dict[str, Any]:
 
         individuais = []
         for termo in arr:
-            if isinstance(termo, dict):
-                res = calcular_termo_individual(termo, tipo)
-                individuais.append(res)
-                todos_percentuais.append(res['percentual'])
+            if not isinstance(termo, dict):
+                continue
+            # Ignorar termos fantasma: só têm situacao_do_termo preenchido
+            if not {k for k in termo if k != 'situacao_do_termo' and is_filled(termo[k])}:
+                continue
+            res = calcular_termo_individual(termo, tipo)
+            individuais.append(res)
+            todos_percentuais.append(res['percentual'])
 
         if individuais:
             por_tipo[tipo] = individuais

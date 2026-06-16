@@ -151,8 +151,30 @@ class WebScraper:
         
         return instagram, linkedin, youtube, outras_redes
     
-    def categorizar_documentos(self, documentos_list: List[str]) -> Dict[str, Any]:
-        """Categorizar documentos por tipo"""
+    # Mapeia trechos da classe CSS `block-field-*` (slug do campo ACF) para a
+    # categoria correspondente. O slug é a fonte confiável do tipo do
+    # documento — o nome do arquivo na URL pode ser genérico (ex.: upload
+    # reaproveitado) e não deve ser usado para identificar a categoria.
+    _BLOCK_FIELD_CATEGORIAS = [
+        ('cadastro-nacional-de-entidades', 'cneas'),
+        ('cebas', 'cebas'),
+        ('utilidade', 'utilidade_publica'),
+        ('relat', 'relatorio_atividades'),
+        ('plano-de', 'plano_acao'),
+        ('estatuto', 'estatuto'),
+        ('ata-de-eleio', 'ata_eleicao'),
+        ('ata-de-eleicao', 'ata_eleicao'),
+    ]
+
+    def categorizar_documentos_por_bloco(self, soup: BeautifulSoup) -> Dict[str, Any]:
+        """Categorizar documentos a partir do bloco HTML que os contém.
+
+        Cada documento aparece dentro de um <div class="block-type-file
+        block-field-<slug>">, onde o slug identifica o campo ACF de origem
+        (ex.: `block-field-cebas`, `block-field-cadastro-nacional-de-...
+        -cneas`). Usar esse slug em vez do nome do arquivo evita
+        categorizar errado documentos com nomes de arquivo genéricos.
+        """
         categorias = {
             'cneas': '',
             'cebas': '',
@@ -168,48 +190,31 @@ class WebScraper:
             'balanco_2024': '',
             'outros_documentos': []
         }
-        
-        for doc in documentos_list:
-            doc_lower = doc.lower()
-            
-            # CNEAS
-            if 'cneas' in doc_lower or 'cadastro-nacional-de-entidades' in doc_lower:
-                categorias['cneas'] = doc
-            # CEBAS
-            elif 'cebas' in doc_lower:
-                categorias['cebas'] = doc
-            # Utilidade Pública
-            elif 'utilidade' in doc_lower:
-                categorias['utilidade_publica'] = doc
-            # Relatório de Atividades
-            elif 'relatorio' in doc_lower and ('atividade' in doc_lower or 'atividades' in doc_lower):
-                categorias['relatorio_atividades'] = doc
-            # Plano de Ação
-            elif 'plano' in doc_lower and ('acao' in doc_lower or 'trabalho' in doc_lower):
-                categorias['plano_acao'] = doc
-            # Estatuto
-            elif 'estatuto' in doc_lower:
-                categorias['estatuto'] = doc
-            # Ata de Eleição
-            elif 'ata' in doc_lower and ('eleicao' in doc_lower or 'eleição' in doc_lower):
-                categorias['ata_eleicao'] = doc
-            # Balanços por ano
-            elif 'balanco' in doc_lower or 'balancete' in doc_lower or 'demonstr' in doc_lower:
-                if '2020' in doc:
-                    categorias['balanco_2020'] = doc
-                elif '2021' in doc:
-                    categorias['balanco_2021'] = doc
-                elif '2022' in doc:
-                    categorias['balanco_2022'] = doc
-                elif '2023' in doc:
-                    categorias['balanco_2023'] = doc
-                elif '2024' in doc:
-                    categorias['balanco_2024'] = doc
+
+        for bloco in soup.find_all('div', class_=re.compile(r'block-type-file')):
+            classes = ' '.join(bloco.get('class', [])).lower()
+            links = [a['href'] for a in bloco.find_all('a', href=True)
+                     if a['href'].lower().endswith(('.pdf', '.doc', '.docx'))]
+            if not links:
+                continue
+            doc = links[0]
+
+            if 'balano' in classes or 'balanco' in classes or 'demonstr' in classes:
+                for ano in ('2020', '2021', '2022', '2023', '2024'):
+                    if ano in classes:
+                        categorias[f'balanco_{ano}'] = doc
+                        break
                 else:
                     categorias['outros_documentos'].append(doc)
+                continue
+
+            for slug, categoria in self._BLOCK_FIELD_CATEGORIAS:
+                if slug in classes:
+                    categorias[categoria] = doc
+                    break
             else:
                 categorias['outros_documentos'].append(doc)
-        
+
         return categorias
 
     def _baixar_logo(self, logo_url: str, ong_web_url: str) -> str:
@@ -378,7 +383,12 @@ class WebScraper:
 
             # Horário de funcionamento
             horario = ''
-            horario_bloco = self.find_div_by_class(soup, r'horario') or self.find_div_by_class(soup, r'funcionamento')
+            horario_bloco = (
+                self.find_div_by_class(soup, r'timing-today') or
+                self.find_div_by_class(soup, r'open-hours') or
+                self.find_div_by_class(soup, r'horario') or
+                self.find_div_by_class(soup, r'funcionamento')
+            )
             if horario_bloco:
                 horario = horario_bloco.get_text(strip=True)
             
@@ -417,15 +427,7 @@ class WebScraper:
                     logo_local_path = self._baixar_logo(logo_url, url)
 
             # Documentos
-            documentos_list = []
-            documentos_set = set()
-            for a in soup.find_all('a', href=True):
-                href = a['href']
-                if href.lower().endswith(('.pdf', '.doc', '.docx')) and href not in documentos_set:
-                    documentos_list.append(href)
-                    documentos_set.add(href)
-            
-            docs_categorizados = self.categorizar_documentos(documentos_list)
+            docs_categorizados = self.categorizar_documentos_por_bloco(soup)
 
             # Decodificar entidades HTML em todos os campos de texto
             descricao = html_module.unescape(descricao)
@@ -559,7 +561,11 @@ class APIExtractor:
                                 
                                 termo_limpo[nome_limpo] = valor
                         
-                        if termo_limpo:
+                        # Ignorar termos fantasma: criados acidentalmente na
+                        # plataforma, ficam só com situacao_do_termo='Em aprovação'
+                        # (valor padrão do WordPress) e nenhum campo real preenchido.
+                        campos_reais = {k for k in termo_limpo if k != 'situacao_do_termo'}
+                        if campos_reais:
                             termos_lista.append(termo_limpo)
                 
                 termos_estruturados[tipo_termo] = TermosInfo(
