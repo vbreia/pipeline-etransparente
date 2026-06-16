@@ -9,6 +9,7 @@ locate the newest `output/oscs_etransparente_*.json` automatically.
 """
 
 import base64
+import calendar
 import glob
 import hashlib
 import html as _html
@@ -17,7 +18,7 @@ import json
 import os
 import random
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 
 try:
     from playwright.sync_api import sync_playwright
@@ -81,21 +82,6 @@ def _gerar_qr_data_uri(url: str) -> str:
         return ''
 
 
-def _file_to_data_uri(path: str, mime: str = 'image/png') -> str:
-    """Lê um arquivo local e retorna data URI base64 (ou '' se não existir/falhar).
-
-    Necessário para imagens usadas no footerTemplate do Playwright: esse
-    template roda em um frame isolado sem acesso a file://, então qualquer
-    imagem precisa estar embutida como data URI.
-    """
-    try:
-        with open(path, 'rb') as f:
-            b64 = base64.b64encode(f.read()).decode('utf-8')
-        return f'data:{mime};base64,{b64}'
-    except Exception:
-        return ''
-
-
 # fields to show in the "Informações principais" box
 INFO_CAMPOS = [
     "nome",
@@ -141,7 +127,7 @@ def gerar_dashboard_html(osc, score=None):
     tag = s.get('tag', _SCORE_DEFAULTS['tag'])
     badges = s.get('badges') or _SCORE_DEFAULTS['badges']
 
-    cor_classificacao = _COR_CLASSIFICACAO.get(classificacao, '#6b7280')  # noqa: F841
+    cor_classificacao = _COR_CLASSIFICACAO.get(classificacao, '#6b7280')
     tag_texto = 'Com termos/emendas' if tag == 'com_termos_emendas' else 'Sem termos/emendas'
 
     data_emissao = datetime.now().strftime('%Y-%m')
@@ -193,14 +179,17 @@ def gerar_dashboard_html(osc, score=None):
     uniao_q = int(osc.get('termos', {}).get('uniao', {}).get('quantidade', 0) or 0)
     emendas_q = int(osc.get('termos', {}).get('emendas_parlamentares', {}).get('quantidade', 0) or 0)
 
-    def icon_svg(kind):
-        if kind == 'instagram':
-            return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#1e293b" stroke-width="1.2" fill="none"/><circle cx="12" cy="12" r="3" stroke="#1e293b" stroke-width="1.2" fill="none"/><circle cx="17.5" cy="6.5" r="0.8" fill="#1e293b"/></svg>'
-        if kind == 'linkedin':
-            return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#1e293b" stroke-width="1.2" fill="none"/><path d="M8 11v6" stroke="#1e293b" stroke-width="1.2"/><rect x="8" y="7" width="3" height="2" stroke="#1e293b" stroke-width="1.2" fill="none"/><path d="M14 11v6" stroke="#1e293b" stroke-width="1.2"/><path d="M14 11c1.5 0 2-1 2-1.8V11z" stroke="#1e293b" stroke-width="1.2" fill="none"/></svg>'
-        if kind == 'youtube':
-            return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="6" width="18" height="12" rx="3" stroke="#1e293b" stroke-width="1.2" fill="none"/><path d="M10 9l5 3-5 3V9z" fill="#1e293b"/></svg>'
-        return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="#1e293b" stroke-width="1.2" fill="none"/></svg>'
+    _PH_SOCIAL_ICONS = {
+        'instagram': 'ph-instagram-logo',
+        'linkedin': 'ph-linkedin-logo',
+        'youtube': 'ph-youtube-logo',
+        'facebook': 'ph-facebook-logo',
+        'x': 'ph-x-logo',
+        'whatsapp': 'ph-whatsapp-logo',
+    }
+
+    def phosphor_icon(kind):
+        return f'<i class="ph {_PH_SOCIAL_ICONS.get(kind, "ph-globe")}"></i>'
 
     social_items = []
     if instagram:
@@ -213,24 +202,26 @@ def gerar_dashboard_html(osc, score=None):
     if outras_redes:
         parts = [p.strip() for p in re.split('[;,]', outras_redes) if p.strip()]
         for p in parts:
-            name = 'Site'
+            name, kind = 'Site', 'site'
             try:
                 host = p.split('://')[-1].split('/')[0].lower()
                 if 'facebook' in host:
-                    name = 'Facebook'
+                    name, kind = 'Facebook', 'facebook'
                 elif 'tiktok' in host:
-                    name = 'TikTok'
+                    name, kind = 'TikTok', 'site'
+                elif 'whatsapp' in host or 'wa.me' in host:
+                    name, kind = 'WhatsApp', 'whatsapp'
                 elif 'x.com' in host or 'twitter' in host:
-                    name = 'X'
+                    name, kind = 'X', 'x'
                 elif 'instagram' in host:
-                    name = 'Instagram'
+                    name, kind = 'Instagram', 'instagram'
                 elif 'linkedin' in host:
-                    name = 'LinkedIn'
+                    name, kind = 'LinkedIn', 'linkedin'
                 elif 'youtube' in host or 'youtu.be' in host:
-                    name = 'YouTube'
+                    name, kind = 'YouTube', 'youtube'
             except Exception:
-                name = 'Site'
-            social_items.append((name, p, 'other'))
+                name, kind = 'Site', 'site'
+            social_items.append((name, p, kind))
 
     # Identificar campos faltantes
     campos_faltantes = []
@@ -316,15 +307,21 @@ def gerar_dashboard_html(osc, score=None):
     if descricao.strip():
         sobre_card_html = f"""
     <div class="card">
-        <div class="card-header"><span class="card-icon">📋</span><span class="card-title">SOBRE A ORGANIZAÇÃO</span></div>
+        <div class="card-header"><span class="card-icon"><i class="ph ph-file-text"></i></span><span class="card-title">SOBRE A ORGANIZAÇÃO</span></div>
         <p class="about-text">{_html.escape(descricao)}</p>
     </div>"""
 
     descricao_curta = _html.escape(descricao[:120] + '...' if len(descricao) > 120 else descricao) if descricao else ''
 
     _hoje = datetime.now()
-    _chart_labels = [(_hoje - timedelta(days=29 - i)).strftime('%d/%m') for i in range(30)]
-    _chart_data = [random.randint(50, 800) for _ in range(30)]
+    _ano_chart = _hoje.year
+    _mes_chart = _hoje.month
+    _dias_no_mes = calendar.monthrange(_ano_chart, _mes_chart)[1]
+    _chart_labels = [
+        datetime(_ano_chart, _mes_chart, d).strftime('%d/%m')
+        for d in range(1, _dias_no_mes + 1)
+    ]
+    _chart_data = [random.randint(50, 800) for _ in range(_dias_no_mes)]
     chart_labels_js = json.dumps(_chart_labels)
     chart_data_js = json.dumps(_chart_data)
     total_visualizacoes = sum(_chart_data)
@@ -338,16 +335,13 @@ def gerar_dashboard_html(osc, score=None):
     mes_extenso = _meses_pt.get(_hoje.strftime('%B').lower(), _hoje.strftime('%B').lower())
     ano_atual = _hoje.strftime('%Y')
     mm_atual = _hoje.strftime('%m')
-    _primeiro_dia_prox_mes = (_hoje.replace(day=28) + timedelta(days=4)).replace(day=1)
-    _ultimo_dia_mes = (_primeiro_dia_prox_mes - timedelta(days=1)).strftime('%d')
-    periodo_referencia = f"Período de referência: 01/{mm_atual}/{ano_atual} a {_ultimo_dia_mes}/{mm_atual}/{ano_atual}"
+    periodo_referencia = f"Período de referência: 01/{mm_atual}/{ano_atual} a {_dias_no_mes:02d}/{mm_atual}/{ano_atual}"
 
     idc_logo_path = os.path.join(repo_root, 'assets', 'img', 'LOGOIDC.png')
     idc_logo_tag = (
         f'<img src="file://{idc_logo_path}" alt="IDC" style="height:40px;display:block;margin-left:auto;">'
         if os.path.exists(idc_logo_path) else ''
     )
-    idc_logo_data_uri = _file_to_data_uri(idc_logo_path, 'image/png') if os.path.exists(idc_logo_path) else ''
 
     _PILL_BG = {
         'Regular': 'background:#fee2e2;color:#dc2626;border:1px solid #fca5a5',
@@ -382,11 +376,11 @@ def gerar_dashboard_html(osc, score=None):
     n_docs = len(documentos_labels)
 
     _contatos_rows = [
-        ('📞', 'Telefone', tel_disp),
-        ('✉', 'E-mail', email_disp),
-        ('🌐', 'Website', website_link),
-        ('📍', 'Localização', loc_disp),
-        ('🏢', 'CNPJ', cnpj_disp),
+        ('<i class="ph ph-phone"></i>', 'Telefone', tel_disp),
+        ('<i class="ph ph-envelope-simple"></i>', 'E-mail', email_disp),
+        ('<i class="ph ph-globe"></i>', 'Website', website_link),
+        ('<i class="ph ph-map-pin"></i>', 'Localização', loc_disp),
+        ('<i class="ph ph-buildings"></i>', 'CNPJ', cnpj_disp),
     ]
     contatos_html = ''.join(
         f'<div class="contact-row"><span class="contact-icon">{icone}</span>'
@@ -433,10 +427,10 @@ def gerar_dashboard_html(osc, score=None):
 
     if social_items:
         social_rows_html = ''.join(
-            f'<div class="social-row"><span class="social-icon">{icon_svg(kind)}</span>'
+            f'<div class="social-row"><span class="social-icon">{phosphor_icon(kind)}</span>'
             f'<span class="social-name">{_html.escape(label)}</span>'
             f'<a class="social-handle" href="{_html.escape(href)}" target="_blank">{_html.escape(href)}</a>'
-            f'<span class="social-check">✅</span></div>'
+            f'<span class="social-check"><i class="ph ph-check-circle" style="color:#16a34a;"></i></span></div>'
             for label, href, kind in social_items
         )
     else:
@@ -444,7 +438,7 @@ def gerar_dashboard_html(osc, score=None):
 
     if documentos_labels:
         docs_grid_html = '<div class="docs-grid">' + ''.join(
-            f'<div class="doc-item">✅ {_html.escape(lbl)}</div>' for lbl in documentos_labels
+            f'<div class="doc-item"><i class="ph ph-check-circle" style="color:#16a34a;"></i> {_html.escape(lbl)}</div>' for lbl in documentos_labels
         ) + '</div>'
     else:
         docs_grid_html = '<div class="none-box">Nenhum documento cadastrado</div>'
@@ -452,7 +446,7 @@ def gerar_dashboard_html(osc, score=None):
     if campos_faltantes:
         alerta_html = f"""
     <div class="alert-box alert-warning">
-        <div class="alert-header">⚠️ DADOS OU DOCUMENTOS PENDENTES</div>
+        <div class="alert-header"><i class="ph ph-warning"></i> DADOS OU DOCUMENTOS PENDENTES</div>
         <div class="alert-text">{_html.escape(', '.join(campos_faltantes))}</div>
     </div>"""
     else:
@@ -460,10 +454,10 @@ def gerar_dashboard_html(osc, score=None):
     <div class="alert-box alert-success">
         <table width="100%" cellpadding="0" cellspacing="0"><tr>
             <td>
-                <div class="alert-header alert-header-success">🏆 PARABÉNS!</div>
+                <div class="alert-header alert-header-success"><i class="ph ph-trophy"></i> PARABÉNS!</div>
                 <div class="alert-text alert-text-success">Sua organização está com todas as informações e documentos obrigatórios preenchidos e atualizados.</div>
             </td>
-            <td style="width:50px;text-align:right;font-size:28px;">✅</td>
+            <td style="width:50px;text-align:right;font-size:28px;"><i class="ph ph-check-circle" style="color:#16a34a;"></i></td>
         </tr></table>"""
     # ─────────────────────────────────────────────────────────────────────────
 
@@ -473,6 +467,7 @@ def gerar_dashboard_html(osc, score=None):
 <meta charset="utf-8">
 <title>Dashboard - {_html.escape(nome)}</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
 <style>
 @font-face {{
     font-family:'Montserrat';
@@ -493,7 +488,7 @@ def gerar_dashboard_html(osc, score=None):
 * {{ font-family:'Montserrat','Segoe UI',Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; box-sizing:border-box; }}
 @media print {{ body {{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }} }}
 html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e293b; }}
-.wrapper {{ max-width:900px; margin:0 auto; }}
+.wrapper {{ max-width:900px; margin:0 auto; padding:0 0 140px 0; }}
 
 .header-strip {{
     background:#0f172a;
@@ -515,6 +510,10 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .card {{ background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin:0 24px 8px; padding:16px 24px; break-inside:avoid; page-break-inside:avoid; }}
 .card-header {{ margin-bottom:10px; }}
 .card-icon {{ margin-right:6px; }}
+.ph {{ font-size:16px; color:#1e3a8a; vertical-align:middle; }}
+.card-header .ph {{ font-size:14px; margin-right:6px; }}
+.contact-icon .ph {{ font-size:15px; }}
+.social-icon .ph {{ font-size:18px; }}
 .card-title {{ font-size:10px; letter-spacing:1.5px; color:#1e3a8a; font-weight:700; }}
 .about-text {{ font-size:12px; color:#374151; line-height:1.7; margin:0; }}
 
@@ -523,10 +522,15 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .id-nome {{ font-size:22px; font-weight:700; color:#1e3a8a; }}
 .id-nome a {{ color:inherit; text-decoration:none; }}
 .id-desc {{ font-size:11px; color:#64748b; margin-top:4px; }}
-.metrics-box {{ background:#f8fafc; border-radius:8px; padding:12px 16px; }}
-.metrics-col {{ text-align:center; padding:0 4px; }}
-.metrics-label {{ font-size:9px; letter-spacing:0.5px; color:#64748b; margin-bottom:4px; }}
-.metrics-nota {{ font-size:18px; font-weight:700; color:#1e3a8a; }}
+.metrics-box {{ background:#f8fafc; border-radius:8px; padding:14px 16px; }}
+.metrics-row {{ display:table; width:100%; }}
+.metrics-item {{ display:table-cell; vertical-align:middle; padding:0 8px; }}
+.metrics-item-center {{ text-align:center; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; }}
+.metrics-divider {{ display:table-cell; width:1px; background:#e2e8f0; }}
+.metrics-label {{ font-size:8px; letter-spacing:1.5px; color:#64748b; font-weight:600; margin-bottom:6px; }}
+.metrics-value {{ display:flex; align-items:center; gap:6px; }}
+.metrics-nota {{ font-size:22px; font-weight:700; color:#1e3a8a; line-height:1; }}
+.metrics-max {{ font-size:13px; font-weight:400; color:#94a3b8; }}
 .pill {{ display:inline-block; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:600; }}
 
 .chart-note {{ font-size:9px; color:#94a3b8; margin-top:6px; }}
@@ -583,17 +587,19 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .alert-text-success {{ font-size:12px; color:#15803d; }}
 
 .footer {{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
     background:#ffffff;
     border-top:2px solid #1e3a8a;
-    margin:24px 24px 0;
-    padding:16px 0 24px;
+    padding:12px 24px;
+    z-index:1000;
 }}
-/* O rodapé real e repetido em cada página do PDF vem do footerTemplate do
-   Playwright (ver main()) — ele é a única forma suportada pelo Chromium de
-   repetir conteúdo rico e numerar páginas corretamente. Este bloco serve
-   apenas para quem abrir o HTML diretamente no navegador. */
-@media print {{
-    .footer {{ display:none !important; }}
+.page-number::after {{
+    content: "Página " counter(page) " de " counter(pages);
+    font-size:9px;
+    color:#94a3b8;
 }}
 .footer-table {{ width:100%; border-collapse:collapse; }}
 .auth-title {{ font-size:10px; letter-spacing:1px; color:#1e3a8a; font-weight:700; margin-bottom:6px; }}
@@ -619,7 +625,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
         </span>
     </div>
     <div class="header-right">
-        <div class="header-date">📅 {mes_extenso}/{ano_atual}</div>
+        <div class="header-date"><i class="ph ph-calendar"></i> {mes_extenso}/{ano_atual}</div>
         <div class="header-period">{periodo_referencia}</div>
     </div>
 </div>
@@ -637,20 +643,27 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
         </td>
         <td style="width:280px;vertical-align:middle;">
             <div class="metrics-box">
-                <table width="100%" cellpadding="0" cellspacing="0"><tr>
-                    <td class="metrics-col">
+                <div class="metrics-row">
+                    <div class="metrics-item">
                         <div class="metrics-label">CLASSIFICAÇÃO</div>
-                        <span class="pill" style="{pill_style}">{_html.escape(classificacao)}</span>
-                    </td>
-                    <td class="metrics-col">
+                        <div class="metrics-value">
+                            <i class="ph ph-seal-check" style="font-size:18px;color:{cor_classificacao};"></i>
+                            <span class="pill" style="{pill_style}">{_html.escape(classificacao)}</span>
+                        </div>
+                    </div>
+                    <div class="metrics-divider"></div>
+                    <div class="metrics-item metrics-item-center">
                         <div class="metrics-label">NOTA OBTIDA</div>
-                        <div class="metrics-nota">{nota_final}/{max_nota}</div>
-                    </td>
-                    <td class="metrics-col">
+                        <div class="metrics-nota">{nota_final}<span class="metrics-max">/{max_nota}</span></div>
+                    </div>
+                    <div class="metrics-divider"></div>
+                    <div class="metrics-item">
                         <div class="metrics-label">STATUS</div>
-                        <span class="pill" style="{tag_pill_style}">{_html.escape(tag_texto)}</span>
-                    </td>
-                </tr></table>
+                        <div class="metrics-value">
+                            <span class="pill" style="{tag_pill_style}">{_html.escape(tag_texto)}</span>
+                        </div>
+                    </div>
+                </div>
                 {certificacoes_html}
             </div>
         </td>
@@ -659,17 +672,17 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 {sobre_card_html}
 
 <div class="card">
-    <div class="card-header"><span class="card-icon">📈</span><span class="card-title">VISUALIZAÇÕES DO SITE — ÚLTIMO MÊS</span></div>
+    <div class="card-header"><span class="card-icon"><i class="ph ph-chart-line-up"></i></span><span class="card-title">VISUALIZAÇÕES DA SUA OSC NA PLATAFORMA — ÚLTIMO MÊS</span></div>
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
         <td style="width:75%;vertical-align:top;">
             <canvas id="viewsChart" height="140"></canvas>
         </td>
         <td style="width:25%;vertical-align:top;padding-left:12px;">
             <div class="views-side">
-                <div class="views-label">👁 TOTAL DE VISUALIZAÇÕES</div>
+                <div class="views-label"><i class="ph ph-eye"></i> TOTAL DE VISUALIZAÇÕES</div>
                 <div class="views-val">{total_visualizacoes}</div>
                 <div class="views-sep"></div>
-                <div class="views-label">📊 MÉDIA DIÁRIA</div>
+                <div class="views-label"><i class="ph ph-chart-bar"></i> MÉDIA DIÁRIA</div>
                 <div class="views-val-sm">{media_diaria}</div>
             </div>
         </td>
@@ -679,22 +692,22 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 <div class="two-col">
     <div class="col"><div class="card">
-        <div class="card-header"><span class="card-icon">👤</span><span class="card-title">INFORMAÇÕES DE CONTATO</span></div>
+        <div class="card-header"><span class="card-icon"><i class="ph ph-user"></i></span><span class="card-title">INFORMAÇÕES DE CONTATO</span></div>
         {contatos_html}
     </div></div>
     <div class="col"><div class="card">
-        <div class="card-header"><span class="card-icon">🤝</span><span class="card-title">CONTRATOS E PARCERIAS</span></div>
+        <div class="card-header"><span class="card-icon"><i class="ph ph-handshake"></i></span><span class="card-title">CONTRATOS E PARCERIAS</span></div>
         {contratos_chart_html}
     </div></div>
 </div>
 
 <div class="two-col">
     <div class="col"><div class="card">
-        <div class="card-header"><span class="card-icon">🔗</span><span class="card-title">REDES SOCIAIS</span></div>
+        <div class="card-header"><span class="card-icon"><i class="ph ph-share-network"></i></span><span class="card-title">REDES SOCIAIS</span></div>
         {social_rows_html}
     </div></div>
     <div class="col"><div class="card">
-        <div class="card-header"><span class="card-icon">📁</span><span class="card-title">DOCUMENTOS DISPONÍVEIS ({n_docs})</span></div>
+        <div class="card-header"><span class="card-icon"><i class="ph ph-folder-open"></i></span><span class="card-title">DOCUMENTOS DISPONÍVEIS ({n_docs})</span></div>
         {docs_grid_html}
     </div></div>
 </div>
@@ -705,7 +718,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
     <table class="footer-table"><tr>
         <td style="width:90px;vertical-align:top;">{qr_img_tag}</td>
         <td style="vertical-align:top;padding:0 20px;">
-            <div class="auth-title">🛡 AUTENTICIDADE DO DOCUMENTO</div>
+            <div class="auth-title"><i class="ph ph-shield-check"></i> AUTENTICIDADE DO DOCUMENTO</div>
             <div class="auth-text">Escaneie o QR Code ao lado ou acesse <a href="https://etransparente.org/verificar" style="color:#1e3a8a;">etransparente.org/verificar</a></div>
             <div class="auth-hash"><b>Código Hash (SHA-256):</b> {hash_hex}</div>
             <div class="auth-date">Data de emissão: {data_emissao}</div>
@@ -713,6 +726,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
         <td style="width:160px;vertical-align:top;" class="idc-col">
             <div class="idc-label">DOCUMENTO OFICIAL</div>
             <div class="idc-text">Este relatório é emitido mensalmente pelo IDC com base nas informações públicas disponibilizadas pela organização na plataforma etransparente.org.</div>
+            <div class="page-number"></div>
             {idc_logo_tag}
             <div class="idc-site">etransparente.org</div>
         </td>
@@ -770,41 +784,7 @@ if (contratosCanvas) {{
 </body>
 </html>"""
 
-    # ── footer real do PDF ──────────────────────────────────────────────────
-    # Chromium não suporta @page margin boxes com conteúdo rico; a única forma
-    # de repetir um rodapé com QR/hash/logo em todas as páginas e ter números
-    # de página reais é via footerTemplate do Playwright (usado em main()).
-    # As classes "pageNumber"/"totalPages" são preenchidas automaticamente
-    # pelo próprio Chromium durante a geração do PDF.
-    _footer_qr_tag = (
-        f'<img src="{qr_data_uri}" width="56" height="56" style="display:block;">'
-        if qr_data_uri else
-        '<div style="width:56px;height:56px;background:#f1f5f9;border-radius:4px;"></div>'
-    )
-    _footer_idc_tag = (
-        f'<img src="{idc_logo_data_uri}" alt="IDC" style="height:26px;display:block;margin-left:auto;">'
-        if idc_logo_data_uri else ''
-    )
-    footer_template_html = f"""
-<div style="width:100%;font-family:Arial,sans-serif;font-size:9px;color:#374151;border-top:2px solid #1e3a8a;margin:0 24px;padding:8px 0 0;box-sizing:border-box;">
-    <table style="width:100%;border-collapse:collapse;">
-        <tr>
-            <td style="width:56px;vertical-align:top;">{_footer_qr_tag}</td>
-            <td style="vertical-align:top;padding:0 14px;">
-                <div style="font-size:9px;letter-spacing:1px;color:#1e3a8a;font-weight:700;margin-bottom:3px;">AUTENTICIDADE DO DOCUMENTO</div>
-                <div style="font-size:8px;color:#374151;">Escaneie o QR Code ao lado ou acesse etransparente.org/verificar</div>
-                <div style="font-family:monospace;font-size:7px;color:#64748b;word-break:break-all;margin-top:2px;">Hash: {hash_hex}</div>
-                <div style="font-size:8px;color:#6b7280;margin-top:2px;">Emissão: {data_emissao} — Página <span class="pageNumber"></span> de <span class="totalPages"></span></div>
-            </td>
-            <td style="width:110px;vertical-align:top;text-align:right;">
-                {_footer_idc_tag}
-                <div style="color:#1e3a8a;font-size:9px;font-weight:700;margin-top:2px;">etransparente.org</div>
-            </td>
-        </tr>
-    </table>
-</div>"""
-
-    return html, hash_hex, footer_template_html
+    return html, hash_hex
 
 
 def main():
@@ -870,9 +850,8 @@ def main():
         pdf_file = os.path.join(pdf_dir, f"{nome_arquivo}.pdf")
 
         try:
-            footer_template_html = ''
             try:
-                html_content, hash_hex, footer_template_html = gerar_dashboard_html(osc, score)
+                html_content, hash_hex = gerar_dashboard_html(osc, score)
                 s = score or {}
                 verificacoes.append({
                     'hash': hash_hex,
@@ -906,16 +885,13 @@ def main():
                         page = browser.new_page()
                         page.goto(f"file://{os.path.abspath(html_file)}")
                         page.wait_for_load_state('networkidle')
+                        page.evaluate("document.fonts.ready")  # aguardar fontes/ícones Phosphor
                         page.wait_for_timeout(2000)  # aguardar Chart.js renderizar
                         page.pdf(
                             path=pdf_file,
                             width="210mm",
                             print_background=True,
                             prefer_css_page_size=False,
-                            display_header_footer=bool(footer_template_html),
-                            header_template='<div></div>',
-                            footer_template=footer_template_html or '<div></div>',
-                            margin={'top': '10px', 'bottom': '110px', 'left': '0px', 'right': '0px'},
                         )
                         browser.close()
                     pdf_count += 1
