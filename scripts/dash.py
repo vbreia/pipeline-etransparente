@@ -602,10 +602,18 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .alert-text {{ font-size:12px; color:#9a3412; }}
 .alert-text-success {{ font-size:12px; color:#15803d; }}
 
+.footer-page {{
+    break-before:page;
+    page-break-before:always;
+    min-height:900px;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+}}
 .footer {{
     background:#ffffff;
     border-top:2px solid #1e3a8a;
-    margin:24px 24px 0;
+    margin:0 24px;
     padding:16px 0 4px;
     break-inside:avoid;
     page-break-inside:avoid;
@@ -725,6 +733,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 {alerta_html}
 
+<div class="footer-page">
 <div class="footer">
     <table class="footer-table"><tr>
         <td class="footer-left">
@@ -752,6 +761,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
             </tr></table>
         </td>
     </tr></table>
+</div>
 </div>
 
 </div>
@@ -947,7 +957,7 @@ def main():
                             display_header_footer=bool(mini_footer_template_html),
                             header_template='<div></div>',
                             footer_template=mini_footer_template_html or '<div></div>',
-                            margin={'top': '10px', 'bottom': '60px', 'left': '0px', 'right': '0px'},
+                            margin={'top': '28px', 'bottom': '60px', 'left': '0px', 'right': '0px'},
                         )
                         browser.close()
                     pdf_count += 1
