@@ -430,7 +430,7 @@ Os dashboards HTML/PDF usam automaticamente os logos locais:
 - ✅ Formato quadrado 1:1 (ótimo para círculos CSS)
 - ✅ Fundo branco consistente
 - ✅ Alta qualidade (90%)
-- ✅ URLs absolutas com `file://` para wkhtmltopdf
+- ✅ URLs absolutas com `file://` para Playwright/Chromium
 - ✅ Logos persistem entre execuções
 
 **Volume Docker:**

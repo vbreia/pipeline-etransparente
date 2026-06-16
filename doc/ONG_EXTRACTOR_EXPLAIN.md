@@ -65,6 +65,11 @@ Script ETL que combina duas fontes de dados sobre ONGs:
 - **Web Scraping**: extrai contatos, documentos, redes sociais, descrição
 - **API REST**: consulta termos/contratos (municipais, estaduais, federais, emendas)
 
+Comportamentos importantes:
+- **Categorização de documentos**: usa `categorizar_documentos_por_bloco(soup)` — lê a classe CSS `block-field-<slug>` do bloco HTML (campo ACF) em vez de adivinhar pela URL do arquivo
+- **Horário de funcionamento**: busca `timing-today` e `open-hours` no HTML
+- **Termos fantasma**: entradas de termos onde só `situacao_do_termo` está preenchido são descartadas antes de salvar
+
 ### Componentes Principais
 
 #### Dataclasses (Modelos de Dados)
@@ -133,19 +138,30 @@ logs/ong_extractor_YYYY-MM-DD-HH-MM-SS.log
 
 ### Funcionalidade
 
-Calcula pontuações de transparência para cada ONG baseado no **preenchimento de campos**:
-- Conta campos preenchidos vs total de campos
-- Considera vazio: `""`, `0`, `[]`, `{}`, `null`
-- Gera nota simples: soma de campos preenchidos
+Calcula pontuações de transparência para cada ONG com metodologia de rubrica fixa em duas dimensões:
+
+- **Informações gerais** (0–15 pts): 15 campos pontuáveis, 1 pt cada
+- **Termos/emendas** (0–15 pts): média percentual de preenchimento dos campos de cada termo × 15
+
+Campos gerais pontuáveis: `logo_url`, `descricao_objeto_social`, `telefone`, `email`, `website`, `redes_sociais`, `horario_funcionamento`, `localizacao`, `cnpj`, `documentos.cneas`, `documentos.plano_acao`, `documentos.estatuto`, `documentos.ata_eleicao`, `documentos.balanco_2024`, `documentos.balanco_2023`.
+
+Badges (aparecem no dashboard mas não pontuam): `cebas`, `utilidade_publica`.
+
+Termos fantasma (entradas onde só `situacao_do_termo` está preenchido) são ignorados no cálculo.
 
 ### Algoritmo
 
-```python
-# Para cada ONG:
-1. Itera sobre todos os campos da estrutura ONGData
-2. Verifica se campo está preenchido (não vazio)
-3. Conta: preenchidos / total
-4. Nota = número de campos preenchidos
+```
+nota_gerais  = soma dos 15 campos gerais preenchidos   (0–15)
+nota_termos  = média_percentual_termos / 100 × 15      (0–15, só se houver termos)
+
+Com termos/emendas:  nota_final = nota_gerais + nota_termos  → max_nota = 30
+Sem termos/emendas:  nota_final = nota_gerais                → max_nota = 15
+
+Classificação (percentual = nota_final / max_nota × 100):
+  Regular : ≤ 30%
+  Bom     : ≤ 69%
+  Ótimo   : > 69%
 ```
 
 ### Formato de Saída (JSON)
@@ -153,18 +169,24 @@ Calcula pontuações de transparência para cada ONG baseado no **preenchimento 
 ```json
 {
   "nome": "Nome da ONG",
-  "url": "https://etransparente.org/ong/...",
-  "preenchidos": 18,
-  "total": 24,
-  "nota": 18
+  "url": "https://etransparente.org/oscs/...",
+  "tag": "com_termos_emendas",
+  "nota_gerais": 12,
+  "nota_termos_emendas": 9.5,
+  "nota_final": 21.5,
+  "max_nota": 30,
+  "classificacao": "Bom",
+  "badges": { "cebas": true, "utilidade_publica": false },
+  "gerais": { "pontos": 12, "max": 15, "percentual": 80.0 },
+  "termos": { "total_itens": 4, "media_percentual": 63.3, "por_tipo": {} }
 }
 ```
 
 ### Critérios de Avaliação
 
-- **Alta transparência** (18-24): Maioria dos campos preenchidos
-- **Média transparência** (12-17): Campos básicos preenchidos
-- **Baixa transparência** (0-11): Poucos dados disponíveis
+- **Ótimo** (> 69% da nota máxima): organização com alta transparência
+- **Bom** (30–69%): campos básicos preenchidos, alguns dados ausentes
+- **Regular** (≤ 30%): poucos dados disponíveis ou sem termos
 
 ### Execução Manual
 
@@ -185,57 +207,55 @@ docker compose exec airflow-webserver python scripts/generate_transparency_score
 
 ### Funcionalidade
 
-Gera **um dashboard individual** para cada ONG contendo:
-- Informações principais (contato, localização, CNPJ)
-- Documentos disponíveis com links
-- Redes sociais ativas
-- Termos/contratos por categoria
-- Indicadores visuais de preenchimento
+Gera **um dashboard multi-página individual** para cada ONG. O dashboard é gerado primeiro como HTML e depois convertido para PDF via Playwright/Chromium.
 
-### Componentes do Dashboard
+### Estrutura do Dashboard (2-3 páginas)
 
-#### 1. Header
-- Nome da ONG
-- Link para página no etransparente.org
-- Data de geração
+#### Página 1 — Relatório principal
+- **Card de identidade**: logo, nome, classificação, nota (ex.: 21/30), status (com/sem termos), badges (CEBAS, Utilidade Pública Federal)
+- **Sobre a organização**: descrição do objeto social
+- **Gráfico de visualizações**: Chart.js com dados diários do mês (Google Analytics)
+- **Informações de contato**: telefone, e-mail, website, localização, CNPJ
+- **Contratos e parcerias**: gráfico doughnut por esfera (município/estado/união/emendas)
+- **Redes sociais**: ícones Phosphor com links
+- **Documentos disponíveis**: grid de documentos com links
+- **Alerta ou parabéns**: lista de dados pendentes ou confirmação de completude
 
-#### 2. Informações Principais
-- Telefone, email, website
-- Horário de funcionamento
-- Localização, CNPJ
-- Descrição do objeto social
+#### Página final — Institucional
+- **Seção hero**: gradiente escuro com título e subtítulo
+- **Três colunas**: Sobre o etransparente.org / Emendas parlamentares / Finalidade do relatório
+- **Quem utiliza**: ícones representando público-alvo
+- **Autenticidade e validação**: hash SHA-256, QR code, data/hora de emissão
+- **Rodapé institucional**: logo IDC, data de emissão, slogan
 
-#### 3. Documentos
-- Lista visual de documentos disponíveis
-- Links diretos para download
-- Categorias: Estatuto, Balanços, CEBAS, CNEAS, etc.
-
-#### 4. Redes Sociais
-- Ícones com links ativos
-- Instagram, LinkedIn, YouTube
-
-#### 5. Termos e Contratos
-- Tabela por categoria (Municipal, Estadual, Federal, Emendas)
-- Quantidade total por tipo
-- Expandível para ver detalhes
+O rodapé com hash + QR code mini é repetido em **todas as páginas** via `footerTemplate` nativo do Playwright.
 
 ### Tecnologias
 
-- **HTML/CSS**: Templates responsivos
-- **wkhtmltopdf**: Conversão HTML → PDF (via pdfkit)
-- **Bootstrap** (embutido): Styling dos dashboards
+- **HTML/CSS**: layout com tabelas e CSS print-safe (`break-inside:avoid`)
+- **Chart.js** (CDN): gráfico de linha (visualizações) e doughnut (contratos)
+- **Phosphor Icons** (CDN): ícones consistentes
+- **Playwright/Chromium**: conversão HTML → PDF com suporte a header/footer por página
+- **qrcode** (Python, opcional): QR code em base64 inline no HTML
+- **hashlib.sha256**: hash de autenticidade baseado em nome + data + nota + classificação
+- **Fonte Montserrat** (woff2 local): tipografia consistente offline
+
+### Saídas adicionais
+
+Além dos arquivos HTML/PDF, o script salva um arquivo de verificações:
+```
+output/verificacoes_YYYY-MM.json   # hash + metadados de autenticidade de cada relatório
+```
 
 ### Estrutura de Saída
 
 ```
-output/dashboards/20260121234015/
+output/dashboards/<timestamp>/
 ├── html/
-│   ├── ong-nome-1.html
-│   ├── ong-nome-2.html
+│   ├── Relatório-etransparente-<mes>-de-<ano>-<slug>.html
 │   └── ...
 └── pdf/
-    ├── ong-nome-1.pdf
-    ├── ong-nome-2.pdf
+    ├── Relatório-etransparente-<mes>-de-<ano>-<slug>.pdf
     └── ...
 ```
 

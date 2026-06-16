@@ -23,7 +23,10 @@ Todas as dependências Python estão listadas no arquivo `requirements.txt`.
 - **streamlit** (>=1.28.0): Para criação de dashboards web interativos
 
 #### Geração de PDFs
-- **pdfkit** (>=1.0.0): Wrapper Python para wkhtmltopdf
+- **playwright** (>=1.40.0): Biblioteca Python para controlar Chromium headless — converte HTML em PDF com suporte a `footerTemplate` por página (substituiu pdfkit/wkhtmltopdf)
+
+#### QR Code (opcional)
+- **qrcode** (>=7.4.0): Geração de QR codes embutidos em base64 nos dashboards (degradação graciosa se ausente)
 
 #### Processamento de Imagens
 - **Pillow** (>=10.0.0): Para manipulação de imagens (logos)
@@ -33,16 +36,22 @@ Todas as dependências Python estão listadas no arquivo `requirements.txt`.
 
 ## Ferramentas Externas
 
-### wkhtmltopdf
-Ferramenta de linha de comando para converter HTML em PDF.
+### Playwright / Chromium
+Navegador headless utilizado para converter dashboards HTML em PDF.
 
-**Instalação:**
-- Ubuntu/Debian: `apt-get install wkhtmltopdf`
-- No Docker: Já incluído no `docker/Dockerfile.airflow`
+**Instalação do pacote Python:**
+```bash
+pip install playwright
+```
 
-**Versão recomendada:** 0.12.6.1-2
+**Instalação do Chromium (obrigatória após pip install):**
+```bash
+playwright install chromium
+```
 
-**Uso no projeto:** Conversão de dashboards HTML em PDF via biblioteca `pdfkit`
+No Docker: instalado no `docker/Dockerfile.airflow` via `RUN playwright install chromium --with-deps`
+
+**Uso no projeto:** `dash.py` usa `playwright.sync_api.sync_playwright` para renderizar cada HTML e exportar PDF com `page.pdf()`, suportando `footerTemplate` nativo do Chromium para rodapé em todas as páginas.
 
 ## Instalação
 
@@ -68,7 +77,7 @@ python check_dependencies.py
 
 Este script verifica:
 - ✅ Todas as bibliotecas Python críticas
-- ✅ Ferramentas externas (wkhtmltopdf)
+- ✅ Ferramentas externas (Playwright/Chromium)
 - ⚠️  Dependências opcionais (apache-airflow)
 
 ## Estrutura de Arquivos
@@ -78,7 +87,7 @@ pipeline/
 ├── requirements.txt              # Dependências Python
 ├── docker-compose.yml            # Configuração Docker com dependências
 ├── docker/
-│   ├── Dockerfile.airflow        # Imagem Docker com wkhtmltopdf
+│   ├── Dockerfile.airflow        # Imagem Docker com Playwright/Chromium
 │   ├── Dockerfile                # Imagem base Python
 │   └── entrypoint.sh             # Script de inicialização
 ├── check_dependencies.py         # Script de verificação
@@ -92,19 +101,15 @@ pipeline/
 pip install Pillow
 ```
 
-### Erro: "wkhtmltopdf command not found"
-No Docker: Reconstrua a imagem
+### Erro: "playwright._impl._api_types.Error: Executable doesn't exist"
+O Chromium não foi instalado após o `pip install playwright`:
 ```bash
-docker-compose build --no-cache
+playwright install chromium
 ```
 
-Local: Instale o wkhtmltopdf
+No Docker: Reconstrua a imagem para incluir o passo de instalação:
 ```bash
-# Ubuntu/Debian
-sudo apt-get install wkhtmltopdf
-
-# macOS
-brew install wkhtmltopdf
+docker-compose build --no-cache
 ```
 
 ### Erro: ImportError ao importar bibliotecas
@@ -129,6 +134,8 @@ docker-compose up -d
 ## Notas Importantes
 
 - **Pillow é obrigatório**: Usado para processar logos das ONGs
-- **wkhtmltopdf é obrigatório**: Necessário para gerar PDFs dos dashboards
+- **playwright + Chromium são obrigatórios**: Necessários para gerar PDFs dos dashboards (substituíram pdfkit/wkhtmltopdf)
+- **qrcode é opcional**: Se ausente, o QR code é substituído por um placeholder cinza; o restante do dashboard funciona normalmente
 - **cairosvg foi removido**: Não está sendo usado no projeto
+- **pdfkit foi removido**: Substituído por playwright
 - Todas as versões seguem o padrão semver (>=X.Y.Z)

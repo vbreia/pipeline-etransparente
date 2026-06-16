@@ -11,7 +11,7 @@ pipeline/
 │   ├── Dockerfile                   # Imagem base Python (alternativa)
 │   ├── entrypoint.sh                # Script de inicialização do container
 │   ├── .dockerignore                # Arquivos ignorados no build
-│   └── wkhtmltox_*.deb              # Pacotes wkhtmltopdf (opcional)
+│   └── wkhtmltox_*.deb              # Pacotes wkhtmltopdf legados (não mais usados)
 ├── docker-compose.yml               # Orquestração de containers (RAIZ)
 ├── requirements.txt                 # Dependências Python
 └── ...
@@ -32,7 +32,7 @@ pipeline/
 ### `docker/Dockerfile.airflow`
 Imagem principal do projeto com:
 - Base: `apache/airflow:2.8.3-python3.11`
-- wkhtmltopdf 0.12.6.1-2
+- Playwright/Chromium (headless PDF) — instalado via `playwright install chromium --with-deps`
 - Todas as bibliotecas do `requirements.txt`
 
 **Usado por:** airflow-init, airflow-scheduler, airflow-webserver
@@ -58,9 +58,7 @@ Define arquivos que **não** são copiados ao build:
 - Testes
 
 ### `docker/wkhtmltox_*.deb`
-Pacotes Debian do wkhtmltopdf (opcional):
-- `wkhtmltox_0.12.6-1.focal_amd64.deb` (Ubuntu 20.04)
-- `wkhtmltox_0.12.6-buster.deb` (Debian 10)
+Pacotes legados do wkhtmltopdf (não mais utilizados — Playwright/Chromium substituiu). Podem ser removidos.
 
 ## 🚀 Como usar
 
@@ -106,7 +104,7 @@ docker-compose down
 | `Dockerfile.airflow` | `docker/Dockerfile.airflow` | docker-compose.yml |
 | `entrypoint.sh` | `docker/entrypoint.sh` | (opcional) |
 | `.dockerignore` | `docker/.dockerignore` | Docker |
-| `wkhtmltox_*.deb` | `docker/wkhtmltox_*.deb` | (documentação) |
+| `wkhtmltox_*.deb` | `docker/wkhtmltox_*.deb` | (legado, não mais usado) |
 
 ## ✨ Benefícios da reorganização
 

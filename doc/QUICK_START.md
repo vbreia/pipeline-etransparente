@@ -49,9 +49,10 @@ Sua pipeline vai executar em sequência:
    - Gera arquivo: `output/scores/transparency_scores_*.json`
 
 3. **dash.py** (3-10 minutos)
-   - Gera dashboards HTML por ONG
-   - Gera dashboards PDF (se wkhtmltopdf estiver disponível)
+   - Gera dashboards HTML por ONG (multi-página com Chart.js e Phosphor Icons)
+   - Converte para PDF via Playwright/Chromium (requer `playwright install chromium`)
    - Gera em: `output/dashboards/*/html` e `/pdf`
+   - Salva registros de autenticidade em `output/verificacoes_YYYY-MM.json`
 
 ## 🛠️ Utilitários Principais
 

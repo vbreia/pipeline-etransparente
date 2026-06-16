@@ -34,7 +34,7 @@ pipeline-etransparente/
 │   ├── generate_transparency_scores.py  # Etapa 2: cálculo de scores
 │   └── dash.py                  # Etapa 3: geração de dashboards
 ├── docker/
-│   ├── Dockerfile.airflow       # Imagem customizada (inclui wkhtmltopdf)
+│   ├── Dockerfile.airflow       # Imagem customizada (inclui Playwright/Chromium)
 │   ├── quick-start.sh           # Setup em 1 comando
 │   └── setup-azure-vm.sh        # Setup para Azure VM
 ├── output/
@@ -72,6 +72,8 @@ extract_ong_data → generate_transparency_scores → generate_dashboards
 ### `ong_extractor.py`
 - `ONGExtractor` — orquestra todo o processo, gerencia stats e logging
 - `WebScraper` — scraping HTML (contato, documentos, redes sociais, logo)
+  - `categorizar_documentos_por_bloco(soup)` — categoriza documentos lendo a classe CSS `block-field-<slug>` do bloco HTML que os contém (substitui abordagem por nome de arquivo)
+  - Seletor de horário busca `timing-today` e `open-hours`
 - `APIExtractor` — API REST WordPress (`/wp-json/wp/v2/job_listing`), campos ACF
 
 ### Dataclasses
@@ -110,7 +112,7 @@ output_logo = "assets/img/logos-ongs/<nome_normalizado>.jpg"
 | airflow-scheduler | custom | — |
 | airflow-webserver | custom | 8080 |
 
-**Imagem customizada inclui:** wkhtmltopdf 0.12.6.1-2, libssl1.1, fontes DejaVu/Liberation.
+**Imagem customizada inclui:** Playwright/Chromium, fontes Montserrat (woff2), fontes DejaVu/Liberation.
 
 Volumes mapeados:
 ```yaml
@@ -139,7 +141,8 @@ Volumes mapeados:
 beautifulsoup4   # scraping HTML
 requests         # requisições HTTP
 pillow           # processamento de logos
-pdfkit           # wrapper wkhtmltopdf
+playwright       # geração de PDFs via Chromium (substituiu pdfkit/wkhtmltopdf)
+qrcode           # geração de QR codes nas páginas finais (opcional)
 pandas           # manipulação de dados
 plotly           # gráficos nos dashboards
 openpyxl         # exportação Excel
@@ -147,6 +150,7 @@ streamlit        # dashboards web (exploratório)
 ```
 
 Instaladas via `_PIP_ADDITIONAL_REQUIREMENTS` no Docker Compose.
+Após instalação do pacote playwright, é necessário instalar os browsers: `playwright install chromium`.
 
 ---
 
@@ -162,8 +166,8 @@ docker exec airflow-webserver airflow dags trigger ong_pipeline
 # Ver logs do scheduler
 docker logs airflow-scheduler --tail 50
 
-# Verificar instalação do wkhtmltopdf
-docker exec airflow-scheduler wkhtmltopdf --version
+# Verificar instalação do Playwright/Chromium
+docker exec airflow-scheduler python -c "from playwright.sync_api import sync_playwright; print('OK')"
 
 # Status dos containers
 docker-compose ps
@@ -188,9 +192,12 @@ docker-compose down
 |---------|---------|--------|
 | Orquestração | Airflow | Retry nativo, UI de monitoramento, agendamento cron |
 | Containerização | Docker Compose | Reprodutibilidade, sem dependências no host |
-| PDF | wkhtmltopdf | Fidelidade ao HTML, suporte a CSS avançado |
+| PDF | Playwright/Chromium | Renderização fiel de CSS moderno (Chart.js, ícones Phosphor, fontes woff2), suporte a header/footer por página |
 | Logos | Pillow + JPG 1:1 | Uniformidade visual nos dashboards |
 | Deploy | Azure VM B2s | Custo/benefício, Ubuntu 22.04 estável |
+| Score | Escala 0-30 | 15 pts gerais + 0-15 pts termos/emendas; classificação Regular/Bom/Ótimo |
+| Categorização docs | `block-field-<slug>` CSS | Identificação confiável pelo campo ACF de origem, não pelo nome do arquivo |
+| QR code | biblioteca `qrcode` | Verificação de autenticidade no PDF final (opcional, degradação graciosa) |
 
 ---
 
@@ -212,4 +219,4 @@ Ao sugerir mudanças, considerar:
 
 ---
 
-*Atualizado em: 2025-12-11 | Versão: 1.0*
+*Atualizado em: 2026-06-16 | Versão: 1.1*

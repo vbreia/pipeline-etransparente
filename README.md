@@ -182,13 +182,16 @@ docker stats
 ## 📦 Dependências
 
 ```bash
-pip install beautifulsoup4 requests pillow
+pip install beautifulsoup4 requests pillow playwright qrcode
+playwright install chromium
 ```
 
 **Bibliotecas:**
 - `beautifulsoup4`: Parsing HTML para scraping
 - `requests`: Requisições HTTP
 - `pillow`: Processamento de imagens (logos)
+- `playwright`: Conversão HTML → PDF via Chromium headless (substitui pdfkit/wkhtmltopdf)
+- `qrcode`: Geração de QR codes para verificação de autenticidade (opcional)
 
 ## 🚀 Como Usar
 
@@ -450,9 +453,9 @@ chmod +x docke./docker/quick-start.sh
 - ✅ Verificar Docker e Docker Compose
 - ✅ Criar diretórios necessários (dags, scripts, output, logs)
 - ✅ Configurar permissões corretas (chmod 777)
-- ✅ Fazer build das imagens Docker (incluindo wkhtmltopdf)
+- ✅ Fazer build das imagens Docker (incluindo Playwright/Chromium)
 - ✅ Iniciar todos os containers
-- ✅ Verificar se wkhtmltopdf foi instalado
+- ✅ Verificar se Playwright está instalado
 - ✅ Validar que a DAG foi carregada
 - ✅ Exibir instruções de acesso
 
@@ -536,44 +539,41 @@ output/
             └── ...
 ```
 
-### **Configuração do wkhtmltopdf**
+### **Configuração do Playwright/Chromium**
 
-Para gerar PDFs, o `wkhtmltopdf` foi instalado no container com as seguintes etapas:
+Para gerar PDFs, o `dash.py` usa Playwright com Chromium headless. A instalação acontece em duas etapas:
 
-1. **Instalação de dependências** (fontconfig, libx11-6, xfonts, etc.)
-2. **Instalação do libssl1.1** (dependência necessária do wkhtmltopdf)
-3. **Instalação do wkhtmltopdf 0.12.6.1-2 Bullseye**
+1. **Instalação do pacote Python** via `_PIP_ADDITIONAL_REQUIREMENTS`: `playwright`
+2. **Instalação do Chromium** (navegador headless): `playwright install chromium --with-deps`
 
-**docker/Dockerfile.airflow:**
+**docker/Dockerfile.airflow (trecho relevante):**
 ```dockerfile
 FROM apache/airflow:2.8.3-python3.11
 
 USER root
 
-# Instalar dependências básicas
+# Instalar dependências do sistema para Chromium
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget fonts-dejavu fonts-liberation fontconfig \
-    libfreetype6 libjpeg62-turbo libpng16-16 \
-    libx11-6 libxcb1 libxext6 libxrender1 \
-    xfonts-75dpi xfonts-base libfontconfig1 \
+    fonts-dejavu fonts-liberation fontconfig \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Instalar libssl1.1 (dependência do wkhtmltopdf)
-RUN wget -q http://ftp.debian.org/debian/pool/main/o/openssl/libssl1.1_1.1.1w-0+deb11u1_amd64.deb -O /tmp/libssl1.1.deb \
-    && dpkg -i /tmp/libssl1.1.deb && rm /tmp/libssl1.1.deb
-
-# Instalar wkhtmltopdf
-RUN wget -q https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.bullseye_amd64.deb -O /tmp/wkhtmltox.deb \
-    && dpkg -i /tmp/wkhtmltox.deb && rm /tmp/wkhtmltox.deb
-
 USER airflow
+
+# Instalar Playwright e Chromium
+RUN pip install playwright && playwright install chromium --with-deps
+```
+
+**Verificar no container:**
+```bash
+docker exec airflow-scheduler python -c "from playwright.sync_api import sync_playwright; print('Playwright OK')"
 ```
 
 ### **Dependências Python**
 
 As seguintes bibliotecas são instaladas automaticamente via `_PIP_ADDITIONAL_REQUIREMENTS`:
 
-- `pdfkit` - Wrapper Python para wkhtmltopdf
+- `playwright` - Conversão HTML → PDF via Chromium headless (substitui pdfkit)
+- `qrcode` - QR codes de autenticidade nos dashboards (opcional)
 - `requests` - Requisições HTTP
 - `pandas` - Manipulação de dados
 - `beautifulsoup4` - Web scraping
@@ -613,14 +613,14 @@ docker exec airflow-scheduler airflow dags list
 docker exec airflow-scheduler airflow dags list-import-errors
 ```
 
-#### **wkhtmltopdf não encontrado**
+#### **Playwright/Chromium não encontrado**
 
 ```bash
-# Verificar se está instalado
-docker exec airflow-scheduler which wkhtmltopdf
+# Verificar se Playwright está instalado
+docker exec airflow-scheduler python -c "from playwright.sync_api import sync_playwright; print('OK')"
 
-# Testar versão
-docker exec airflow-scheduler wkhtmltopdf --version
+# Reinstalar Chromium se necessário
+docker exec airflow-scheduler playwright install chromium --with-deps
 ```
 
 #### **Problemas específicos de Azure VM**
