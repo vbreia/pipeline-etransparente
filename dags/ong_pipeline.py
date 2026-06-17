@@ -21,7 +21,7 @@ default_args = {
     'owner': 'data-team',
     'retries': 2,
     'retry_delay': timedelta(minutes=5),
-    'email': ['comunicacao@direitocoletivo.org.br'],
+    'email': ['transparencia@direitocoletivo.org.br'],
     'email_on_failure': True,
     'email_on_retry': False,
 }
