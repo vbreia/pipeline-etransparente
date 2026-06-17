@@ -34,7 +34,7 @@ services:
       - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=false
       - GOOGLE_APPLICATION_CREDENTIALS=/etc/google/wif-credential.json
       - GA4_PROPERTY_ID=414902979
-      - AIRFLOW__SMTP__SMTP_HOST=br592.hostgator.com.br
+      - AIRFLOW__SMTP__SMTP_HOST=smtp.gmail.com
       - AIRFLOW__SMTP__SMTP_PORT=587
       - AIRFLOW__SMTP__SMTP_STARTTLS=True
       - AIRFLOW__SMTP__SMTP_SSL=False
@@ -68,7 +68,7 @@ services:
       - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=false
       - GOOGLE_APPLICATION_CREDENTIALS=/etc/google/wif-credential.json
       - GA4_PROPERTY_ID=414902979
-      - AIRFLOW__SMTP__SMTP_HOST=br592.hostgator.com.br
+      - AIRFLOW__SMTP__SMTP_HOST=smtp.gmail.com
       - AIRFLOW__SMTP__SMTP_PORT=587
       - AIRFLOW__SMTP__SMTP_STARTTLS=True
       - AIRFLOW__SMTP__SMTP_SSL=False
