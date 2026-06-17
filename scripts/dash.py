@@ -32,6 +32,12 @@ try:
 except Exception:
     QRCODE_AVAILABLE = False
 
+try:
+    from pypdf import PdfWriter
+    PYPDF_AVAILABLE = True
+except Exception:
+    PYPDF_AVAILABLE = False
+
 
 _SCORE_DEFAULTS = {
     'nota_final': 0,
@@ -469,7 +475,8 @@ def gerar_dashboard_html(osc, score=None):
                 <div class="alert-text alert-text-success">Sua organização está com todas as informações e documentos obrigatórios preenchidos e atualizados.</div>
             </td>
             <td style="width:50px;text-align:right;font-size:28px;"><i class="ph ph-check-circle" style="color:#16a34a;"></i></td>
-        </tr></table>"""
+        </tr></table>
+    </div>"""
     # ─────────────────────────────────────────────────────────────────────────
 
     html = f"""<!DOCTYPE html>
@@ -610,13 +617,16 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 .final-page {{
     break-before:page;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
     background:#ffffff;
     padding:0;
 }}
 .final-hero {{
     background:#0f172a;
     background-image:linear-gradient(135deg, #0f172a 60%, #1e3a8a 100%);
-    padding:18px 40px 14px;
+    padding:28px 40px 22px;
     text-align:center;
     color:#fff;
 }}
@@ -633,7 +643,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .final-subtitle {{ font-size:10px; color:rgba(255,255,255,0.75); line-height:1.5; max-width:500px; margin:0 auto; }}
 .final-divider {{ height:3px; background:linear-gradient(90deg, #bfa76a, #1e3a8a, #bfa76a); }}
 
-.final-three-cols {{ display:table; width:100%; padding:12px 40px; box-sizing:border-box; }}
+.final-three-cols {{ display:table; width:100%; padding:18px 40px; box-sizing:border-box; }}
 .final-col {{ display:table-cell; width:33%; vertical-align:top; padding:0 16px; text-align:center; }}
 .final-col:first-child {{ padding-left:0; }}
 .final-col:last-child {{ padding-right:0; }}
@@ -652,7 +662,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
     background:#f8fafc;
     margin:0 40px;
     border-radius:10px;
-    padding:10px 32px;
+    padding:16px 32px;
     text-align:center;
 }}
 .final-who-title {{ font-size:11px; font-weight:700; color:#1e3a8a; letter-spacing:1.5px; margin-bottom:6px; }}
@@ -670,17 +680,17 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .final-who-label {{ font-size:9px; font-weight:700; color:#374151; letter-spacing:0.5px; line-height:1.4; }}
 
 .final-auth-box {{
-    margin:6px 40px;
+    margin:14px 40px;
     background:#0f172a;
     border-radius:10px;
-    padding:12px 28px;
+    padding:18px 28px;
     color:#fff;
 }}
-.final-auth-title {{ font-size:11px; font-weight:700; letter-spacing:1.5px; color:#fff; margin-bottom:8px; text-align:center; }}
+.final-auth-title {{ font-size:11px; font-weight:700; letter-spacing:1.5px; color:#fff; margin-bottom:12px; text-align:center; }}
 .final-auth-grid {{ display:table; width:100%; }}
 .final-auth-shield {{ display:table-cell; width:80px; vertical-align:middle; text-align:center; }}
 .final-auth-items {{ display:table-cell; vertical-align:top; padding:0 20px; }}
-.final-auth-item {{ display:flex; align-items:flex-start; gap:10px; margin-bottom:5px; }}
+.final-auth-item {{ display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; }}
 .final-auth-item:last-child {{ margin-bottom:0; }}
 .final-auth-item-icon {{
     width:26px; height:26px;
@@ -696,18 +706,16 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .final-auth-qr img {{ border-radius:6px; background:#fff; padding:4px; }}
 .final-auth-qr-text {{ font-size:9px; color:rgba(255,255,255,0.7); margin-top:6px; line-height:1.35; }}
 .final-auth-qr-url {{ font-size:9px; font-weight:700; color:#bfa76a; margin-top:4px; }}
+.final-auth-qr-hash {{ font-family:monospace; font-size:7px; color:rgba(255,255,255,0.5); margin-top:4px; word-break:break-all; }}
 .final-auth-note {{ font-size:9px; color:rgba(255,255,255,0.5); margin-top:10px; margin-bottom:0; line-height:1.4; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; }}
 
 .final-footer {{
     display:table;
     width:100%;
-    padding:14px 40px;
+    padding:14px 40px 28px;
     box-sizing:border-box;
     border-top:1px solid #e2e8f0;
-    page-break-before:avoid;
-    break-before:avoid;
-    page-break-inside:avoid;
-    break-inside:avoid;
+    margin-top:auto;
 }}
 .final-footer-col {{
     display:table-cell;
@@ -952,6 +960,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
         {qr_img_tag}
         <div class="final-auth-qr-text">Escaneie para validar<br>este documento</div>
         <div class="final-auth-qr-url">etransparente.org/validar</div>
+        <div class="final-auth-qr-hash">Hash: {hash_hex}</div>
       </div>
     </div>
     <p class="final-auth-note">Qualquer alteração posterior nos dados da organização não modifica retroativamente este relatório, preservando sua integridade documental.</p>
@@ -1035,13 +1044,13 @@ if (contratosCanvas) {{
 </body>
 </html>"""
 
-    # ── rodapé mini, repetido em todas as páginas via footerTemplate ────────
+    # ── rodapé mini, repetido nas páginas institucionais via footerTemplate ──
     # Chromium não repete elementos position:fixed em todas as páginas do PDF
     # (só renderiza onde calham no fluxo normal). A única forma suportada de
     # ter algo fixo em TODA página é o footerTemplate nativo do Playwright
-    # (ver main()). Aqui ele leva apenas QR Code + hash — sem logo do IDC,
-    # que já aparece em destaque na .final-page (evita redundância visual
-    # quando o footerTemplate também aparece sobre a última página).
+    # (ver main()). Usado apenas no PDF das páginas institucionais — a
+    # .final-page é renderizada em uma segunda passada, sem margin/footer do
+    # Playwright, e já traz seu próprio QR Code + hash embutidos no layout.
     _mini_qr_tag = (
         f'<img src="{qr_data_uri}" width="34" height="34" style="display:block;">'
         if qr_data_uri else
@@ -1155,6 +1164,8 @@ def main():
                 continue
 
             if PLAYWRIGHT_AVAILABLE:
+                pdf_institucional = pdf_file + '.institucional.pdf'
+                pdf_final = pdf_file + '.final.pdf'
                 try:
                     with sync_playwright() as p:
                         browser = p.chromium.launch()
@@ -1163,8 +1174,21 @@ def main():
                         page.wait_for_load_state('networkidle')
                         page.evaluate("document.fonts.ready")  # aguardar fontes/ícones Phosphor
                         page.wait_for_timeout(2000)  # aguardar Chart.js renderizar
+
+                        # Renderizado em duas passagens porque o Chromium aplica
+                        # margin/footerTemplate de forma uniforme a TODAS as páginas
+                        # de uma mesma chamada page.pdf() — não há como reservar
+                        # espaço de rodapé só nas páginas institucionais. Por isso
+                        # a .final-page (layout estático) é impressa separadamente,
+                        # sem margem, e depois unida ao PDF institucional.
+                        page.add_style_tag(content=(
+                            "body.pdf-pass-institucional .final-page{display:none!important;}"
+                            "body.pdf-pass-final .content-wrapper{display:none!important;}"
+                        ))
+
+                        page.evaluate("document.body.classList.add('pdf-pass-institucional')")
                         page.pdf(
-                            path=pdf_file,
+                            path=pdf_institucional,
                             width="210mm",
                             print_background=True,
                             prefer_css_page_size=False,
@@ -1173,11 +1197,42 @@ def main():
                             footer_template=mini_footer_template_html or '<div></div>',
                             margin={'top': '28px', 'bottom': '50px', 'left': '0px', 'right': '0px'},
                         )
+
+                        page.evaluate(
+                            "document.body.classList.remove('pdf-pass-institucional');"
+                            "document.body.classList.add('pdf-pass-final')"
+                        )
+                        page.pdf(
+                            path=pdf_final,
+                            width="210mm",
+                            print_background=True,
+                            prefer_css_page_size=False,
+                            display_header_footer=False,
+                            margin={'top': '0px', 'bottom': '0px', 'left': '0px', 'right': '0px'},
+                        )
                         browser.close()
+
+                    if PYPDF_AVAILABLE:
+                        writer = PdfWriter()
+                        writer.append(pdf_institucional)
+                        writer.append(pdf_final)
+                        with open(pdf_file, 'wb') as fh:
+                            writer.write(fh)
+                        os.remove(pdf_institucional)
+                        os.remove(pdf_final)
+                    else:
+                        print("⚠️  pypdf não disponível: usando apenas o PDF institucional (sem página final)")
+                        os.replace(pdf_institucional, pdf_file)
+                        if os.path.exists(pdf_final):
+                            os.remove(pdf_final)
+
                     pdf_count += 1
                     print(f"✓ PDF criado: {pdf_file}")
                 except Exception as e:
                     print(f"✗ Erro ao gerar PDF para {nome}: {e}")
+                    for tmp in (pdf_institucional, pdf_final):
+                        if os.path.exists(tmp):
+                            os.remove(tmp)
             else:
                 print(f"⚠️  playwright não disponível: pulando conversão para {nome}. HTML salvo em {html_file}")
         except Exception as e:

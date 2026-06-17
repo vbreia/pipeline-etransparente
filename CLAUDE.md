@@ -142,6 +142,7 @@ beautifulsoup4   # scraping HTML
 requests         # requisições HTTP
 pillow           # processamento de logos
 playwright       # geração de PDFs via Chromium (substituiu pdfkit/wkhtmltopdf)
+pypdf            # merge do PDF institucional (com margem/footerTemplate) + PDF da página final (sem margem)
 qrcode           # geração de QR codes nas páginas finais (opcional)
 pandas           # manipulação de dados
 plotly           # gráficos nos dashboards
@@ -198,6 +199,7 @@ docker-compose down
 | Score | Escala 0-30 | 15 pts gerais + 0-15 pts termos/emendas; classificação Regular/Bom/Ótimo |
 | Categorização docs | `block-field-<slug>` CSS | Identificação confiável pelo campo ACF de origem, não pelo nome do arquivo |
 | QR code | biblioteca `qrcode` | Verificação de autenticidade no PDF final (opcional, degradação graciosa) |
+| PDF final sem margem | 2 passagens Playwright + merge `pypdf` | Chromium aplica margin/footerTemplate uniformemente a todas as páginas de uma mesma `page.pdf()`; a página final (layout estático) é impressa sem margem em uma chamada separada e unida ao PDF institucional |
 
 ---
 

@@ -54,6 +54,7 @@ RUN pip install --no-cache-dir \
     qrcode \
     google-auth \
     google-analytics-data \
-    playwright
+    playwright \
+    pypdf
 
 RUN python3 -m playwright install chromium

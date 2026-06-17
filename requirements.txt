@@ -14,6 +14,7 @@ streamlit>=1.28.0
 
 # Geração de PDF
 playwright>=1.40.0
+pypdf>=4.0.0  # merge das páginas institucionais + página final (margens distintas)
 
 # Processamento de imagens
 Pillow>=10.0.0
