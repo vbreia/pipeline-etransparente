@@ -34,6 +34,13 @@ services:
       - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=false
       - GOOGLE_APPLICATION_CREDENTIALS=/etc/google/wif-credential.json
       - GA4_PROPERTY_ID=414902979
+      - AIRFLOW__SMTP__SMTP_HOST=br592.hostgator.com.br
+      - AIRFLOW__SMTP__SMTP_PORT=587
+      - AIRFLOW__SMTP__SMTP_STARTTLS=True
+      - AIRFLOW__SMTP__SMTP_SSL=False
+      - AIRFLOW__SMTP__SMTP_USER=comunicacao@direitocoletivo.org.br
+      - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
+      - AIRFLOW__SMTP__SMTP_MAIL_FROM=comunicacao@direitocoletivo.org.br
     command: airflow scheduler
     volumes:
       - airflow_home:/home/airflow
@@ -61,6 +68,13 @@ services:
       - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=false
       - GOOGLE_APPLICATION_CREDENTIALS=/etc/google/wif-credential.json
       - GA4_PROPERTY_ID=414902979
+      - AIRFLOW__SMTP__SMTP_HOST=br592.hostgator.com.br
+      - AIRFLOW__SMTP__SMTP_PORT=587
+      - AIRFLOW__SMTP__SMTP_STARTTLS=True
+      - AIRFLOW__SMTP__SMTP_SSL=False
+      - AIRFLOW__SMTP__SMTP_USER=comunicacao@direitocoletivo.org.br
+      - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
+      - AIRFLOW__SMTP__SMTP_MAIL_FROM=comunicacao@direitocoletivo.org.br
     command: airflow webserver -p 8080
     volumes:
       - airflow_home:/home/airflow
