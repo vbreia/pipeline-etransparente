@@ -29,7 +29,8 @@ dag = DAG(
     'ong_pipeline',
     default_args=default_args,
     description='Pipeline para extração e processamento de dados de ONGs',
-    schedule_interval='0 2 * * *',  # Executa diariamente às 2 AM
+    # Executa mensalmente, no dia 1 às 02:00 UTC
+    schedule_interval='0 2 1 * *',
     start_date=days_ago(1),
     catchup=False,
     tags=['ong', 'etransparente', 'pipeline'],
