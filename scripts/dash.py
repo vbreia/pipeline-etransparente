@@ -710,40 +710,11 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 .final-auth-note {{ font-size:9px; color:rgba(255,255,255,0.5); margin-top:10px; margin-bottom:0; line-height:1.4; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; }}
 
 .final-footer {{
-    display:table;
-    width:100%;
-    padding:14px 40px 28px;
-    box-sizing:border-box;
-    border-top:1px solid #e2e8f0;
-    margin-top:auto;
+    border-top: 2px solid #1e3a8a;
+    padding: 20px 40px;
+    background: #ffffff;
+    margin-top: auto;
 }}
-.final-footer-col {{
-    display:table-cell;
-    vertical-align:top;
-}}
-.final-footer-col-border {{
-    display:table-cell;
-    vertical-align:top;
-    width:30%;
-    border-right:1px solid #e2e8f0;
-    padding-right:20px;
-}}
-.final-footer-col-last {{
-    display:table-cell;
-    vertical-align:middle;
-    width:30%;
-    text-align:right;
-    padding-left:20px;
-}}
-.final-footer-idc-name {{ font-size:10px; font-weight:700; color:#1e3a8a; }}
-.final-footer-idc-desc {{ font-size:8px; color:#64748b; line-height:1.4; margin-top:2px; }}
-.final-footer-contact {{ font-size:9px; color:#64748b; margin-bottom:3px; }}
-.final-footer-contact .ph {{ font-size:10px; color:#1e3a8a; margin-right:4px; }}
-.final-footer-doc-title {{ font-size:10px; font-weight:700; letter-spacing:0.5px; color:#1e3a8a; margin-bottom:6px; }}
-.final-footer-doc-text {{ font-size:9px; color:#64748b; line-height:1.5; margin:0 0 8px; }}
-.final-footer-date {{ font-size:10px; color:#374151; }}
-.final-footer-brand {{ font-size:16px; font-weight:700; color:#1e3a8a; }}
-.final-footer-slogan {{ font-size:9px; color:#64748b; line-height:1.5; margin-top:4px; }}
 </style>
 </head>
 <body>
@@ -968,26 +939,43 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
   <!-- Rodapé institucional -->
   <div class="final-footer">
-    <div class="final-footer-col-border">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-        {idc_logo_tag}
-        <div>
-          <div class="final-footer-idc-name">Instituto de Direito Coletivo</div>
-          <div class="final-footer-idc-desc">Organização da sociedade civil que atua pelo fortalecimento da democracia, da justiça e dos direitos coletivos.</div>
-        </div>
-      </div>
-      <div class="final-footer-contact"><i class="ph ph-envelope"></i> contato@direitocoletivo.org.br</div>
-      <div class="final-footer-contact"><i class="ph ph-globe"></i> www.direitocoletivo.org.br</div>
-    </div>
-    <div class="final-footer-col" style="border-right:1px solid #e2e8f0;padding-right:20px;">
-      <div class="final-footer-doc-title">DOCUMENTO OFICIAL EMITIDO PELO IDC</div>
-      <p class="final-footer-doc-text">Relatório gerado automaticamente pela plataforma eTransparente.org com base nas informações públicas da organização.</p>
-      <div class="final-footer-date"><strong>Data de emissão:</strong> {data_emissao_formatada}</div>
-    </div>
-    <div class="final-footer-col-last">
-      <div class="final-footer-brand">etransparente.org</div>
-      <div class="final-footer-slogan">Organizações mais transparentes.<br>Sociedade mais forte.</div>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+
+        <!-- Coluna 1: Logo IDC + nome + descrição + contatos -->
+        <td style="width:32%;vertical-align:top;padding-right:24px;border-right:1px solid #e2e8f0;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <img src="file://{idc_logo_path}" style="height:40px;flex-shrink:0;" alt="IDC">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#1e3a8a;line-height:1.3;">Instituto de Direito Coletivo</div>
+              <div style="font-size:8px;color:#64748b;line-height:1.4;margin-top:2px;">Organização da sociedade civil que atua pelo fortalecimento da democracia, da justiça e dos direitos coletivos.</div>
+            </div>
+          </div>
+          <div style="font-size:9px;color:#64748b;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+            <i class="ph ph-envelope" style="color:#1e3a8a;font-size:11px;"></i>
+            contato@direitocoletivo.org.br
+          </div>
+          <div style="font-size:9px;color:#64748b;display:flex;align-items:center;gap:6px;">
+            <i class="ph ph-globe" style="color:#1e3a8a;font-size:11px;"></i>
+            www.direitocoletivo.org.br
+          </div>
+        </td>
+
+        <!-- Coluna 2: Documento oficial + data -->
+        <td style="width:36%;vertical-align:top;padding:0 24px;border-right:1px solid #e2e8f0;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:#1e3a8a;margin-bottom:8px;">DOCUMENTO OFICIAL EMITIDO PELO IDC</div>
+          <p style="font-size:9px;color:#64748b;line-height:1.6;margin:0 0 10px;">Relatório gerado automaticamente pela plataforma eTransparente.org com base nas informações públicas da organização.</p>
+          <div style="font-size:10px;color:#374151;"><strong>Data de emissão:</strong> {data_emissao_formatada}</div>
+        </td>
+
+        <!-- Coluna 3: etransparente.org + slogan -->
+        <td style="width:32%;vertical-align:middle;text-align:right;padding-left:24px;">
+          <div style="font-size:18px;font-weight:700;color:#1e3a8a;margin-bottom:6px;">etransparente.org</div>
+          <div style="font-size:9px;color:#64748b;line-height:1.6;">Organizações mais transparentes.<br>Sociedade mais forte.</div>
+        </td>
+
+      </tr>
+    </table>
   </div>
 
 </div>
