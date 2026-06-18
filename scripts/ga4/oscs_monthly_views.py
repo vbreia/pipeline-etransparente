@@ -73,11 +73,9 @@ def month_range_from_string(month_str: str) -> Tuple[str, str, List[str]]:
     return start.isoformat(), end.isoformat(), days
 
 
-def default_previous_month() -> str:
+def default_current_month() -> str:
     today = date.today()
-    first_this_month = today.replace(day=1)
-    prev_last = first_this_month - timedelta(days=1)
-    return prev_last.strftime("%Y-%m")
+    return today.strftime("%Y-%m")
 
 
 def read_input_json(path: str) -> List[Dict]:
@@ -151,7 +149,7 @@ def main():
     parser.add_argument("--output", help="Output JSON file path")
     args = parser.parse_args()
 
-    month = args.month or default_previous_month()
+    month = args.month or default_current_month()
     start_date, end_date, days = month_range_from_string(month)
 
     input_path = args.input
