@@ -70,19 +70,15 @@ def _gerar_hash(nome: str, data_emissao: str, nota_final, max_nota, classificaca
 
 
 def gerar_qr_png(hash_hex: str, url: str) -> str:
-    """Gera QR Code como PNG em /tmp e retorna caminho file://"""
-    if not QRCODE_AVAILABLE:
-        return ''
-    try:
-        path = f'/tmp/qrcode_{hash_hex[:16]}.png'
-        qr = _qrcode.QRCode(version=1, box_size=6, border=2)
-        qr.add_data(url)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color='black', back_color='white')
-        img.save(path)
-        return f'file://{path}'
-    except Exception:
-        return ''
+    import qrcode as _qrcode
+    path = f'/tmp/qrcode_{hash_hex[:16]}.png'
+    qr = _qrcode.QRCode(version=1, box_size=6, border=2)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color='black', back_color='white')
+    img.save(path)
+    assert os.path.exists(path), f'QR Code não foi criado em {path}'
+    return f'file://{path}'
 
 
 def imagem_para_base64(caminho: str) -> str:
@@ -1189,7 +1185,7 @@ def main():
             if PLAYWRIGHT_AVAILABLE:
                 try:
                     with sync_playwright() as p:
-                        browser = p.chromium.launch()
+                        browser = p.chromium.launch(args=['--allow-file-access-from-files'])
                         page = browser.new_page()
                         page.set_content(html_content, wait_until='domcontentloaded')
                         page.wait_for_load_state('networkidle')
