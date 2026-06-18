@@ -84,6 +84,17 @@ def _gerar_qr_data_uri(hash_hex: str) -> str:
         return ''
 
 
+def imagem_para_base64(caminho: str) -> str:
+    """Converte imagem local para data URI base64."""
+    if not caminho or not os.path.exists(caminho):
+        return ''
+    ext = os.path.splitext(caminho)[1].lower().replace('.', '')
+    mime = 'jpeg' if ext in ('jpg', 'jpeg') else ext
+    with open(caminho, 'rb') as f:
+        dados = base64.b64encode(f.read()).decode()
+    return f'data:image/{mime};base64,{dados}'
+
+
 # fields to show in the "Informações principais" box
 INFO_CAMPOS = [
     "nome",
@@ -285,29 +296,32 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     medium_url = f'file://{medium_path}'
     bold_url = f'file://{bold_path}'
 
-    # Logo da ONG
+    # Logo da ONG — embutido em base64 para funcionar fora da VM
     logo_url = ""
+    logo_path = None
     if logo_local_path and os.path.exists(logo_local_path):
-        logo_url = f'file://{os.path.abspath(logo_local_path)}'
+        logo_path = logo_local_path
     else:
         slug = ''
         match = re.search(r'/oscs/([^/]+)/?$', url)
         if match:
             slug = match.group(1)
-            logo_path = os.path.join(repo_root, 'assets', 'img', 'logos-ongs', f'{slug}.jpg')
-            if os.path.exists(logo_path):
-                logo_url = f'file://{logo_path}'
-        if not logo_url:
+            candidate = os.path.join(repo_root, 'assets', 'img', 'logos-ongs', f'{slug}.jpg')
+            if os.path.exists(candidate):
+                logo_path = candidate
+        if not logo_path:
             safe_name = re.sub(r'[^A-Za-z0-9_-]+', '_', nome).strip('_') or 'logo'
-            logo_path = os.path.join(repo_root, 'assets', 'img', 'logos-ongs', f'{safe_name}.jpg')
-            if os.path.exists(logo_path):
-                logo_url = f'file://{logo_path}'
-        if not logo_url:
+            candidate = os.path.join(repo_root, 'assets', 'img', 'logos-ongs', f'{safe_name}.jpg')
+            if os.path.exists(candidate):
+                logo_path = candidate
+        if not logo_path:
             default_logo = os.path.join(repo_root, 'assets', 'img', 'logo-default.png')
             if os.path.exists(default_logo):
-                logo_url = f'file://{default_logo}'
-            else:
-                logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
+                logo_path = default_logo
+    if logo_path:
+        logo_url = imagem_para_base64(logo_path)
+    if not logo_url:
+        logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
 
     if qr_data_uri:
         qr_img_tag = f'<img src="{qr_data_uri}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/>'
@@ -353,10 +367,10 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     mm_atual = _hoje.strftime('%m')
     periodo_referencia = f"Período de referência: 01/{mm_atual}/{ano_atual} a {_dias_no_mes:02d}/{mm_atual}/{ano_atual}"
 
-    idc_logo_path = os.path.join(repo_root, 'assets', 'img', 'LOGOIDC.png')
+    idc_logo_data = imagem_para_base64(os.path.join(repo_root, 'assets', 'img', 'LOGOIDC.png'))
     idc_logo_tag = (
-        f'<img src="file://{idc_logo_path}" alt="IDC" style="height:32px;display:block;">'
-        if os.path.exists(idc_logo_path) else ''
+        f'<img src="{idc_logo_data}" alt="IDC" style="height:32px;display:block;">'
+        if idc_logo_data else ''
     )
 
     _PILL_BG = {
