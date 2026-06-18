@@ -15,11 +15,12 @@ import os
 import re
 import smtplib
 import ssl
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
+from azure.storage.blob import generate_blob_sas, BlobSasPermissions, BlobServiceClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -79,6 +80,21 @@ def encontrar_pdf_idc(pasta_pdf):
         if 'instituto_de_direito_coletivo' in nome or '_idc_' in nome or nome.startswith('idc_'):
             return os.path.join(pasta_pdf, f)
     return None
+
+def gerar_sas_url(connection_string, container, blob_path, dias=30):
+    client = BlobServiceClient.from_connection_string(connection_string)
+    account_name = client.account_name
+    account_key = client.credential.account_key
+    expiry = datetime.now(timezone.utc) + timedelta(days=dias)
+    sas_token = generate_blob_sas(
+        account_name=account_name,
+        container_name=container,
+        blob_name=blob_path,
+        account_key=account_key,
+        permission=BlobSasPermissions(read=True),
+        expiry=expiry,
+    )
+    return f'https://{account_name}.blob.core.windows.net/{container}/{blob_path}?{sas_token}'
 
 def mes_ano():
     hoje = date.today()
@@ -337,10 +353,12 @@ def main():
                 pdf_path = idc_pdf
 
         if pdf_path:
-            cta_url = (
-                f'https://etransparentedata.blob.core.windows.net/etransparente'
-                f'/gold/{mes_ano_str}/pdf/{os.path.basename(pdf_path)}'
-            )
+            conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+            if conn_str:
+                blob_path = f'gold/{mes_ano_str}/pdf/{os.path.basename(pdf_path)}'
+                cta_url = gerar_sas_url(conn_str, 'etransparente', blob_path)
+            else:
+                cta_url = url_ong
         else:
             cta_url = url_ong
 
