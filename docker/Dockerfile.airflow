@@ -52,4 +52,5 @@ RUN pip install --no-cache-dir \
     playwright \
     pypdf \
     azure-storage-blob
+RUN pip install --no-cache-dir qrcode[pil]
 RUN python3 -m playwright install chromium
