@@ -71,14 +71,20 @@ def _gerar_hash(nome: str, data_emissao: str, nota_final, max_nota, classificaca
 
 def gerar_qr_png(hash_hex: str, url: str) -> str:
     import qrcode as _qrcode
-    path = f'/tmp/qrcode_{hash_hex[:16]}.png'
-    qr = _qrcode.QRCode(version=1, box_size=6, border=2)
-    qr.add_data(url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color='black', back_color='white')
-    img.save(path)
-    assert os.path.exists(path), f'QR Code não foi criado em {path}'
-    return f'file://{path}'
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        path = f'/tmp/qrcode_{hash_hex[:16]}.png'
+        qr = _qrcode.QRCode(version=1, box_size=6, border=2)
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='black', back_color='white')
+        img.save(path)
+        logger.info(f'QR Code gerado: {path} — existe: {os.path.exists(path)}')
+        return f'file://{path}'
+    except Exception as e:
+        logger.error(f'Erro ao gerar QR Code: {e}', exc_info=True)
+        return ''
 
 
 def imagem_para_base64(caminho: str) -> str:
@@ -1204,6 +1210,10 @@ def main():
                                 });
                             })
                         """)
+                        # Debug: verificar quantas referências QR existem no HTML
+                        qr_count = html_content.count('qrcode_')
+                        import logging
+                        logging.getLogger(__name__).info(f'QR Code references no HTML: {qr_count}')
                         page.pdf(
                             path=pdf_file,
                             format='A4',
