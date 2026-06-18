@@ -367,10 +367,11 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     mm_atual = _hoje.strftime('%m')
     periodo_referencia = f"Período de referência: 01/{mm_atual}/{ano_atual} a {_dias_no_mes:02d}/{mm_atual}/{ano_atual}"
 
-    idc_logo_data = imagem_para_base64(os.path.join(repo_root, 'assets', 'img', 'LOGOIDC.png'))
+    idc_logo_path = os.path.join(repo_root, 'assets', 'img', 'LOGOIDC.png')
+    idc_logo_b64 = imagem_para_base64(idc_logo_path)
     idc_logo_tag = (
-        f'<img src="{idc_logo_data}" alt="IDC" style="height:32px;display:block;">'
-        if idc_logo_data else ''
+        f'<img src="{idc_logo_b64}" alt="IDC" style="height:32px;display:block;">'
+        if idc_logo_b64 else ''
     )
 
     _PILL_BG = {
@@ -958,7 +959,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
         <!-- Coluna 1: Logo IDC + nome + descrição + contatos -->
         <td style="width:32%;vertical-align:top;padding-right:24px;border-right:1px solid #e2e8f0;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-            <img src="file://{idc_logo_path}" style="height:40px;flex-shrink:0;" alt="IDC">
+            <img src="{idc_logo_b64}" style="height:40px;flex-shrink:0;" alt="IDC">
             <div>
               <div style="font-size:11px;font-weight:700;color:#1e3a8a;line-height:1.3;">Instituto de Direito Coletivo</div>
               <div style="font-size:8px;color:#64748b;line-height:1.4;margin-top:2px;">Organização da sociedade civil que atua pelo fortalecimento da democracia, da justiça e dos direitos coletivos.</div>
