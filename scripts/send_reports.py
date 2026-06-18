@@ -74,10 +74,14 @@ def encontrar_pdf(pasta_pdf, nome_ong):
             return os.path.join(pasta_pdf, f)
     return None
 
+def normalizar(texto: str) -> str:
+    import unicodedata
+    return unicodedata.normalize('NFKD', texto).encode('ASCII', 'ignore').decode().lower()
+
 def encontrar_pdf_idc(pasta_pdf):
     for f in os.listdir(pasta_pdf):
-        nome = normalizar_nome(f)
-        if 'instituto_de_direito_coletivo' in nome or '_idc_' in nome or nome.startswith('idc_'):
+        nome = normalizar(f)
+        if 'instituto' in nome and 'direito' in nome and 'coletivo' in nome:
             return os.path.join(pasta_pdf, f)
     return None
 
