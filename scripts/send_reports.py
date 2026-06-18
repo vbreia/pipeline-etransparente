@@ -73,6 +73,13 @@ def encontrar_pdf(pasta_pdf, nome_ong):
             return os.path.join(pasta_pdf, f)
     return None
 
+def encontrar_pdf_idc(pasta_pdf):
+    for f in os.listdir(pasta_pdf):
+        nome = normalizar_nome(f)
+        if 'instituto_de_direito_coletivo' in nome or '_idc_' in nome or nome.startswith('idc_'):
+            return os.path.join(pasta_pdf, f)
+    return None
+
 def mes_ano():
     hoje = date.today()
     return hoje.month, hoje.year, MESES[hoje.month], hoje.strftime('%Y-%m')
@@ -262,6 +269,31 @@ def main():
         logger.warning('Pasta de PDFs não encontrada em %s', pasta_pdf)
         pasta_pdf = None
 
+    # Em modo teste, enviar apenas 2 emails: 1 Bom/Ótimo + 1 Regular
+    if test_mode:
+        idc_pdf = encontrar_pdf_idc(pasta_pdf) if pasta_pdf else None
+        bom_ong = regular_ong = None
+        for ong in ongs:
+            n = ong.get('nome', '').strip()
+            e = ong.get('email', '').strip()
+            if not n or not e:
+                continue
+            cls = scores_map.get(n, {}).get('classificacao', 'Regular')
+            if cls in ('Bom', 'Ótimo') and bom_ong is None:
+                bom_ong = ong
+            if cls == 'Regular' and regular_ong is None:
+                regular_ong = ong
+            if bom_ong and regular_ong:
+                break
+        ongs_a_processar = [o for o in (bom_ong, regular_ong) if o is not None]
+        logger.info(
+            'Modo teste: %d ONG(s) selecionada(s) (1 Bom/Ótimo, 1 Regular)',
+            len(ongs_a_processar),
+        )
+    else:
+        ongs_a_processar = ongs
+        idc_pdf = None
+
     stats = {
         'total': len(ongs),
         'enviados': 0,
@@ -269,7 +301,7 @@ def main():
         'falhas': [],
     }
 
-    for ong in ongs:
+    for ong in ongs_a_processar:
         nome = ong.get('nome', '').strip()
         email = ong.get('email', '').strip()
         url_ong = ong.get('url', 'https://etransparente.org')
@@ -308,6 +340,8 @@ def main():
                 '</head>',
                 f'</head>{aviso}',
             )
+            if idc_pdf:
+                pdf_path = idc_pdf
 
         try:
             enviar_email(smtp_config, destino, assunto, html_body, pdf_path)
