@@ -8,12 +8,10 @@ Usage: run `python scripts/dash.py` from repository root. The script will
 locate the newest `output/oscs_etransparente_*.json` automatically.
 """
 
-import base64
 import calendar
 import glob
 import hashlib
 import html as _html
-import io
 import json
 import os
 import random
@@ -75,15 +73,16 @@ def _gerar_hash(nome: str, data_emissao: str, nota_final, max_nota, classificaca
     return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 
-def _gerar_qr_data_uri(url: str) -> str:
-    """Gera QR code em memória e retorna data URI base64 (ou '' se falhar)."""
+def _gerar_qr_arquivo(hash_hex: str) -> str:
+    """Salva QR Code como PNG temporário e retorna o caminho file://."""
     if not QRCODE_AVAILABLE:
         return ''
     try:
-        buf = io.BytesIO()
-        _qrcode.make(url).save(buf, format='PNG')
-        b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-        return f'data:image/png;base64,{b64}'
+        qr_url = f'https://etransparente.org/verificar/{hash_hex}'
+        qr = _qrcode.make(qr_url)
+        path = f'/tmp/qrcode_{hash_hex[:16]}.png'
+        qr.save(path)
+        return f'file://{path}'
     except Exception:
         return ''
 
@@ -148,8 +147,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     data_emissao = datetime.now().strftime('%Y-%m')
     data_emissao_formatada = datetime.now().strftime('%d/%m/%Y')
     hash_hex = _gerar_hash(nome, data_emissao, nota_final, max_nota, classificacao)
-    qr_url = f'https://etransparente.org/verificar/{hash_hex}'
-    qr_data_uri = _gerar_qr_data_uri(qr_url)
+    qr_file = _gerar_qr_arquivo(hash_hex)
 
     descricao = osc.get('descricao_objeto_social', '') or ''
     descricao_obj = _html.escape(descricao[:400] + '...' if len(descricao) > 400 else descricao) if descricao else ''  # noqa: F841
@@ -314,8 +312,8 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
             else:
                 logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
 
-    if qr_data_uri:
-        qr_img_tag = f'<img src="{qr_data_uri}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/>'
+    if qr_file:
+        qr_img_tag = f'<img src="{qr_file}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/>'
     else:
         qr_img_tag = '<div style="width:80px;height:80px;background:#f1f5f9;border-radius:4px;margin:0 auto;"></div>'
 
@@ -1044,8 +1042,8 @@ if (contratosCanvas) {{
     # .final-page é renderizada em uma segunda passada, sem margin/footer do
     # Playwright, e já traz seu próprio QR Code + hash embutidos no layout.
     _mini_qr_tag = (
-        f'<img src="{qr_data_uri}" width="34" height="34" style="display:block;">'
-        if qr_data_uri else
+        f'<img src="{qr_file}" width="34" height="34" style="display:block;">'
+        if qr_file else
         '<div style="width:34px;height:34px;background:#f1f5f9;border-radius:4px;"></div>'
     )
     mini_footer_template_html = f"""
@@ -1261,6 +1259,13 @@ def main():
         print(f"Verificações salvas: {verificacoes_path} ({len(verificacoes)} registros)")
     except Exception as e:
         print(f"Aviso: erro ao salvar verificações: {e}")
+
+    # Limpeza dos QR Codes temporários
+    for f in glob.glob('/tmp/qrcode_*.png'):
+        try:
+            os.remove(f)
+        except Exception:
+            pass
 
     print('\n' + '=' * 60)
     print(f"Total de PDFs gerados: {pdf_count}/{len(oscs)}")
