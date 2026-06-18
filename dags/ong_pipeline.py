@@ -155,5 +155,23 @@ upload_task = PythonOperator(
     dag=dag,
 )
 
+def run_send_reports(**context):
+    """Executa o envio dos relatórios mensais por e-mail"""
+    script_path = '/home/airflow/scripts/send_reports.py'
+    result = subprocess.run(
+        ['python', script_path],
+        capture_output=True, text=True,
+        cwd='/home/airflow'
+    )
+    if result.returncode != 0:
+        raise Exception(f'send_reports falhou:\n{result.stderr}')
+    print(result.stdout)
+
+send_task = PythonOperator(
+    task_id='send_reports',
+    python_callable=run_send_reports,
+    dag=dag,
+)
+
 # Define task dependencies
-extract_task >> scores_task >> fetch_ga4_task >> dashboard_task >> upload_task
+extract_task >> scores_task >> fetch_ga4_task >> dashboard_task >> upload_task >> send_task
