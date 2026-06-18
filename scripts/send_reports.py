@@ -126,14 +126,31 @@ def build_paragraphs(entry, mes, ano, mes_extenso):
 
     return paragrafo_1, paragrafo_2, paragrafo_3, paragrafo_4
 
-def render_template(template_html, nome_ong, url_ong, p1, p2, p3, p4):
+BANNER_IMG_RE = re.compile(
+    r'<img\s+src="{{url_banner}}"[^>]*>'
+)
+
+def render_template(template_html, nome_ong, url_ong, assunto, p1, p2, p3, p4):
+    banner_html = (
+        '<table role="presentation" border="0" cellpadding="0" cellspacing="0" '
+        'width="100%"><tr><td align="center" '
+        'style="background-color:#1a3a5c;padding:32px 24px;">'
+        '<h1 style="color:#ffffff;font-size:20px;margin:0;font-weight:700;'
+        'font-family:\'Montserrat\',Arial,sans-serif;letter-spacing:1px;">'
+        'RELATÓRIO MENSAL DE TRANSPARÊNCIA</h1>'
+        '</td></tr></table>'
+    )
     html = template_html
-    html = html.replace('{{nome_ong}}', nome_ong)
+    html = BANNER_IMG_RE.sub(banner_html, html)
+    html = html.replace('{{name}}', nome_ong)
     html = html.replace('{{paragrafo_1}}', p1)
     html = html.replace('{{paragrafo_2}}', p2)
     html = html.replace('{{paragrafo_3}}', p3)
     html = html.replace('{{paragrafo_4}}', p4)
-    html = html.replace('{{url_ong}}', url_ong)
+    html = html.replace('{{link_cta}}', url_ong)
+    html = html.replace('{{texto_cta}}', 'Acesse sua página no etransparente.org')
+    html = html.replace('{{titulo_post}}', assunto)
+    html = html.replace('{{pagina alternativa}}', '')
     html = html.replace('{{descadastro}}', REMOVIDO)
     return html
 
@@ -276,21 +293,20 @@ def main():
         if not pdf_path and pasta_pdf:
             logger.warning('PDF não encontrado para: %s', nome)
 
-        html_body = render_template(template_html, nome, url_ong, p1, p2, p3, p4)
+        html_body = render_template(template_html, nome, url_ong, assunto, p1, p2, p3, p4)
 
         destino = email
         if test_mode:
             destino = test_email
             assunto = f'[TESTE] {assunto}'
             aviso = (
-                f'<p style="color:#cc0000;font-weight:bold;border:2px solid #cc0000;'
-                f'padding:12px;background:#fff0f0;">'
-                f'⚠ MODO DE TESTE — Em produção este e-mail seria enviado para '
-                f'<strong>{email}</strong> (ONG: {nome}).</p>'
+                f'<p style="background:#fff3cd;padding:12px;font-size:12px;">'
+                f'<strong>⚠️ MODO DE TESTE</strong> — Em produção este email seria '
+                f'enviado para: {email}</p>'
             )
             html_body = html_body.replace(
-                '<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">',
-                f'<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">{aviso}',
+                '</head>',
+                f'</head>{aviso}',
             )
 
         try:
