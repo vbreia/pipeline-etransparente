@@ -8,10 +8,12 @@ Usage: run `python scripts/dash.py` from repository root. The script will
 locate the newest `output/oscs_etransparente_*.json` automatically.
 """
 
+import base64
 import calendar
 import glob
 import hashlib
 import html as _html
+import io
 import json
 import os
 import random
@@ -29,12 +31,6 @@ try:
     QRCODE_AVAILABLE = True
 except Exception:
     QRCODE_AVAILABLE = False
-
-try:
-    from pypdf import PdfWriter
-    PYPDF_AVAILABLE = True
-except Exception:
-    PYPDF_AVAILABLE = False
 
 
 _SCORE_DEFAULTS = {
@@ -73,16 +69,17 @@ def _gerar_hash(nome: str, data_emissao: str, nota_final, max_nota, classificaca
     return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 
-def _gerar_qr_arquivo(hash_hex: str) -> str:
-    """Salva QR Code como PNG temporário e retorna o caminho file://."""
+def _gerar_qr_data_uri(hash_hex: str) -> str:
+    """Gera QR Code como data: URI (base64) para renderização inline no HTML."""
     if not QRCODE_AVAILABLE:
         return ''
     try:
         qr_url = f'https://etransparente.org/verificar/{hash_hex}'
-        qr = _qrcode.make(qr_url)
-        path = f'/tmp/qrcode_{hash_hex[:16]}.png'
-        qr.save(path)
-        return f'file://{path}'
+        img = _qrcode.make(qr_url)
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+        return f'data:image/png;base64,{b64}'
     except Exception:
         return ''
 
@@ -147,7 +144,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     data_emissao = datetime.now().strftime('%Y-%m')
     data_emissao_formatada = datetime.now().strftime('%d/%m/%Y')
     hash_hex = _gerar_hash(nome, data_emissao, nota_final, max_nota, classificacao)
-    qr_file = _gerar_qr_arquivo(hash_hex)
+    qr_data_uri = _gerar_qr_data_uri(hash_hex)
 
     descricao = osc.get('descricao_objeto_social', '') or ''
     descricao_obj = _html.escape(descricao[:400] + '...' if len(descricao) > 400 else descricao) if descricao else ''  # noqa: F841
@@ -312,8 +309,8 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
             else:
                 logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
 
-    if qr_file:
-        qr_img_tag = f'<img src="{qr_file}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/>'
+    if qr_data_uri:
+        qr_img_tag = f'<img src="{qr_data_uri}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/>'
     else:
         qr_img_tag = '<div style="width:80px;height:80px;background:#f1f5f9;border-radius:4px;margin:0 auto;"></div>'
 
@@ -1034,16 +1031,14 @@ if (contratosCanvas) {{
 </body>
 </html>"""
 
-    # ── rodapé mini, repetido nas páginas institucionais via footerTemplate ──
+    # ── rodapé mini, repetido em todas as páginas do PDF via footerTemplate ──
     # Chromium não repete elementos position:fixed em todas as páginas do PDF
     # (só renderiza onde calham no fluxo normal). A única forma suportada de
-    # ter algo fixo em TODA página é o footerTemplate nativo do Playwright
-    # (ver main()). Usado apenas no PDF das páginas institucionais — a
-    # .final-page é renderizada em uma segunda passada, sem margin/footer do
-    # Playwright, e já traz seu próprio QR Code + hash embutidos no layout.
+    # ter algo fixo em TODA página é o footerTemplate nativo do Playwright.
+    # O QR Code usa data: URI para ser renderizado inline no HTML.
     _mini_qr_tag = (
-        f'<img src="{qr_file}" width="34" height="34" style="display:block;">'
-        if qr_file else
+        f'<img src="{qr_data_uri}" width="34" height="34" style="display:block;">'
+        if qr_data_uri else
         '<div style="width:34px;height:34px;background:#f1f5f9;border-radius:4px;"></div>'
     )
     mini_footer_template_html = f"""
@@ -1171,75 +1166,28 @@ def main():
                 continue
 
             if PLAYWRIGHT_AVAILABLE:
-                pdf_institucional = pdf_file + '.institucional.pdf'
-                pdf_final = pdf_file + '.final.pdf'
                 try:
                     with sync_playwright() as p:
                         browser = p.chromium.launch()
                         page = browser.new_page()
-                        page.goto(f"file://{os.path.abspath(html_file)}")
-                        page.wait_for_load_state('networkidle')
-                        page.evaluate("document.fonts.ready")  # aguardar fontes/ícones Phosphor
-                        page.wait_for_timeout(2000)  # aguardar Chart.js renderizar
+                        page.set_content(html_content, wait_until='networkidle')
+                        page.evaluate("document.fonts.ready")
+                        page.wait_for_timeout(2000)
 
-                        # Renderizado em duas passagens porque o Chromium aplica
-                        # margin/footerTemplate de forma uniforme a TODAS as páginas
-                        # de uma mesma chamada page.pdf() — não há como reservar
-                        # espaço de rodapé só nas páginas institucionais. Por isso
-                        # a .final-page (layout estático) é impressa separadamente,
-                        # sem margem, e depois unida ao PDF institucional.
-                        page.add_style_tag(content=(
-                            "body.pdf-pass-institucional .final-page{display:none!important;}"
-                            "body.pdf-pass-final .content-wrapper{display:none!important;}"
-                        ))
-
-                        page.evaluate("document.body.classList.add('pdf-pass-institucional')")
                         page.pdf(
-                            path=pdf_institucional,
-                            width="210mm",
+                            path=pdf_file,
+                            format='A4',
                             print_background=True,
-                            prefer_css_page_size=False,
+                            margin={'top': '28px', 'bottom': '50px', 'left': '0px', 'right': '0px'},
                             display_header_footer=bool(mini_footer_template_html),
                             header_template='<div></div>',
                             footer_template=mini_footer_template_html or '<div></div>',
-                            margin={'top': '28px', 'bottom': '50px', 'left': '0px', 'right': '0px'},
-                        )
-
-                        page.evaluate(
-                            "document.body.classList.remove('pdf-pass-institucional');"
-                            "document.body.classList.add('pdf-pass-final')"
-                        )
-                        page.pdf(
-                            path=pdf_final,
-                            width="210mm",
-                            print_background=True,
-                            prefer_css_page_size=False,
-                            display_header_footer=False,
-                            margin={'top': '0px', 'bottom': '0px', 'left': '0px', 'right': '0px'},
                         )
                         browser.close()
-
-                    if PYPDF_AVAILABLE:
-                        writer = PdfWriter()
-                        writer.append(pdf_institucional)
-                        writer.append(pdf_final)
-                        with open(pdf_file, 'wb') as fh:
-                            writer.write(fh)
-                        os.remove(pdf_institucional)
-                        os.remove(pdf_final)
-                    else:
-                        print("⚠️  pypdf não disponível: usando apenas o PDF institucional (sem página final)")
-                        os.replace(pdf_institucional, pdf_file)
-                        if os.path.exists(pdf_final):
-                            os.remove(pdf_final)
-
                     pdf_count += 1
                     print(f"✓ PDF criado: {pdf_file}")
                 except Exception as e:
                     print(f"✗ Erro ao gerar PDF para {nome}: {e}")
-                    for tmp in (pdf_institucional, pdf_final):
-                        if os.path.exists(tmp):
-                            os.remove(tmp)
             else:
                 print(f"⚠️  playwright não disponível: pulando conversão para {nome}. HTML salvo em {html_file}")
         except Exception as e:
@@ -1259,13 +1207,6 @@ def main():
         print(f"Verificações salvas: {verificacoes_path} ({len(verificacoes)} registros)")
     except Exception as e:
         print(f"Aviso: erro ao salvar verificações: {e}")
-
-    # Limpeza dos QR Codes temporários
-    for f in glob.glob('/tmp/qrcode_*.png'):
-        try:
-            os.remove(f)
-        except Exception:
-            pass
 
     print('\n' + '=' * 60)
     print(f"Total de PDFs gerados: {pdf_count}/{len(oscs)}")
