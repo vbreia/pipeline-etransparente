@@ -70,21 +70,17 @@ def _gerar_hash(nome: str, data_emissao: str, nota_final, max_nota, classificaca
 
 
 def gerar_qr_png(hash_hex: str, url: str) -> str:
+    print(f'[QR] Gerando QR Code para hash: {hash_hex[:8]}...', flush=True)
     import qrcode as _qrcode
-    import logging
-    logger = logging.getLogger(__name__)
-    try:
-        path = f'/tmp/qrcode_{hash_hex[:16]}.png'
-        qr = _qrcode.QRCode(version=1, box_size=6, border=2)
-        qr.add_data(url)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color='black', back_color='white')
-        img.save(path)
-        logger.info(f'QR Code gerado: {path} — existe: {os.path.exists(path)}')
-        return f'file://{path}'
-    except Exception as e:
-        logger.error(f'Erro ao gerar QR Code: {e}', exc_info=True)
-        return ''
+    path = f'/tmp/qrcode_{hash_hex[:16]}.png'
+    qr = _qrcode.QRCode(version=1, box_size=6, border=2)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color='black', back_color='white')
+    img.save(path)
+    exists = os.path.exists(path)
+    print(f'[QR] Arquivo criado: {exists} — path: file://{path}', flush=True)
+    return f'file://{path}'
 
 
 def imagem_para_base64(caminho: str) -> str:
@@ -1049,6 +1045,8 @@ if (contratosCanvas) {{
 
 </body>
 </html>"""
+
+    print(f'[QR] QR Code no HTML: {"qrcode_" in html}', flush=True)
 
     # ── rodapé mini, repetido em todas as páginas do PDF via footerTemplate ──
     # Chromium não repete elementos position:fixed em todas as páginas do PDF
