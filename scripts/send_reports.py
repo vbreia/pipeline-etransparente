@@ -196,6 +196,17 @@ def build_consolidado_html(stats):
 </html>'''
 
 def main():
+    # Proteção contra disparo acidental
+    if os.environ.get('SEND_REPORTS_ENABLED', '').lower() != 'true':
+        logger.warning(
+            'SEND_REPORTS_ENABLED não está definida como true. '
+            'Nenhum email enviado. Configure no .env para habilitar.'
+        )
+        return
+
+    test_mode = os.environ.get('SEND_REPORTS_TEST_MODE', '').lower() == 'true'
+    test_email = os.environ.get('SEND_REPORTS_TEST_EMAIL', 'comunicacao@direitocoletivo.org.br')
+
     smtp_config = {
         'host': get_env_or_raise('AIRFLOW__SMTP__SMTP_HOST'),
         'port': int(os.environ.get('AIRFLOW__SMTP__SMTP_PORT', '587')),
@@ -267,13 +278,28 @@ def main():
 
         html_body = render_template(template_html, nome, url_ong, p1, p2, p3, p4)
 
+        destino = email
+        if test_mode:
+            destino = test_email
+            assunto = f'[TESTE] {assunto}'
+            aviso = (
+                f'<p style="color:#cc0000;font-weight:bold;border:2px solid #cc0000;'
+                f'padding:12px;background:#fff0f0;">'
+                f'⚠ MODO DE TESTE — Em produção este e-mail seria enviado para '
+                f'<strong>{email}</strong> (ONG: {nome}).</p>'
+            )
+            html_body = html_body.replace(
+                '<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">',
+                f'<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">{aviso}',
+            )
+
         try:
-            enviar_email(smtp_config, email, assunto, html_body, pdf_path)
-            logger.info('E-mail enviado: %s (%s)', nome, email)
+            enviar_email(smtp_config, destino, assunto, html_body, pdf_path)
+            logger.info('E-mail enviado: %s (%s)', nome, destino)
             stats['enviados'] += 1
         except Exception as e:
-            logger.error('Falha ao enviar para %s (%s): %s', nome, email, e)
-            stats['falhas'].append((nome, email, str(e)))
+            logger.error('Falha ao enviar para %s (%s): %s', nome, destino, e)
+            stats['falhas'].append((nome, destino, str(e)))
 
     # Relatório consolidado
     consolidado_html = build_consolidado_html(stats)
