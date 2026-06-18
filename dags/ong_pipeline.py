@@ -137,5 +137,23 @@ dashboard_task = PythonOperator(
     dag=dag,
 )
 
+def run_upload_to_azure(**context):
+    """Executa o upload dos outputs para o Azure Data Lake Gen2"""
+    script_path = '/home/airflow/scripts/upload_to_azure.py'
+    result = subprocess.run(
+        ['python', script_path],
+        capture_output=True, text=True,
+        cwd='/home/airflow'
+    )
+    if result.returncode != 0:
+        raise Exception(f'upload_to_azure falhou:\n{result.stderr}')
+    print(result.stdout)
+
+upload_task = PythonOperator(
+    task_id='upload_to_azure',
+    python_callable=run_upload_to_azure,
+    dag=dag,
+)
+
 # Define task dependencies
-extract_task >> scores_task >> fetch_ga4_task >> dashboard_task
+extract_task >> scores_task >> fetch_ga4_task >> dashboard_task >> upload_task

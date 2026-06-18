@@ -41,6 +41,7 @@ services:
       - AIRFLOW__SMTP__SMTP_USER=transparencia@direitocoletivo.org.br
       - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
       - AIRFLOW__SMTP__SMTP_MAIL_FROM=transparencia@direitocoletivo.org.br
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
     command: airflow scheduler
     volumes:
       - airflow_home:/home/airflow
@@ -75,6 +76,7 @@ services:
       - AIRFLOW__SMTP__SMTP_USER=transparencia@direitocoletivo.org.br
       - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
       - AIRFLOW__SMTP__SMTP_MAIL_FROM=transparencia@direitocoletivo.org.br
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
     command: airflow webserver -p 8080
     volumes:
       - airflow_home:/home/airflow

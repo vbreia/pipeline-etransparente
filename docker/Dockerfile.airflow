@@ -50,5 +50,6 @@ RUN pip install --no-cache-dir \
     google-auth \
     google-analytics-data \
     playwright \
-    pypdf
+    pypdf \
+    azure-storage-blob
 RUN python3 -m playwright install chromium
