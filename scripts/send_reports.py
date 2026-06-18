@@ -228,7 +228,7 @@ def build_relatorio_execucao_html(template_html, stats, ongs_detalhes, mes_exten
         '<tr><td align="center" style="background-color:#1a3a5c;padding:32px 24px;">'
         '<h1 style="color:#ffffff;font-size:20px;margin:0;font-weight:700;'
         'font-family:\'Montserrat\',Arial,sans-serif;letter-spacing:1px;">'
-        'RELATÓRIO DE EXECUÇÃO — PIPELINE ETRANSPARENTE</h1>'
+        'RELATÓRIO DE EXECUÇÃO<br>PIPELINE ETRANSPARENTE</h1>'
         '</td></tr></table>'
     )
 
