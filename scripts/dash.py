@@ -69,18 +69,18 @@ def _gerar_hash(nome: str, data_emissao: str, nota_final, max_nota, classificaca
     return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 
-def gerar_qr_png(hash_hex: str, url: str) -> str:
-    print(f'[QR] Gerando QR Code para hash: {hash_hex[:8]}...', flush=True)
-    import qrcode as _qrcode
-    path = f'/tmp/qrcode_{hash_hex[:16]}.png'
-    qr = _qrcode.QRCode(version=1, box_size=6, border=2)
+def gerar_qr_base64(url: str) -> str:
+    """Gera QR Code e retorna como data URI base64 para embed direto no HTML."""
+    import qrcode
+    import io
+    qr = qrcode.QRCode(version=1, box_size=6, border=2)
     qr.add_data(url)
     qr.make(fit=True)
     img = qr.make_image(fill_color='black', back_color='white')
-    img.save(path)
-    exists = os.path.exists(path)
-    print(f'[QR] Arquivo criado: {exists} — path: file://{path}', flush=True)
-    return f'file://{path}'
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    b64 = base64.b64encode(buffer.getvalue()).decode()
+    return f'data:image/png;base64,{b64}'
 
 
 def imagem_para_base64(caminho: str) -> str:
@@ -155,7 +155,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     data_emissao_formatada = datetime.now().strftime('%d/%m/%Y')
     hash_hex = _gerar_hash(nome, data_emissao, nota_final, max_nota, classificacao)
     url_verificacao = f'https://etransparente.org/verificar/{hash_hex}'
-    qr_path = gerar_qr_png(hash_hex, url_verificacao)
+    qr_data_uri = gerar_qr_base64(url_verificacao)
 
     descricao = osc.get('descricao_objeto_social', '') or ''
     descricao_obj = _html.escape(descricao[:400] + '...' if len(descricao) > 400 else descricao) if descricao else ''  # noqa: F841
@@ -323,8 +323,8 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     if not logo_url:
         logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
 
-    if qr_path:
-        qr_img_tag = f'<img src="{qr_path}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/>'
+    if qr_data_uri:
+        qr_img_tag = f'<img src="{qr_data_uri}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/>'
     else:
         qr_img_tag = '<div style="width:80px;height:80px;background:#f1f5f9;border-radius:4px;margin:0 auto;"></div>'
 
@@ -1046,16 +1046,16 @@ if (contratosCanvas) {{
 </body>
 </html>"""
 
-    print(f'[QR] QR Code no HTML: {"qrcode_" in html}', flush=True)
+    print(f'[QR] QR Code gerado: {"data:image/png;base64," in html}', flush=True)
 
     # ── rodapé mini, repetido em todas as páginas do PDF via footerTemplate ──
     # Chromium não repete elementos position:fixed em todas as páginas do PDF
     # (só renderiza onde calham no fluxo normal). A única forma suportada de
     # ter algo fixo em TODA página é o footerTemplate nativo do Playwright.
-    # O QR Code é gerado como PNG em /tmp e referenciado via file://.
+    # O QR Code é embutido como data URI base64 inline no HTML.
     _mini_qr_tag = (
-        f'<img src="{qr_path}" width="34" height="34" style="display:block;">'
-        if qr_path else
+        f'<img src="{qr_data_uri}" width="34" height="34" style="display:block;">'
+        if qr_data_uri else
         '<div style="width:34px;height:34px;background:#f1f5f9;border-radius:4px;"></div>'
     )
     mini_footer_template_html = f"""
@@ -1189,12 +1189,12 @@ def main():
             if PLAYWRIGHT_AVAILABLE:
                 try:
                     with sync_playwright() as p:
-                        browser = p.chromium.launch(args=['--allow-file-access-from-files'])
+                        browser = p.chromium.launch(args=['--disable-web-security', '--no-sandbox'])
                         page = browser.new_page()
                         page.set_content(html_content, wait_until='domcontentloaded')
                         page.wait_for_load_state('networkidle')
-                        page.wait_for_timeout(3000)
-                        # Força carregamento de todas as imagens file://
+                        page.wait_for_timeout(5000)
+                        # Força carregamento de todas as imagens
                         page.evaluate("""
                             () => new Promise(resolve => {
                                 const imgs = document.querySelectorAll('img');
@@ -1245,13 +1245,6 @@ def main():
         print(f"Verificações salvas: {verificacoes_path} ({len(verificacoes)} registros)")
     except Exception as e:
         print(f"Aviso: erro ao salvar verificações: {e}")
-
-    # Limpeza dos QR Codes temporários
-    for f in glob.glob('/tmp/qrcode_*.png'):
-        try:
-            os.remove(f)
-        except Exception:
-            pass
 
     print('\n' + '=' * 60)
     print(f"Total de PDFs gerados: {pdf_count}/{len(oscs)}")
