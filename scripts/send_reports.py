@@ -9,6 +9,7 @@ Para o IDC (comunicacao@direitocoletivo.org.br):
   - Relatório consolidado da execução
 """
 import glob
+import html as _html
 import json
 import logging
 import os
@@ -218,34 +219,137 @@ def carregar_template():
     with open(TEMPLATE_PATH, 'r', encoding='utf-8') as f:
         return f.read()
 
-def build_consolidado_html(stats):
+def build_relatorio_execucao_html(template_html, stats, ongs_detalhes, mes_extenso, ano):
     now = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-    mes, ano, *_ = mes_ano()
-    rows_sem_email = ''.join(
-        f'<li>{nome}</li>' for nome in stats['sem_email']
-    ) if stats['sem_email'] else '<li style="color:#888;">Nenhuma</li>'
+    titulo = f'Relatório de Execução — Pipeline etransparente — {mes_extenso}/{ano}'
 
-    rows_falhas = ''.join(
-        f'<li>{nome} — {email}: {motivo}</li>'
-        for nome, email, motivo in stats['falhas']
-    ) if stats['falhas'] else '<li style="color:#888;">Nenhuma</li>'
+    banner_admin = (
+        '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">'
+        '<tr><td align="center" style="background-color:#1a3a5c;padding:32px 24px;">'
+        '<h1 style="color:#ffffff;font-size:20px;margin:0;font-weight:700;'
+        'font-family:\'Montserrat\',Arial,sans-serif;letter-spacing:1px;">'
+        'RELATÓRIO DE EXECUÇÃO — PIPELINE ETRANSPARENTE</h1>'
+        '</td></tr></table>'
+    )
 
-    return f'''<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;padding:20px;">
-<h2>Relatório de Execução — {mes}/{ano}</h2>
-<p><strong>Data/hora:</strong> {now}</p>
-<p><strong>Total de ONGs processadas:</strong> {stats['total']}</p>
-<p><strong>E-mails enviados com sucesso:</strong> {stats['enviados']}</p>
+    # ── Seção 1: Alertas ──
+    alertas = ''
 
-<h3>ONGs sem e-mail cadastrado</h3>
-<ul>{rows_sem_email}</ul>
+    if stats['falhas']:
+        falhas_rows = ''.join(
+            f'<li>{nome} — {email} — Motivo: {motivo}</li>'
+            for nome, email, motivo in stats['falhas']
+        )
+        alertas += (
+            '<div style="background:#fef2f2;border-left:4px solid #dc2626;'
+            'padding:16px;margin-bottom:12px;border-radius:4px;">'
+            f'<strong style="color:#dc2626;">❌ FALHAS DE ENVIO ({len(stats["falhas"])})</strong>'
+            f'<ul>{falhas_rows}</ul></div>'
+        )
 
-<h3>Falhas de envio</h3>
-<ul>{rows_falhas}</ul>
-</body>
-</html>'''
+    zeradas = [d for d in ongs_detalhes if d['nota_final'] == 0]
+    if zeradas:
+        zeradas_rows = ''.join(
+            f'<li>{d["nome"]} — <a href="{d["url_etransparente"]}" style="color:#ea580c;">ver página</a></li>'
+            for d in zeradas
+        )
+        alertas += (
+            '<div style="background:#fff7ed;border-left:4px solid #ea580c;'
+            'padding:16px;margin-bottom:12px;border-radius:4px;">'
+            f'<strong style="color:#ea580c;">⚠️ ONGs COM NOTA ZERADA ({len(zeradas)})</strong>'
+            f'<ul>{zeradas_rows}</ul></div>'
+        )
+
+    p1 = alertas if alertas else '<p style="color:#888;font-size:13px;">Nenhum alerta nesta execução.</p>'
+
+    # ── Seção 2: Resumo geral ──
+    p2 = f'''<table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+  <tr>
+    <td style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;">Total de ONGs processadas</td>
+    <td style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;font-weight:700;">{stats['total']}</td>
+  </tr>
+  <tr>
+    <td style="padding:12px;border:1px solid #e2e8f0;font-size:13px;">Emails enviados com sucesso</td>
+    <td style="padding:12px;border:1px solid #e2e8f0;font-size:13px;font-weight:700;color:#16a34a;">{stats['enviados']}</td>
+  </tr>
+  <tr>
+    <td style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;">Sem email cadastrado</td>
+    <td style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;font-weight:700;color:#ea580c;">{len(stats['sem_email'])}</td>
+  </tr>
+  <tr>
+    <td style="padding:12px;border:1px solid #e2e8f0;font-size:13px;">Falhas de envio</td>
+    <td style="padding:12px;border:1px solid #e2e8f0;font-size:13px;font-weight:700;color:#dc2626;">{len(stats['falhas'])}</td>
+  </tr>
+  <tr>
+    <td style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;">Data/hora da execução</td>
+    <td style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;">{now}</td>
+  </tr>
+</table>'''
+
+    # ── Seção 3: Tabela de ONGs por nota (pior primeiro) ──
+    sorted_ongs = sorted(ongs_detalhes, key=lambda d: (d['nota_final'], d['nome']))
+    CORES_CLASS = {'Regular': '#fef2f2', 'Bom': '#fefce8', 'Ótimo': '#f0fdf4'}
+
+    table_rows = ''
+    for i, d in enumerate(sorted_ongs, 1):
+        bg = CORES_CLASS.get(d['classificacao'], '#ffffff')
+        email_col = d['email'] if d['email'] else '—  sem email'
+        pdf_link = (
+            f'<a href="{d["pdf_sas_url"]}" style="color:#1a3a5c;">📄 Ver PDF</a>'
+            if d['pdf_sas_url'] else '—'
+        )
+        table_rows += f'''<tr style="background:{bg};">
+      <td style="padding:8px;border:1px solid #e2e8f0;">{i}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;font-weight:600;">{d['nome']}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">{d['nota_final']}/{d['max_nota']}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">{d['classificacao']}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;">{_html.escape(email_col)}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">{pdf_link}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;"><a href="{d['url_etransparente']}" style="color:#1a3a5c;">🔗 Ver página</a></td>
+    </tr>'''
+
+    p3 = f'''<h3 style="font-family:'Montserrat',Arial,sans-serif;color:#1a3a5c;font-size:15px;margin:24px 0 12px;">ONGs por nota (pior primeiro)</h3>
+<table style="width:100%;border-collapse:collapse;font-size:12px;">
+  <thead>
+    <tr style="background:#1a3a5c;color:#ffffff;">
+      <th style="padding:10px;text-align:left;">#</th>
+      <th style="padding:10px;text-align:left;">ONG</th>
+      <th style="padding:10px;text-align:center;">Nota</th>
+      <th style="padding:10px;text-align:center;">Classificação</th>
+      <th style="padding:10px;text-align:left;">Email enviado para</th>
+      <th style="padding:10px;text-align:center;">PDF</th>
+      <th style="padding:10px;text-align:center;">Página</th>
+    </tr>
+  </thead>
+  <tbody>
+    {table_rows}
+  </tbody>
+</table>'''
+
+    # ── Seção 4: ONGs sem email ──
+    sem_email_nomes = stats.get('sem_email', [])
+    if sem_email_nomes:
+        sem_email_list = ''.join(f'<li>{_html.escape(n)}</li>' for n in sem_email_nomes)
+    else:
+        sem_email_list = '<li style="color:#888;">Nenhuma ONG sem email cadastrado.</li>'
+
+    p4 = f'''<h3 style="font-family:'Montserrat',Arial,sans-serif;color:#1a3a5c;font-size:15px;margin:24px 0 12px;">ONGs sem email cadastrado</h3>
+<ul>{sem_email_list}</ul>'''
+
+    # ── Render no template ──
+    html = template_html
+    html = BANNER_IMG_RE.sub(banner_admin, html)
+    html = html.replace('{{name}}', 'administrador do sistema')
+    html = html.replace('{{titulo_post}}', titulo)
+    html = html.replace('{{paragrafo_1}}', p1)
+    html = html.replace('{{paragrafo_2}}', p2)
+    html = html.replace('{{paragrafo_3}}', p3)
+    html = html.replace('{{paragrafo_4}}', p4)
+    html = html.replace('{{link_cta}}', '')
+    html = html.replace('{{texto_cta}}', '')
+    html = html.replace('{{pagina alternativa}}', '')
+    html = html.replace('{{descadastro}}', REMOVIDO)
+    return html
 
 def main():
     # Proteção contra disparo acidental
@@ -296,6 +400,34 @@ def main():
     if not pasta_pdf or not os.path.isdir(pasta_pdf):
         logger.warning('Pasta de PDFs não encontrada em %s', pasta_pdf)
         pasta_pdf = None
+
+    # Build detalhes de todas as ONGs para o relatório de execução
+    conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+    ongs_detalhes = []
+    for ong in ongs:
+        nome = ong.get('nome', '').strip()
+        if not nome:
+            continue
+        score = scores_map.get(nome, {})
+        email = ong.get('email', '').strip()
+        url_ong = ong.get('url', 'https://etransparente.org/')
+        pdf_path = encontrar_pdf(pasta_pdf, nome) if pasta_pdf else None
+        sas_url = ''
+        if pdf_path and conn_str:
+            blob_path = f'gold/{mes_ano_str}/pdf/{os.path.basename(pdf_path)}'
+            try:
+                sas_url = gerar_sas_url(conn_str, 'etransparente', blob_path)
+            except Exception:
+                pass
+        ongs_detalhes.append({
+            'nome': nome,
+            'nota_final': score.get('nota_final', 0),
+            'max_nota': score.get('max_nota', 30),
+            'classificacao': score.get('classificacao', 'Regular'),
+            'email': email,
+            'pdf_sas_url': sas_url,
+            'url_etransparente': url_ong,
+        })
 
     # Em modo teste, enviar apenas 2 emails: 1 Bom/Ótimo + 1 Regular
     if test_mode:
@@ -391,21 +523,24 @@ def main():
             logger.error('Falha ao enviar para %s (%s): %s', nome, destino, e)
             stats['falhas'].append((nome, destino, str(e)))
 
-    # Relatório consolidado
-    consolidado_html = build_consolidado_html(stats)
+    # Relatório de execução
+    relatorio_html = build_relatorio_execucao_html(
+        template_html, stats, ongs_detalhes, mes_extenso, ano
+    )
     consolidado_subject = (
-        f'[Pipeline etransparente] Relatório de Execução — {mes_ano_str}'
+        f'[Pipeline etransparente] Relatório de Execução — {mes_extenso}/{ano} — '
+        f'{stats["enviados"]}/{stats["total"]} enviados'
     )
     try:
         enviar_email(
             smtp_config,
             'comunicacao@direitocoletivo.org.br',
             consolidado_subject,
-            consolidado_html,
+            relatorio_html,
         )
-        logger.info('Relatório consolidado enviado para comunicacao@direitocoletivo.org.br')
+        logger.info('Relatório de execução enviado para comunicacao@direitocoletivo.org.br')
     except Exception as e:
-        logger.error('Falha ao enviar relatório consolidado: %s', e)
+        logger.error('Falha ao enviar relatório de execução: %s', e)
 
     logger.info(
         'Resumo: %d total, %d enviados, %d sem e-mail, %d falhas',
