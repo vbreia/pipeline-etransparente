@@ -327,6 +327,10 @@ def analyze_file(filepath: str) -> Dict[str, Any]:
     with open(filepath, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
+    if os.environ.get('PIPELINE_TEST_MODE', '').lower() == 'true':
+        data = [o for o in data if 'direito coletivo' in (o.get('nome') or o.get('title', '')).lower() or 'idc' in (o.get('nome') or o.get('title', '')).lower()]
+        print(f'PIPELINE_TEST_MODE: filtrando apenas IDC ({len(data)} ONG)')
+
     if not isinstance(data, list):
         raise ValueError("Formato inesperado: o arquivo root deve ser uma lista de OSCs")
 

@@ -35,11 +35,23 @@ def main():
     container = 'etransparente'
     client = get_client()
 
+    test_mode = os.environ.get('PIPELINE_TEST_MODE', '').lower() == 'true'
+    if test_mode:
+        logger.info('PIPELINE_TEST_MODE: filtrando uploads apenas do IDC')
+
+    def _idc_match(path):
+        stem = Path(path).stem.lower()
+        return 'idc' in stem or 'instituto-de-direito-coletivo' in stem
+
     # Bronze — JSONs brutos do mês
     for pattern in [f'oscs_etransparente_*.json', f'oscs_views_{month}.json']:
         for f in glob.glob(os.path.join(out, pattern)):
+            if test_mode and not _idc_match(f):
+                continue
             upload_file(client, container, f'bronze/{month}/{Path(f).name}', f)
     for f in glob.glob(os.path.join(out, 'scores', f'transparency_scores_*.json')):
+        if test_mode and not _idc_match(f):
+            continue
         upload_file(client, container, f'bronze/{month}/{Path(f).name}', f)
 
     # Gold — PDFs e HTMLs do mês
@@ -48,6 +60,8 @@ def main():
         latest = dashboards[-1]
         for folder in ['pdf', 'html']:
             for f in glob.glob(os.path.join(latest, folder, '*')):
+                if test_mode and not _idc_match(f):
+                    continue
                 upload_file(client, container, f'gold/{month}/{folder}/{Path(f).name}', f)
 
     logger.info(f'Upload concluído para {month}')

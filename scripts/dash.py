@@ -1061,6 +1061,10 @@ def main():
     with open(input_file, 'r', encoding='utf-8') as f:
         oscs = json.load(f)
 
+    if os.environ.get('PIPELINE_TEST_MODE', '').lower() == 'true':
+        oscs = [o for o in oscs if 'direito coletivo' in o.get('nome', '').lower() or 'idc' in o.get('nome', '').lower()]
+        print(f'PIPELINE_TEST_MODE: filtrando apenas IDC ({len(oscs)} ONG)')
+
     # Load scores and build lookup by ONG name
     scores_file = find_latest_scores()
     scores_by_nome = {}

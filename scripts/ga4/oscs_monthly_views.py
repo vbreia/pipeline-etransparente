@@ -185,6 +185,10 @@ def main():
             print(f"Sem --input e sem data no nome: usando arquivo por mtime: {input_path}")
     items = read_input_json(input_path)
 
+    if os.environ.get('PIPELINE_TEST_MODE', '').lower() == 'true':
+        items = [o for o in items if 'direito coletivo' in (o.get('nome') or o.get('title', '')).lower() or 'idc' in (o.get('nome') or o.get('title', '')).lower()]
+        print(f'PIPELINE_TEST_MODE: filtrando apenas IDC ({len(items)} ONG)')
+
     # Prepare mapping idx -> (nome, url, path)
     prepared = []
     for obj in items:

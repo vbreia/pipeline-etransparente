@@ -883,6 +883,10 @@ def main():
     # Extrair dados de todas as ONGs disponíveis
     dados = extrator.extrair_todas_ongs()
     
+    if os.environ.get('PIPELINE_TEST_MODE', '').lower() == 'true':
+        dados = [o for o in dados if 'direito coletivo' in o.nome.lower() or 'idc' in o.nome.lower()]
+        extrator.logger.info(f'PIPELINE_TEST_MODE: filtrando apenas IDC ({len(dados)} ONG)')
+    
     if dados:
         # Salvar dados (retorna caminho do arquivo salvo ou False)
         caminho_salvo = extrator.salvar_dados(dados)
