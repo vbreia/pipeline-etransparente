@@ -92,7 +92,7 @@ def build_paragraphs(entry, mes, ano, mes_extenso):
 
     paragrafo_1 = (
         f'Encaminhamos em anexo o Relatório Mensal do Índice de Transparência '
-        f'referente ao período de {mes}/{ano}, elaborado pelo Instituto de Direito '
+        f'referente ao período de {mes_extenso}/{ano}, elaborado pelo Instituto de Direito '
         f'Coletivo com base nas informações públicas disponíveis na plataforma '
         f'etransparente.org.'
     )
@@ -137,7 +137,7 @@ BANNER_IMG_RE = re.compile(
     r'<img\s+src="{{url_banner}}"[^>]*>'
 )
 
-def render_template(template_html, nome_ong, url_ong, assunto, p1, p2, p3, p4):
+def render_template(template_html, nome_ong, cta_url, assunto, p1, p2, p3, p4):
     banner_html = (
         '<table role="presentation" border="0" cellpadding="0" cellspacing="0" '
         'width="100%"><tr><td align="center" '
@@ -147,15 +147,19 @@ def render_template(template_html, nome_ong, url_ong, assunto, p1, p2, p3, p4):
         'RELATÓRIO MENSAL DE TRANSPARÊNCIA</h1>'
         '</td></tr></table>'
     )
+    saudacao = (
+        f'pessoa responsável pela {nome_ong.title()} '
+        f'na plataforma etransparente.org'
+    )
     html = template_html
     html = BANNER_IMG_RE.sub(banner_html, html)
-    html = html.replace('{{name}}', nome_ong)
+    html = html.replace('{{name}}', saudacao)
     html = html.replace('{{paragrafo_1}}', p1)
     html = html.replace('{{paragrafo_2}}', p2)
     html = html.replace('{{paragrafo_3}}', p3)
     html = html.replace('{{paragrafo_4}}', p4)
-    html = html.replace('{{link_cta}}', url_ong)
-    html = html.replace('{{texto_cta}}', 'Acesse sua página no etransparente.org')
+    html = html.replace('{{link_cta}}', cta_url)
+    html = html.replace('{{texto_cta}}', 'Confira agora seu Relatório Mensal de Transparência')
     html = html.replace('{{titulo_post}}', assunto)
     html = html.replace('{{pagina alternativa}}', '')
     html = html.replace('{{descadastro}}', REMOVIDO)
@@ -325,12 +329,24 @@ def main():
         if not pdf_path and pasta_pdf:
             logger.warning('PDF não encontrado para: %s', nome)
 
-        html_body = render_template(template_html, nome, url_ong, assunto, p1, p2, p3, p4)
-
         destino = email
         if test_mode:
             destino = test_email
             assunto = f'[TESTE] {assunto}'
+            if idc_pdf:
+                pdf_path = idc_pdf
+
+        if pdf_path:
+            cta_url = (
+                f'https://etransparentedata.blob.core.windows.net/etransparente'
+                f'/gold/{mes_ano_str}/pdf/{os.path.basename(pdf_path)}'
+            )
+        else:
+            cta_url = url_ong
+
+        html_body = render_template(template_html, nome, cta_url, assunto, p1, p2, p3, p4)
+
+        if test_mode:
             aviso = (
                 f'<p style="background:#fff3cd;padding:12px;font-size:12px;">'
                 f'<strong>⚠️ MODO DE TESTE</strong> — Em produção este email seria '
@@ -340,8 +356,6 @@ def main():
                 '</head>',
                 f'</head>{aviso}',
             )
-            if idc_pdf:
-                pdf_path = idc_pdf
 
         try:
             enviar_email(smtp_config, destino, assunto, html_body, pdf_path)
