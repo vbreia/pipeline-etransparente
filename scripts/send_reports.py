@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import smtplib
+import unicodedata
 import ssl
 from datetime import date, datetime, timezone, timedelta
 from email.mime.application import MIMEApplication
@@ -61,17 +62,20 @@ def carregar_scores(path):
         data = json.load(f)
     return data.get('resultados', [])
 
-def normalizar_nome(nome):
-    s = nome.strip().lower()
-    s = re.sub(r'[^a-z0-9áéíóúâêôãõçü]+', '_', s)
-    s = s.strip('_')
-    return s
+def normalizar_para_arquivo(texto: str) -> str:
+    """Remove acentos, converte para minúsculas e substitui caracteres especiais por hífen."""
+    texto = unicodedata.normalize('NFKD', texto).encode('ASCII', 'ignore').decode()
+    texto = texto.lower()
+    texto = re.sub(r'[^a-z0-9]+', '-', texto)
+    texto = texto.strip('-')
+    return texto
 
-def encontrar_pdf(pasta_pdf, nome_ong):
-    norm = normalizar_nome(nome_ong)
-    for f in os.listdir(pasta_pdf):
-        if normalizar_nome(f).endswith(norm + '.pdf'):
-            return os.path.join(pasta_pdf, f)
+def encontrar_pdf(pdf_dir: str, nome_ong: str) -> str | None:
+    nome_normalizado = normalizar_para_arquivo(nome_ong)
+    for f in os.listdir(pdf_dir):
+        nome_arquivo = normalizar_para_arquivo(f)
+        if nome_normalizado in nome_arquivo:
+            return os.path.join(pdf_dir, f)
     return None
 
 def normalizar(texto: str) -> str:
