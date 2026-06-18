@@ -157,11 +157,15 @@ upload_task = PythonOperator(
 
 def run_send_reports(**context):
     """Executa o envio dos relatórios mensais por e-mail"""
+    import os
+    env = os.environ.copy()
+    env['SEND_REPORTS_ENABLED'] = 'true'
     script_path = '/home/airflow/scripts/send_reports.py'
     result = subprocess.run(
         ['python', script_path],
         capture_output=True, text=True,
-        cwd='/home/airflow'
+        cwd='/home/airflow',
+        env=env,
     )
     if result.returncode != 0:
         raise Exception(f'send_reports falhou:\n{result.stderr}')
