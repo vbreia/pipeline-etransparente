@@ -162,6 +162,11 @@ BANNER_IMG_RE = re.compile(
     r'<img\s+src="{{url_banner}}"[^>]*>'
 )
 
+BANNER_BLOCK_RE = re.compile(
+    r'<!-- BANNER -->\s*<tr>\s*<td[^>]*>\s*<table[^>]*>\s*<tr>\s*<td>\s*<img\s+src="{{url_banner}}"[^>]*>\s*</td>\s*</tr>\s*</table>\s*</td>\s*</tr>',
+    re.DOTALL,
+)
+
 def render_template(template_html, nome_ong, cta_url, assunto, p1, p2, p3, p4):
     banner_html = (
         '<table role="presentation" border="0" cellpadding="0" cellspacing="0" '
@@ -224,12 +229,13 @@ def build_relatorio_execucao_html(template_html, stats, ongs_detalhes, mes_exten
     titulo = f'Relatório de Execução — Pipeline etransparente — {mes_extenso}/{ano}'
 
     banner_admin = (
-        '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">'
-        '<tr><td align="center" style="background-color:#1a3a5c;padding:32px 24px;">'
+        '<!-- BANNER -->\n        '
+        '<tr>\n          '
+        '<td style="padding:32px 24px;background-color:#1a3a5c;text-align:center;">\n            '
         '<h1 style="color:#ffffff;font-size:20px;margin:0;font-weight:700;'
         'font-family:\'Montserrat\',Arial,sans-serif;letter-spacing:1px;">'
-        'RELATÓRIO DE EXECUÇÃO<br>PIPELINE ETRANSPARENTE</h1>'
-        '</td></tr></table>'
+        'RELATÓRIO DE EXECUÇÃO<br>PIPELINE ETRANSPARENTE</h1>\n          '
+        '</td>\n        </tr>'
     )
 
     # ── Seção 1: Alertas ──
@@ -338,7 +344,7 @@ def build_relatorio_execucao_html(template_html, stats, ongs_detalhes, mes_exten
 
     # ── Render no template ──
     html = template_html
-    html = BANNER_IMG_RE.sub(banner_admin, html)
+    html = BANNER_BLOCK_RE.sub(banner_admin, html)
     html = html.replace('{{name}}', 'administrador do sistema')
     html = html.replace('{{titulo_post}}', titulo)
     html = html.replace('{{paragrafo_1}}', p1)
