@@ -130,7 +130,7 @@ def contar_termos(osc):
                for c in ['municipio', 'estado', 'uniao', 'emendas_parlamentares'])
 
 
-def gerar_dashboard_html(osc, score=None):
+def gerar_dashboard_html(osc, score=None, views_by_url=None):
     nome = osc.get('nome', 'Sem nome')
     url = osc.get('url', '#')
 
@@ -338,7 +338,11 @@ def gerar_dashboard_html(osc, score=None):
         datetime(_ano_chart, _mes_chart, d).strftime('%d/%m')
         for d in range(1, _dias_no_mes + 1)
     ]
-    _chart_data = [random.randint(50, 800) for _ in range(_dias_no_mes)]
+    views_list = (views_by_url or {}).get(url)
+    if views_list and len(views_list) == _dias_no_mes:
+        _chart_data = views_list
+    else:
+        _chart_data = [random.randint(50, 800) for _ in range(_dias_no_mes)]
     chart_labels_js = json.dumps(_chart_labels)
     chart_data_js = json.dumps(_chart_data)
     total_visualizacoes = sum(_chart_data)
@@ -1091,6 +1095,23 @@ def main():
     os.makedirs(html_dir, exist_ok=True)
     os.makedirs(pdf_dir, exist_ok=True)
 
+    # Load GA4 views data
+    views_by_url = {}
+    views_file = os.path.join(_base, 'output', f'oscs_views_{data_emissao}.json')
+    if os.path.exists(views_file):
+        try:
+            with open(views_file, 'r', encoding='utf-8') as f:
+                views_data = json.load(f)
+            for entry in views_data:
+                url = entry.get('url', '')
+                if url:
+                    views_by_url[url] = entry.get('views', [])
+            print(f"GA4 views carregados: {views_file} ({len(views_by_url)} ONGs)")
+        except Exception as e:
+            print(f"Aviso: erro ao carregar GA4 views: {e}")
+    else:
+        print(f"Aviso: arquivo GA4 views não encontrado em {views_file}. Usando dados aleatórios como fallback.")
+
     mes_nome = datetime.now().strftime('%B').lower()
     meses_pt = {
         'january': 'janeiro', 'february': 'fevereiro', 'march': 'março', 'april': 'abril',
@@ -1124,7 +1145,7 @@ def main():
         try:
             mini_footer_template_html = ''
             try:
-                html_content, hash_hex, mini_footer_template_html = gerar_dashboard_html(osc, score)
+                html_content, hash_hex, mini_footer_template_html = gerar_dashboard_html(osc, score, views_by_url)
                 s = score or {}
                 verificacoes.append({
                     'hash': hash_hex,

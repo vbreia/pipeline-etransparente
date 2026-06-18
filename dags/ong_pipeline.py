@@ -98,6 +98,20 @@ def run_dashboard_generator(**context):
     return result.stdout
 
 
+def run_fetch_ga4_views(**context):
+    """Executa o script de busca de visualizações GA4"""
+    script_path = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'ga4', 'oscs_monthly_views.py')
+    script_path = os.path.abspath(script_path)
+    result = subprocess.run(
+        ['python', script_path],
+        capture_output=True, text=True,
+        cwd='/home/airflow'
+    )
+    if result.returncode != 0:
+        raise Exception(f"fetch_ga4_views falhou:\n{result.stderr}")
+    print(result.stdout)
+
+
 # Tasks
 extract_task = PythonOperator(
     task_id='extract_ong_data',
@@ -111,6 +125,12 @@ scores_task = PythonOperator(
     dag=dag,
 )
 
+fetch_ga4_task = PythonOperator(
+    task_id='fetch_ga4_views',
+    python_callable=run_fetch_ga4_views,
+    dag=dag,
+)
+
 dashboard_task = PythonOperator(
     task_id='generate_dashboards',
     python_callable=run_dashboard_generator,
@@ -118,4 +138,4 @@ dashboard_task = PythonOperator(
 )
 
 # Define task dependencies
-extract_task >> scores_task >> dashboard_task
+extract_task >> scores_task >> fetch_ga4_task >> dashboard_task
