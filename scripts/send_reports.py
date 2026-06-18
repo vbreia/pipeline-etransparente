@@ -172,10 +172,7 @@ def render_template(template_html, nome_ong, cta_url, assunto, p1, p2, p3, p4):
         'RELATÓRIO MENSAL DE TRANSPARÊNCIA</h1>'
         '</td></tr></table>'
     )
-    saudacao = (
-        f'pessoa responsável pela {nome_ong.title()} '
-        f'na plataforma etransparente.org'
-    )
+    saudacao = 'pessoa responsável pela instituição na plataforma etransparente.org'
     html = template_html
     html = BANNER_IMG_RE.sub(banner_html, html)
     html = html.replace('{{name}}', saudacao)
