@@ -167,7 +167,7 @@ BANNER_BLOCK_RE = re.compile(
     re.DOTALL,
 )
 
-def render_template(template_html, nome_ong, cta_url, assunto, p1, p2, p3, p4):
+def render_template(template_html, nome_ong, url_ong, cta_url, assunto, p1, p2, p3, p4):
     banner_html = (
         '<table role="presentation" border="0" cellpadding="0" cellspacing="0" '
         'width="100%"><tr><td align="center" '
@@ -178,7 +178,9 @@ def render_template(template_html, nome_ong, cta_url, assunto, p1, p2, p3, p4):
         '</td></tr></table>'
     )
     saudacao = (
-        f'pessoa responsável pela instituição {nome_ong.title()} '
+        f'pessoa responsável pela instituição '
+        f'<a href="{url_ong}" style="color:#1a3a5c;font-weight:700;text-decoration:none;">'
+        f'{nome_ong.title()}</a> '
         f'na plataforma etransparente.org'
     )
     html = template_html
@@ -508,7 +510,7 @@ def main():
         else:
             cta_url = url_ong
 
-        html_body = render_template(template_html, nome, cta_url, assunto, p1, p2, p3, p4)
+        html_body = render_template(template_html, nome, url_ong, cta_url, assunto, p1, p2, p3, p4)
 
         if test_mode:
             aviso = (
