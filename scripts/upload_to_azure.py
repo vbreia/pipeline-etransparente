@@ -12,7 +12,7 @@ import json
 import logging
 from datetime import date
 from pathlib import Path
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, CorsRule
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,6 +22,17 @@ def get_client():
     if not conn_str:
         raise RuntimeError('AZURE_STORAGE_CONNECTION_STRING não definida')
     return BlobServiceClient.from_connection_string(conn_str)
+
+def setup_cors(client):
+    cors_rule = CorsRule(
+        allowed_origins=['*'],
+        allowed_methods=['GET'],
+        allowed_headers=['*'],
+        exposed_headers=['*'],
+        max_age_in_seconds=3600
+    )
+    client.set_service_properties(cors=[cors_rule])
+    logger.info('CORS configurado: GET de qualquer origem')
 
 def upload_file(client, container, blob_path, local_path):
     with open(local_path, 'rb') as f:
@@ -34,6 +45,7 @@ def main():
     out = os.path.join(base, 'output')
     container = 'etransparente'
     client = get_client()
+    setup_cors(client)
 
     test_mode = os.environ.get('PIPELINE_TEST_MODE', '').lower() == 'true'
     if test_mode:

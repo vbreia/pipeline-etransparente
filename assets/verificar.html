@@ -1,143 +1,133 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Verificar Autenticidade — IDC</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/phosphor-icons/1.4.2/phosphor.min.css">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; min-height: auto; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.card { background: #fff; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-width: 720px; width: 100%; padding: 48px 32px; }
-.logo { text-align: center; margin-bottom: 32px; }
-.logo svg { width: 64px; height: 64px; }
-.logo h1 { font-size: 20px; color: #1e3a8a; margin-top: 12px; font-weight: 600; }
-.state { display: none !important; padding: 40px 32px; text-align: center; }
-.state.active { display: block !important; }
-.spinner { width: 48px; height: 48px; border: 4px solid #e2e8f0; border-top-color: #1e3a8a; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
-.icon-ok { background: #dcfce7; }
-.icon-ok svg { stroke: #16a34a; }
-.icon-error { background: #fee2e2; }
-.icon-error svg { stroke: #dc2626; }
-.icon-notfound { background: #ffedd5; }
-.icon-notfound svg { stroke: #ea580c; }
-h2 { font-size: 22px; color: #0f172a; margin-bottom: 8px; }
-p { color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 4px; }
-.tag { display: inline-block; background: #eff6ff; color: #1e3a8a; font-size: 13px; font-weight: 600; padding: 4px 14px; border-radius: 999px; margin-top: 12px; }
-.detail { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; text-align: left; }
-.detail p { font-size: 13px; color: #64748b; margin-bottom: 4px; }
-.detail p strong { color: #0f172a; font-weight: 600; }
+#et-verificar { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 24px; }
+#et-verificar .et-card { background: #fff; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 48px 32px; }
+#et-verificar .et-logo { text-align: center; margin-bottom: 32px; }
+#et-verificar .et-logo h1 { font-size: 20px; color: #1e3a8a; margin-top: 12px; font-weight: 600; }
+#et-verificar .et-state { display: none !important; padding: 40px 32px; text-align: center; }
+#et-verificar .et-state.active { display: block !important; }
+#et-verificar .et-spinner { width: 48px; height: 48px; border: 4px solid #e2e8f0; border-top-color: #1e3a8a; border-radius: 50%; animation: et-spin 0.8s linear infinite; margin: 0 auto 20px; }
+@keyframes et-spin { to { transform: rotate(360deg); } }
+#et-verificar .et-icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+#et-verificar .et-icon-ok { background: #dcfce7; }
+#et-verificar .et-icon-error { background: #fee2e2; }
+#et-verificar .et-icon-notfound { background: #ffedd5; }
+#et-verificar h2 { font-size: 22px; color: #0f172a; margin-bottom: 8px; }
+#et-verificar p { color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 4px; }
+#et-verificar .et-detail { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; text-align: left; }
+#et-verificar .et-detail p { font-size: 13px; color: #64748b; margin-bottom: 6px; }
+#et-verificar .et-detail p strong { color: #0f172a; font-weight: 600; }
+#et-verificar .classificacao-pill { display: inline-block; font-size: 13px; font-weight: 600; padding: 4px 14px; border-radius: 999px; margin-top: 12px; }
+#et-verificar .pill-otimo { background: #dcfce7; color: #15803d; }
+#et-verificar .pill-bom { background: #dbeafe; color: #1d4ed8; }
+#et-verificar .pill-regular { background: #ffedd5; color: #9a3412; }
 @media (min-width: 768px) {
-  body { padding: 60px 40px 80px; }
-  .state { padding: 48px 48px; }
-  .result-box { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
-  .result-row:nth-child(odd) { border-right: 1px solid #dcfce7; }
+  #et-verificar { padding: 60px 40px 80px; }
+  #et-verificar .et-state { padding: 48px 48px; }
 }
 </style>
-</head>
-<body>
-
-<div class="card">
-  <div class="logo">
-    <svg viewBox="0 0 64 64" fill="none"><rect width="64" height="64" rx="16" fill="#1e3a8a"/><path d="M20 44V26l12-8 12 8v18H20z" fill="#fff" opacity="0.9"/><path d="M28 36h8v8h-8z" fill="#1e3a8a"/></svg>
-    <h1>Verificar Autenticidade</h1>
-  </div>
-
-  <div id="loading" class="state active">
-    <div class="spinner"></div>
-    <h2>Verificando...</h2>
-    <p>Buscando dados de autenticidade do documento.</p>
-  </div>
-
-  <div id="ok" class="state">
-    <div class="icon icon-ok">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+<div id="et-verificar">
+  <div class="et-card">
+    <div class="et-logo">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none"><rect width="64" height="64" rx="16" fill="#1e3a8a"/><path d="M20 44V26l12-8 12 8v18H20z" fill="#fff" opacity="0.9"/><path d="M28 36h8v8h-8z" fill="#1e3a8a"/></svg>
+      <h1>Verificar Autenticidade</h1>
     </div>
-    <h2>Documento Autêntico</h2>
-    <p>O documento foi emitido pelo IDC e consta no registro oficial.</p>
-    <div class="tag">Verdificado</div>
-    <div class="detail result-box" id="detail-ok">
-      <p class="result-row"><strong>ONG:</strong> <span id="d-ong">—</span></p>
-      <p class="result-row"><strong>Mês de referência:</strong> <span id="d-ciclo">—</span></p>
-      <p class="result-row"><strong>Código de verificação:</strong> <span id="d-hash">—</span></p>
-    </div>
-  </div>
 
-  <div id="notfound" class="state">
-    <div class="icon icon-notfound">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    <div id="state-loading" class="et-state active">
+      <div class="et-spinner"></div>
+      <h2>Verificando...</h2>
+      <p>Buscando dados de autenticidade do documento.</p>
     </div>
-    <h2>Não Encontrado</h2>
-    <p>O código de verificação informado não foi encontrado no registro oficial.</p>
-  </div>
 
-  <div id="error" class="state">
-    <div class="icon icon-error">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div id="state-ok" class="et-state">
+      <div class="et-icon et-icon-ok"><i class="ph ph-check-circle" style="font-size:32px;color:#16a34a"></i></div>
+      <h2>Documento Autêntico</h2>
+      <p>O documento foi emitido pelo IDC e consta no registro oficial.</p>
+      <div class="classificacao-pill" id="res-classificacao-pill">—</div>
+      <div class="et-detail">
+        <p><strong>ONG:</strong> <span id="res-nome">—</span></p>
+        <p><strong>Nota:</strong> <span id="res-nota">—</span></p>
+        <p><strong>Ciclo:</strong> <span id="res-ciclo">—</span></p>
+        <p><strong>Código de verificação:</strong> <span id="res-hash">—</span></p>
+      </div>
     </div>
-    <h2>Erro na Verificação</h2>
-    <p>Não foi possível realizar a verificação no momento. Tente novamente mais tarde.</p>
-  </div>
 
-  <div id="nohash" class="state">
-    <div class="icon icon-notfound">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div id="state-notfound" class="et-state">
+      <div class="et-icon et-icon-notfound"><i class="ph ph-warning-circle" style="font-size:32px;color:#ea580c"></i></div>
+      <h2>Não Encontrado</h2>
+      <p>O código de verificação informado não foi encontrado no registro oficial.</p>
     </div>
-    <h2>Código Ausente</h2>
-    <p>O link de verificação não contém um código válido. Verifique o QR Code ou link acessado.</p>
+
+    <div id="state-error" class="et-state">
+      <div class="et-icon et-icon-error"><i class="ph ph-x-circle" style="font-size:32px;color:#dc2626"></i></div>
+      <h2>Erro na Verificação</h2>
+      <p>Não foi possível realizar a verificação no momento. Tente novamente mais tarde.</p>
+    </div>
+
+    <div id="state-nohash" class="et-state">
+      <div class="et-icon et-icon-notfound"><i class="ph ph-warning" style="font-size:32px;color:#ea580c"></i></div>
+      <h2>Código Ausente</h2>
+      <p>O link de verificação não contém um código válido. Verifique o QR Code ou link acessado.</p>
+    </div>
   </div>
 </div>
-
 <script>
 const SAS_URL = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/verificacoes_all.json?sp=r&st=2026-06-22T18:51:00Z&se=2028-06-22T13:06:00Z&spr=https&sv=2026-02-06&sr=b&sig=9ipbeKqpD7SN06TP36I4%2BplIJFaW9g7X8HT5mRb%2FPmI%3D';
 
 function showState(id) {
-  document.querySelectorAll('.state').forEach(el => {
+  document.querySelectorAll('#et-verificar .et-state').forEach(function(el) {
     el.classList.remove('active');
     el.style.setProperty('display', 'none', 'important');
   });
-  const target = document.getElementById(id);
-  target.classList.add('active');
-  target.style.setProperty('display', 'block', 'important');
+  var target = document.getElementById(id);
+  if (target) {
+    target.classList.add('active');
+    target.style.setProperty('display', 'block', 'important');
+  }
 }
 
-function getParam(name) {
-  const params = new URLSearchParams(window.location.search);
-  return params.get(name);
+function getHashFromUrl() {
+  return new URLSearchParams(window.location.search).get('hash');
+}
+
+function pillClass(c) {
+  if (!c) return '';
+  var map = { 'Otimo': 'pill-otimo', 'Otima': 'pill-otimo', 'Bom': 'pill-bom', 'Regular': 'pill-regular' };
+  return map[c] || '';
 }
 
 async function verificar() {
-  const hash = getParam('hash');
+  var hash = getHashFromUrl();
   if (!hash) {
-    showState('nohash');
+    showState('state-nohash');
     return;
   }
-
+  showState('state-loading');
   try {
-    const resp = await fetch(SAS_URL);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const dados = await resp.json();
-
-    const entrada = dados.find(e => e.hash === hash);
-    if (!entrada) {
-      document.getElementById('d-hash').textContent = hash;
-      showState('notfound');
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 10000);
+    var res = await fetch(SAS_URL, { cache: 'no-store', signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json();
+    var encontrado = [].concat(data).reverse().find(function(v) { return v.hash === hash; });
+    if (!encontrado) {
+      showState('state-notfound');
       return;
     }
-
-    document.getElementById('d-ong').textContent = entrada.ong || '—';
-    document.getElementById('d-ciclo').textContent = entrada.ciclo || '—';
-    document.getElementById('d-hash').textContent = hash;
-    showState('ok');
-  } catch (err) {
-    console.error('Erro na verificação:', err);
-    showState('error');
+    document.getElementById('res-nome').textContent = encontrado.nome || '—';
+    var pill = document.getElementById('res-classificacao-pill');
+    pill.textContent = encontrado.classificacao || '—';
+    pill.className = 'classificacao-pill ' + pillClass(encontrado.classificacao);
+    document.getElementById('res-nota').textContent = (encontrado.nota_final || '—') + ' / ' + (encontrado.max_nota || '—');
+    document.getElementById('res-ciclo').textContent = encontrado.ciclo || encontrado.data_emissao || '—';
+    document.getElementById('res-hash').textContent = hash;
+    showState('state-ok');
+  } catch (e) {
+    console.error('Erro na verificação:', e);
+    showState('state-error');
   }
 }
 
 verificar();
 </script>
-
-</body>
-</html>
