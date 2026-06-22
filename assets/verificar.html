@@ -1,4 +1,4 @@
-<script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+<!-- wp:html -->
 <style>
 #et-verificar { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 24px; }
 #et-verificar .et-card { background: #fff; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 48px 32px; }
@@ -40,7 +40,7 @@
     </div>
 
     <div id="state-ok" class="et-state">
-      <div class="et-icon et-icon-ok"><i class="ph ph-check-circle" style="font-size:32px;color:#16a34a"></i></div>
+      <div class="et-icon et-icon-ok"><svg width="32" height="32" viewBox="0 0 256 256" fill="#16a34a"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"/></svg></div>
       <h2>Documento Autêntico</h2>
       <p>O documento foi emitido pelo IDC e consta no registro oficial.</p>
       <div class="classificacao-pill" id="res-classificacao-pill">—</div>
@@ -53,19 +53,19 @@
     </div>
 
     <div id="state-notfound" class="et-state">
-      <div class="et-icon et-icon-notfound"><i class="ph ph-warning-circle" style="font-size:32px;color:#ea580c"></i></div>
+      <div class="et-icon et-icon-notfound"><svg width="32" height="32" viewBox="0 0 256 256" fill="#ea580c"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-8,56a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,104a12,12,0,1,1,12-12A12,12,0,0,1,128,184Z"/></svg></div>
       <h2>Não Encontrado</h2>
       <p>O código de verificação informado não foi encontrado no registro oficial.</p>
     </div>
 
     <div id="state-error" class="et-state">
-      <div class="et-icon et-icon-error"><i class="ph ph-x-circle" style="font-size:32px;color:#dc2626"></i></div>
+      <div class="et-icon et-icon-error"><svg width="32" height="32" viewBox="0 0 256 256" fill="#dc2626"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm37.66,130.34a8,8,0,0,1-11.32,11.32L128,139.31l-26.34,26.35a8,8,0,0,1-11.32-11.32L116.69,128,90.34,101.66a8,8,0,0,1,11.32-11.32L128,116.69l26.34-26.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg></div>
       <h2>Erro na Verificação</h2>
       <p>Não foi possível realizar a verificação no momento. Tente novamente mais tarde.</p>
     </div>
 
     <div id="state-nohash" class="et-state">
-      <div class="et-icon et-icon-notfound"><i class="ph ph-warning" style="font-size:32px;color:#ea580c"></i></div>
+      <div class="et-icon et-icon-notfound"><svg width="32" height="32" viewBox="0 0 256 256" fill="#ea580c"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg></div>
       <h2>Código Ausente</h2>
       <p>O link de verificação não contém um código válido. Verifique o QR Code ou link acessado.</p>
     </div>
@@ -131,3 +131,4 @@ async function verificar() {
 
 verificar();
 </script>
+<!-- /wp:html -->
