@@ -64,6 +64,32 @@ def main():
                     continue
                 upload_file(client, container, f'gold/{month}/{folder}/{Path(f).name}', f)
 
+    # Gold — verificacoes_all.json acumulado
+    verificacoes_monthly = glob.glob(os.path.join(out, f'verificacoes_{month}.json'))
+    if verificacoes_monthly:
+        blob_client = client.get_blob_client(container=container, blob='gold/verificacoes_all.json')
+        existing_all = []
+        try:
+            existing_data = blob_client.download_blob().readall()
+            existing_all = json.loads(existing_data)
+        except Exception:
+            pass
+
+        with open(verificacoes_monthly[0], 'r', encoding='utf-8') as fh:
+            new_data = json.load(fh)
+
+        if new_data:
+            ciclos = set(e.get('ciclo') for e in new_data if 'ciclo' in e)
+            if ciclos:
+                existing_all = [e for e in existing_all if e.get('ciclo') not in ciclos]
+            existing_all.extend(new_data)
+
+        all_path = os.path.join(out, 'verificacoes_all.json')
+        with open(all_path, 'w', encoding='utf-8') as fh:
+            json.dump(existing_all, fh, ensure_ascii=False, indent=2)
+        upload_file(client, container, 'gold/verificacoes_all.json', all_path)
+        logger.info(f'verificacoes_all.json atualizado: {len(existing_all)} registros totais')
+
     logger.info(f'Upload concluído para {month}')
 
 if __name__ == '__main__':
