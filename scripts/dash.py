@@ -154,7 +154,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     data_emissao = datetime.now().strftime('%Y-%m')
     data_emissao_formatada = datetime.now().strftime('%d/%m/%Y')
     hash_hex = _gerar_hash(nome, data_emissao, nota_final, max_nota, classificacao)
-    url_verificacao = f'https://etransparente.org/verificar/{hash_hex}'
+    url_verificacao = f'https://etransparente.org/verificar/?hash={hash_hex}'
     qr_data_uri = gerar_qr_base64(url_verificacao)
 
     descricao = osc.get('descricao_objeto_social', '') or ''
@@ -324,7 +324,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
         logo_url = "https://via.placeholder.com/80x80/1e3a8a/ffffff?text=Logo"
 
     if qr_data_uri:
-        qr_img_tag = f'<img src="{qr_data_uri}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/>'
+        qr_img_tag = f'<a href="{url_verificacao}" target="_blank" style="display:block;text-decoration:none;"><img src="{qr_data_uri}" width="80" height="80" style="display:block;margin:0 auto;" alt="QR Code"/></a>'
     else:
         qr_img_tag = '<div style="width:80px;height:80px;background:#f1f5f9;border-radius:4px;margin:0 auto;"></div>'
 
@@ -1054,7 +1054,7 @@ if (contratosCanvas) {{
     # ter algo fixo em TODA página é o footerTemplate nativo do Playwright.
     # O QR Code é embutido como data URI base64 inline no HTML.
     _mini_qr_tag = (
-        f'<img src="{qr_data_uri}" width="34" height="34" style="display:block;">'
+        f'<a href="{url_verificacao}" target="_blank" style="display:block;text-decoration:none;"><img src="{qr_data_uri}" width="34" height="34" style="display:block;"></a>'
         if qr_data_uri else
         '<div style="width:34px;height:34px;background:#f1f5f9;border-radius:4px;"></div>'
     )
