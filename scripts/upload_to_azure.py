@@ -95,6 +95,8 @@ def main():
             if ciclos:
                 existing_all = [e for e in existing_all if e.get('ciclo') not in ciclos]
             existing_all.extend(new_data)
+            seen = set()
+            existing_all = [v for v in existing_all if v.get('hash') not in seen and not seen.add(v.get('hash'))]
 
         all_path = os.path.join(out, 'verificacoes_all.json')
         with open(all_path, 'w', encoding='utf-8') as fh:
