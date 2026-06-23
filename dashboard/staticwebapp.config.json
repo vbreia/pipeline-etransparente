@@ -2,11 +2,13 @@
   "auth": {
     "identityProviders": {
       "azureActiveDirectory": {
-        "userDetailsClaim": "email",
         "registration": {
-          "openIdIssuer": "https://login.microsoftonline.com/a2d1c793-b9ee-4c6f-8ef8-eaf302ff050b/v2.0",
+          "openIdIssuer": "https://login.microsoftonline.com/common/v2.0",
           "clientIdSettingName": "AZURE_CLIENT_ID",
           "clientSecretSettingName": "AZURE_CLIENT_SECRET"
+        },
+        "login": {
+          "loginParameters": ["scope=openid profile email"]
         }
       }
     }
@@ -25,6 +27,10 @@
     "401": {
       "redirect": "/login",
       "statusCode": 302
+    },
+    "403": {
+      "rewrite": "/403.html",
+      "statusCode": 403
     }
   },
   "globalHeaders": {
