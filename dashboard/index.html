@@ -1,5 +1,483 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><title>eTransparente — Dashboard IDC</title></head>
-<body><h1>Dashboard em construção</h1></body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eTransparente — Dashboard IDC</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
+header{background:#1e3a8a;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+header .logo{font-size:20px;font-weight:700;letter-spacing:-0.5px}
+header .logo i{color:#93c5fd;margin-right:8px}
+header .user-area{display:flex;align-items:center;gap:16px;font-size:14px}
+header .user-area .user-name{opacity:.9}
+header .user-area a{color:#93c5fd;text-decoration:none;font-weight:500}
+header .user-area a:hover{text-decoration:underline}
+.container{max-width:1400px;margin:0 auto;padding:24px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.card{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card .card-label{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:4px}
+.card .card-value{font-size:28px;font-weight:700;color:#1e3a8a}
+.card .card-sub{font-size:13px;color:#64748b;margin-top:4px}
+.section-title{font-size:18px;font-weight:600;color:#1e3a8a;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.section-title i{color:#64748b}
+.panels-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.panel{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.panel-head h3{font-size:15px;font-weight:600}
+.rank-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.rank-item:last-child{border-bottom:none}
+.rank-pos{width:24px;height:24px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#475569;flex-shrink:0}
+.rank-item.top .rank-pos{background:#1e3a8a;color:#fff}
+.rank-item.bottom .rank-pos{background:#dc2626;color:#fff}
+.rank-name{flex:1;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-score{font-size:14px;font-weight:600;color:#1e3a8a;margin-right:8px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600;text-transform:uppercase}
+.pill-otimo{background:#dcfce7;color:#16a34a}
+.pill-bom{background:#fef9c3;color:#d97706}
+.pill-regular{background:#fee2e2;color:#dc2626}
+.alert-card{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:20px;margin-bottom:24px}
+.alert-card h3{color:#dc2626;font-size:16px;margin-bottom:12px}
+.alert-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #fecaca;flex-wrap:wrap;gap:8px}
+.alert-item:last-child{border-bottom:none}
+.alert-item .osc-name{font-weight:500;font-size:14px}
+.alert-item .btn-contact{background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.alert-item .btn-contact:hover{background:#b91c1c}
+.table-wrapper{overflow-x:auto;margin-bottom:24px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+th{background:#f8fafc;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.5px;padding:12px 16px;text-align:left;font-weight:600}
+td{padding:12px 16px;font-size:14px;border-top:1px solid #f1f5f9}
+tr:hover td{background:#f8fafc}
+.rank-num{font-weight:600;color:#475569;width:40px}
+.doc-link{color:#1e3a8a;text-decoration:none;cursor:pointer}
+.doc-link:hover{text-decoration:underline}
+.search-bar{position:relative;margin-bottom:16px;max-width:400px}
+.search-bar input{width:100%;padding:10px 16px 10px 40px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;background:#fff}
+.search-bar input:focus{border-color:#1e3a8a;box-shadow:0 0 0 3px rgba(30,58,138,.1)}
+.search-bar i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:16px}
+.chart-wrap{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:24px}
+.chart-wrap canvas{max-height:400px}
+.chart-controls{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.chart-controls label{font-size:13px;font-weight:500;color:#475569}
+.chart-controls select{padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;background:#fff;outline:none;cursor:pointer;min-width:200px}
+.empty-msg{padding:24px;text-align:center;color:#94a3b8;font-size:14px}
+.spinner-overlay{position:fixed;inset:0;background:#f1f5f9;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:16px}
+.spinner{width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:#1e3a8a;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+@media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr)}.panels-2{grid-template-columns:1fr}}
+@media(max-width:600px){.grid-4{grid-template-columns:1fr}header{flex-direction:column;text-align:center}}
+.mt-16{margin-top:16px}
+.text-center{text-align:center}
+</style>
+</head>
+<body>
+<div id="spinner" class="spinner-overlay"><div class="spinner"></div><div style="font-size:14px;color:#64748b">Carregando dados...</div></div>
+
+<header>
+  <div class="logo"><i class="ph ph-gauge"></i>eTransparente · Dashboard IDC</div>
+  <div class="user-area">
+    <span class="user-name" id="userName">Carregando...</span>
+    <a href="/.auth/logout"><i class="ph ph-sign-out"></i> Sair</a>
+  </div>
+</header>
+
+<div class="container" id="app" style="opacity:0;transition:opacity .3s">
+  <!-- KPIs -->
+  <div class="grid-4" id="kpiGrid">
+    <div class="card"><div class="card-label">OSCs Monitoradas</div><div class="card-value" id="kpiTotal">—</div><div class="card-sub">total ativas</div></div>
+    <div class="card"><div class="card-label">Média Geral</div><div class="card-value" id="kpiMedia">—</div><div class="card-sub">% do índice</div></div>
+    <div class="card"><div class="card-label">Ótimo + Bom</div><div class="card-value" id="kpiOtimoBom">—</div><div class="card-sub">% das OSCs</div></div>
+    <div class="card"><div class="card-label">Ciclo Atual</div><div class="card-value" id="kpiCiclo">—</div><div class="card-sub">referência</div></div>
+  </div>
+
+  <!-- Top/Bottom -->
+  <div class="panels-2">
+    <div class="panel">
+      <div class="panel-head"><h3><i class="ph ph-trophy" style="color:#d97706"></i> Top 5 maiores notas</h3></div>
+      <div id="topRanking"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3><i class="ph ph-warning-circle" style="color:#dc2626"></i> 5 menores notas</h3></div>
+      <div id="bottomRanking"></div>
+    </div>
+  </div>
+
+  <!-- Alertas -->
+  <div id="alertasContainer" class="hidden">
+    <div class="alert-card">
+      <h3><i class="ph ph-warning"></i> Alertas — OSCs com nota zerada</h3>
+      <div id="alertasList"></div>
+    </div>
+  </div>
+
+  <!-- Documentos -->
+  <div class="section-title"><i class="ph ph-file-arrow-up"></i> Atualizações de documentos detectadas</div>
+  <div id="docContainer" class="table-wrapper"></div>
+
+  <!-- Evolução -->
+  <div class="section-title"><i class="ph ph-chart-line-up"></i> Evolução histórica por OSC</div>
+  <div class="chart-wrap">
+    <div class="chart-controls">
+      <label><i class="ph ph-magnifying-glass"></i> Adicionar OSC:</label>
+      <select id="oscSelector" onchange="addOscToChart()">
+        <option value="">— Selecione uma OSC —</option>
+      </select>
+      <button onclick="resetChart()" style="padding:6px 14px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:13px">Redefinir</button>
+    </div>
+    <canvas id="evolutionChart"></canvas>
+  </div>
+
+  <!-- Ranking -->
+  <div class="section-title"><i class="ph ph-list-numbers"></i> Ranking completo</div>
+  <div class="search-bar"><i class="ph ph-magnifying-glass"></i><input type="text" id="searchInput" placeholder="Buscar por nome da OSC..." oninput="renderRankingTable()"></div>
+  <div id="rankingTable" class="table-wrapper"></div>
+</div>
+
+<script>
+// --- Config ---
+const SAS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
+const SAS_VERIFICACOES = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/verificacoes_all.json?sp=r&st=2026-06-24T17:42:10Z&se=2028-06-25T01:57:10Z&spr=https&sv=2026-02-06&sr=b&sig=lTXIti6Byy5IU2P5p9CcZLbQGwCakV00hoG3xOdYebQ%3D';
+const SAS_TEMPESTIVIDADE_BASE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/';
+const SAS_TEMPESTIVIDADE_PARAMS = '?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
+
+const hoje = new Date();
+const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2,'0');
+const SAS_TEMPESTIVIDADE = SAS_TEMPESTIVIDADE_BASE + 'tempestividade_' + mesAtual + '.json' + SAS_TEMPESTIVIDADE_PARAMS;
+
+// --- State ---
+let historico = [];
+let tempestividade = [];
+let evolutionChart = null;
+let chartOscs = [];
+
+// --- Auth ---
+fetch('/.auth/me')
+  .then(r => r.json())
+  .then(d => {
+    const name = d.clientPrincipal?.userDetails || d.clientPrincipal?.userId || 'Usuário';
+    document.getElementById('userName').textContent = name;
+  })
+  .catch(() => { document.getElementById('userName').textContent = 'Usuário'; });
+
+// --- Load ---
+async function loadData() {
+  try {
+    const [histRes, tempRes] = await Promise.all([
+      fetch(SAS_HISTORICO),
+      fetch(SAS_TEMPESTIVIDADE).catch(() => null)
+    ]);
+    historico = await histRes.json();
+    tempestividade = tempRes?.ok ? await tempRes.json() : [];
+
+    render();
+  } catch (e) {
+    document.getElementById('spinner').innerHTML = '<div style="color:#dc2626">Erro ao carregar dados. Tente novamente.</div>';
+    throw e;
+  }
+}
+
+// --- Processing ---
+function getCiclos() {
+  const ciclos = [...new Set(historico.map(h => h.ciclo))].sort();
+  return ciclos;
+}
+
+function getDadosCiclo(ciclo) {
+  const filtrados = historico.filter(h => h.ciclo === ciclo);
+  const agrupados = {};
+  for (const h of filtrados) {
+    agrupados[h.nome] = h;
+  }
+  return Object.values(agrupados);
+}
+
+function getUltimoCiclo() {
+  const ciclos = getCiclos();
+  return ciclos.length ? ciclos[ciclos.length - 1] : null;
+}
+
+function getPenultimoCiclo() {
+  const ciclos = getCiclos();
+  return ciclos.length > 1 ? ciclos[ciclos.length - 2] : null;
+}
+
+function formatarNomeCiclo(ciclo) {
+  if (!ciclo) return '—';
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [ano, mes] = ciclo.split('-');
+  return meses[parseInt(mes) - 1] + '/' + ano;
+}
+
+function calcularPercentual(item) {
+  return item.max_nota > 0 ? (item.nota_final / item.max_nota * 100) : 0;
+}
+
+function classPill(classe) {
+  if (!classe) return 'pill-regular';
+  const c = classe.toLowerCase();
+  if (c === 'ótimo' || c === 'otimo') return 'pill-otimo';
+  if (c === 'bom') return 'pill-bom';
+  return 'pill-regular';
+}
+
+// --- Render ---
+function render() {
+  const ultimoCiclo = getUltimoCiclo();
+  const penultimoCiclo = getPenultimoCiclo();
+  if (!ultimoCiclo) return;
+
+  const dadosUltimo = getDadosCiclo(ultimoCiclo);
+
+  // KPIs
+  const totalOscs = dadosUltimo.length;
+  const somaPct = dadosUltimo.reduce((s, d) => s + calcularPercentual(d), 0);
+  const mediaGeral = totalOscs ? (somaPct / totalOscs) : 0;
+  const otimoBom = dadosUltimo.filter(d => d.classificacao && (d.classificacao.toLowerCase() === 'ótimo' || d.classificacao.toLowerCase() === 'otimo' || d.classificacao.toLowerCase() === 'bom'));
+  const pctOtimoBom = totalOscs ? (otimoBom.length / totalOscs * 100) : 0;
+
+  document.getElementById('kpiTotal').textContent = totalOscs;
+  document.getElementById('kpiMedia').textContent = mediaGeral.toFixed(1) + '%';
+  document.getElementById('kpiOtimoBom').textContent = pctOtimoBom.toFixed(1) + '%';
+  document.getElementById('kpiCiclo').textContent = formatarNomeCiclo(ultimoCiclo);
+
+  // Top 5
+  const sorted = [...dadosUltimo].sort((a, b) => b.nota_final - a.nota_final);
+  const top5 = sorted.slice(0, 5);
+  const bottom5 = [...dadosUltimo].sort((a, b) => a.nota_final - b.nota_final).slice(0, 5);
+
+  document.getElementById('topRanking').innerHTML = top5.map((d, i) => `
+    <div class="rank-item top">
+      <div class="rank-pos">${i + 1}</div>
+      <span class="rank-name" title="${d.nome}">${d.nome}</span>
+      <span class="rank-score">${d.nota_final.toFixed(1)}/${d.max_nota}</span>
+      <span class="pill ${classPill(d.classificacao)}">${d.classificacao || 'Regular'}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('bottomRanking').innerHTML = bottom5.map((d, i) => `
+    <div class="rank-item bottom">
+      <div class="rank-pos">${i + 1}</div>
+      <span class="rank-name" title="${d.nome}">${d.nome}</span>
+      <span class="rank-score">${d.nota_final.toFixed(1)}/${d.max_nota}</span>
+      <span class="pill ${classPill(d.classificacao)}">${d.classificacao || 'Regular'}</span>
+    </div>
+  `).join('');
+
+  // Alertas (nota_final == 0)
+  const zeradas = dadosUltimo.filter(d => d.nota_final === 0);
+  const alertasEl = document.getElementById('alertasContainer');
+  const alertasList = document.getElementById('alertasList');
+  if (zeradas.length) {
+    alertasEl.classList.remove('hidden');
+    alertasList.innerHTML = zeradas.map(d => `
+      <div class="alert-item">
+        <span class="osc-name"><i class="ph ph-buildings"></i> ${d.nome}</span>
+        <a class="btn-contact" href="mailto:?subject=${encodeURIComponent('URGENTE - Regularização cadastral - eTransparente - ' + d.nome)}&body=${encodeURIComponent('Prezados,\n\nIdentificamos que a OSC ' + d.nome + ' está com nota zero no Índice de Transparência. Solicitamos que entre em contato conosco para regularização.\n\nAtenciosamente,\nEquipe eTransparente')}">
+          <i class="ph ph-envelope"></i> Contatar responsável
+        </a>
+      </div>
+    `).join('');
+  } else {
+    alertasEl.classList.add('hidden');
+  }
+
+  // Documentos
+  const docEl = document.getElementById('docContainer');
+  if (tempestividade.length) {
+    const campoLabel = {
+      estatuto: 'Estatuto', cneas: 'CNEAS', cebas: 'CEBAS', plano_acao: 'Plano de Ação',
+      ata_eleicao: 'Ata de Eleição', relatorio_atividades: 'Relatório de Atividades',
+      balanco_2021: 'Balanço 2021', balanco_2022: 'Balanço 2022', balanco_2023: 'Balanço 2023', balanco_2024: 'Balanço 2024'
+    };
+    docEl.innerHTML = `
+      <table>
+        <thead><tr><th>OSC</th><th>Documento</th><th>Ciclo de detecção</th><th>Anterior</th><th>Atual</th></tr></thead>
+        <tbody>
+          ${tempestividade.map(d => `
+            <tr>
+              <td><strong>${d.nome}</strong></td>
+              <td>${campoLabel[d.campo] || d.campo}</td>
+              <td>${d.ciclo_deteccao}</td>
+              <td>${d.url_anterior ? '<a href="' + d.url_anterior + '" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>' : '—'}</td>
+              <td>${d.url_nova ? '<a href="' + d.url_nova + '" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>' : '—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } else {
+    docEl.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:#94a3b8"><i class="ph ph-check-circle" style="font-size:24px;display:block;margin-bottom:8px"></i>Nenhuma alteração detectada no último ciclo</div>';
+  }
+
+  // Ranking table
+  renderRankingTable();
+
+  // Evolution chart
+  initChart(dadosUltimo, penultimoCiclo, ultimoCiclo);
+
+  // Show app
+  document.getElementById('spinner').classList.add('hidden');
+  document.getElementById('app').style.opacity = '1';
+}
+
+// --- Ranking Table ---
+function renderRankingTable() {
+  const ultimoCiclo = getUltimoCiclo();
+  if (!ultimoCiclo) return;
+  const dados = getDadosCiclo(ultimoCiclo);
+  const query = (document.getElementById('searchInput').value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const filtrados = query
+    ? dados.filter(d => d.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(query))
+    : dados;
+  filtrados.sort((a, b) => b.nota_final - a.nota_final);
+
+  const el = document.getElementById('rankingTable');
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>#</th><th>OSC</th><th>Nota</th><th>Max</th><th>%</th><th>Classificação</th></tr></thead>
+      <tbody>
+        ${filtrados.map((d, i) => {
+          const pct = calcularPercentual(d);
+          return `<tr>
+            <td class="rank-num">${i + 1}º</td>
+            <td><strong>${d.nome}</strong></td>
+            <td>${d.nota_final.toFixed(1)}</td>
+            <td>${d.max_nota}</td>
+            <td>${pct.toFixed(1)}%</td>
+            <td><span class="pill ${classPill(d.classificacao)}">${d.classificacao || 'Regular'}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// --- Chart ---
+function initChart(dadosUltimo, penultimoCiclo, ultimoCiclo) {
+  const ciclos = getCiclos();
+
+  // Find top 3 most improved
+  let defaultOscs = [];
+  if (penultimoCiclo && ultimoCiclo) {
+    const dadosPenultimo = getDadosCiclo(penultimoCiclo);
+    const dadosPenMap = {};
+    dadosPenultimo.forEach(d => { dadosPenMap[d.nome] = d; });
+    const dadosUltMap = {};
+    dadosUltimo.forEach(d => { dadosUltMap[d.nome] = d; });
+    const melhorias = Object.keys(dadosUltMap)
+      .filter(n => dadosPenMap[n])
+      .map(n => ({ nome: n, dif: dadosUltMap[n].nota_final - dadosPenMap[n].nota_final }))
+      .sort((a, b) => b.dif - a.dif)
+      .slice(0, 3);
+    defaultOscs = melhorias.map(m => m.nome);
+  }
+
+  chartOscs = defaultOscs;
+  atualizarChart(ciclos);
+
+  // Populate selector
+  const nomes = [...new Set(historico.map(h => h.nome))].sort();
+  const sel = document.getElementById('oscSelector');
+  sel.innerHTML = '<option value="">— Selecione uma OSC —</option>' +
+    nomes.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+}
+
+function atualizarChart(ciclos) {
+  if (!ciclos.length) return;
+  const ctx = document.getElementById('evolutionChart');
+  if (!ctx) return;
+
+  if (evolutionChart) evolutionChart.destroy();
+
+  const datasets = chartOscs.map((nome, idx) => {
+    const dadosOsc = historico.filter(h => h.nome === nome);
+    const mapCiclo = {};
+    dadosOsc.forEach(d => { mapCiclo[d.ciclo] = d.nota_final; });
+    const data = ciclos.map(c => mapCiclo[c] !== undefined ? mapCiclo[c] : null);
+    const cores = ['#1e3a8a','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#be123c','#15803d'];
+    return {
+      label: nome,
+      data,
+      borderColor: cores[idx % cores.length],
+      backgroundColor: cores[idx % cores.length] + '20',
+      borderWidth: 2,
+      tension: 0.3,
+      spanGaps: true,
+      pointRadius: 3
+    };
+  });
+
+  evolutionChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ciclos.map(c => formatarNomeCiclo(c)),
+      datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { boxWidth: 12, padding: 16, font: { size: 12 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) : '—')
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Nota' }
+        },
+        x: {
+          ticks: { maxRotation: 45 }
+        }
+      }
+    }
+  });
+}
+
+function addOscToChart() {
+  const sel = document.getElementById('oscSelector');
+  const nome = sel.value;
+  if (!nome || chartOscs.includes(nome)) return;
+  chartOscs.push(nome);
+  const ciclos = getCiclos();
+  atualizarChart(ciclos);
+  sel.value = '';
+}
+
+function resetChart() {
+  const ciclos = getCiclos();
+  const ultimoCiclo = getUltimoCiclo();
+  const penultimoCiclo = getPenultimoCiclo();
+  let defaultOscs = [];
+  if (penultimoCiclo && ultimoCiclo) {
+    const dadosPenultimo = getDadosCiclo(penultimoCiclo);
+    const dadosPenMap = {};
+    dadosPenultimo.forEach(d => { dadosPenMap[d.nome] = d; });
+    const dadosUltMap = {};
+    getDadosCiclo(ultimoCiclo).forEach(d => { dadosUltMap[d.nome] = d; });
+    defaultOscs = Object.keys(dadosUltMap)
+      .filter(n => dadosPenMap[n])
+      .map(n => ({ nome: n, dif: dadosUltMap[n].nota_final - dadosPenMap[n].nota_final }))
+      .sort((a, b) => b.dif - a.dif)
+      .slice(0, 3)
+      .map(m => m.nome);
+  }
+  chartOscs = defaultOscs;
+  atualizarChart(ciclos);
+}
+
+// --- Boot ---
+loadData();
+</script>
+</body>
 </html>
