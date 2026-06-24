@@ -43,7 +43,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .rank-pos{width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#475569;flex-shrink:0}
 .rank-item.top .rank-pos{background:#1e3a8a;color:#fff}
 .rank-item.bottom .rank-pos{background:#dc2626;color:#fff}
-.rank-name{flex:1;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-name{flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rank-name a{color:#1e293b;text-decoration:none}
 .rank-name a:hover{color:#1e3a8a;text-decoration:underline}
 .rank-score{font-size:13px;font-weight:600;color:#1e3a8a;margin-right:6px;white-space:nowrap}
@@ -64,6 +64,8 @@ th{background:#f8fafc;color:#64748b;font-size:11px;text-transform:uppercase;lett
 td{padding:10px 14px;font-size:13px;border-top:1px solid #f1f5f9}
 tr:hover td{background:#f8fafc}
 .rank-num{font-weight:600;color:#475569;width:32px}
+.rank-logo{width:28px;height:28px;border-radius:50%;object-fit:cover;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#64748b;flex-shrink:0;overflow:hidden}
+.rank-logo img{width:100%;height:100%;object-fit:cover}
 .doc-link{color:#1e3a8a;text-decoration:none}
 .doc-link:hover{text-decoration:underline}
 .search-bar{position:relative;margin-bottom:14px;max-width:360px}
@@ -77,6 +79,8 @@ tr:hover td{background:#f8fafc}
 .chart-controls select{padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;background:#fff;outline:none;cursor:pointer;min-width:180px;color:#1e293b}
 .chart-controls button{padding:5px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#475569;transition:all .15s}
 .chart-controls button:hover{background:#f1f5f9;border-color:#94a3b8}
+.chart-controls .btn-export{background:#1e3a8a;color:#fff;border-color:#1e3a8a}
+.chart-controls .btn-export:hover{background:#1e40af}
 .empty-msg{padding:32px;text-align:center;color:#94a3b8;font-size:13px}
 .spinner-overlay{position:fixed;inset:0;background:#f1f5f9;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:16px}
 .spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#1e3a8a;border-radius:50%;animation:spin .8s linear infinite}
@@ -95,15 +99,19 @@ tr:hover td{background:#f8fafc}
 .sem-contratos-box h4{font-size:13px;color:#d97706;margin-bottom:6px}
 .sem-contratos-box ul{padding-left:18px;font-size:12px;color:#92400e}
 .sem-contratos-box li{margin-bottom:3px}
-@media(max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr)}.panels-2{grid-template-columns:1fr}.contrato-stats{grid-template-columns:repeat(2,1fr)}.contrato-chart-row{grid-template-columns:1fr}}
-@media(max-width:768px){.sidebar{width:56px}.sidebar-logo .logo-text,.sidebar-logo .logo-sub,.sidebar-nav a span,.sidebar-footer .user-email,.sidebar-footer a span{display:none}.sidebar-nav a{padding:12px;justify-content:center}.sidebar-footer{padding:12px;display:flex;flex-direction:column;align-items:center}.sidebar-footer a{justify-content:center}.content{margin-left:56px;padding:20px}.grid-4{grid-template-columns:1fr 1fr}.top10-list{grid-template-columns:1fr}.contrato-stats{grid-template-columns:1fr 1fr}}
+.periodo-filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.periodo-btn{padding:5px 14px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;cursor:pointer;font-size:12px;color:#64748b;transition:all .15s}
+.periodo-btn:hover{background:#f1f5f9}
+.periodo-btn.active{background:#1e3a8a;color:#fff;border-color:#1e3a8a}
+@media(max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr)}.panels-2{grid-template-columns:1fr}.contrato-stats{grid-template-columns:repeat(2,1fr)}.contrato-chart-row{grid-template-columns:1fr}.top10-list{grid-template-columns:1fr}}
+@media(max-width:768px){.sidebar{width:56px}.sidebar-logo .logo-text,.sidebar-logo .logo-sub,.sidebar-nav a span,.sidebar-footer .user-email,.sidebar-footer a span{display:none}.sidebar-nav a{padding:12px;justify-content:center}.sidebar-footer{padding:12px;display:flex;flex-direction:column;align-items:center}.sidebar-footer a{justify-content:center}.content{margin-left:56px;padding:20px}.grid-4{grid-template-columns:1fr 1fr}.contrato-stats{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.grid-4{grid-template-columns:1fr}.contrato-stats{grid-template-columns:1fr}.content{padding:16px}}
+@media print{body{display:block}.sidebar{display:none!important}.content{margin-left:0!important;padding:16px!important}.no-print{display:none!important}.section-title{margin-top:16px!important}.chart-wrap{break-inside:avoid}.card{break-inside:avoid}}
 </style>
 </head>
 <body>
 <div id="spinner" class="spinner-overlay"><div class="spinner"></div><div style="font-size:13px;color:#64748b">Carregando dados...</div></div>
 
-<!-- Sidebar -->
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-text">etransparente.org</div>
@@ -111,7 +119,7 @@ tr:hover td{background:#f8fafc}
   </div>
   <nav class="sidebar-nav">
     <a href="index.html" class="active"><i class="ph ph-chart-bar"></i><span>Visão Geral</span></a>
-    <a href="#" id="oscListLink"><i class="ph ph-buildings"></i><span>OSCs</span></a>
+    <a href="oscs.html"><i class="ph ph-buildings"></i><span>OSCs</span></a>
   </nav>
   <div class="sidebar-footer">
     <div class="user-email" id="userEmail">Carregando...</div>
@@ -119,7 +127,6 @@ tr:hover td{background:#f8fafc}
   </div>
 </aside>
 
-<!-- Content -->
 <main class="content" id="app" style="opacity:0;transition:opacity .3s">
   <div class="page-header">
     <h1>Visão Geral</h1>
@@ -134,30 +141,30 @@ tr:hover td{background:#f8fafc}
     <div class="card"><div class="card-label">Ciclo Atual</div><div class="card-value" id="kpiCiclo">—</div><div class="card-sub">referência</div></div>
   </div>
 
-  <!-- Section 2: GA4 Visualizações -->
-  <div class="section-title"><i class="ph ph-eye"></i> Visualizações da plataforma</div>
+  <!-- Section 2: GA4 Visualizações com histórico -->
+  <div class="section-title no-print"><i class="ph ph-eye"></i> Visualizações da plataforma</div>
   <div class="chart-wrap">
-    <div class="chart-controls">
+    <div class="chart-controls no-print">
+      <div class="periodo-filtros" id="periodoFiltros">
+        <button class="periodo-btn" data-period="week" onclick="setPeriodo('week')">Última semana</button>
+        <button class="periodo-btn active" data-period="month" onclick="setPeriodo('month')">Último mês</button>
+        <button class="periodo-btn" data-period="year" onclick="setPeriodo('year')">Último ano</button>
+        <button class="periodo-btn" data-period="all" onclick="setPeriodo('all')">Completo</button>
+      </div>
       <label><i class="ph ph-plus-circle"></i> Adicionar OSC:</label>
-      <select id="ga4OscSelector" onchange="addGa4Osc()">
-        <option value="">— Selecione —</option>
-      </select>
+      <select id="ga4OscSelector" onchange="addGa4Osc()"><option value="">— Selecione —</option></select>
+      <button class="btn-export" onclick="window.print()"><i class="ph ph-file-pdf"></i> Exportar PDF</button>
     </div>
+    <div id="ga4SemDados" class="empty-msg hidden">Dados GA4 disponíveis a partir do próximo ciclo.</div>
     <canvas id="ga4Chart"></canvas>
     <div id="top10Views" class="top10-list"></div>
   </div>
 
-  <!-- Section 3: Índice de transparência (Top/Bottom + Distribuição) -->
-  <div class="section-title"><i class="ph ph-trophy"></i> Índice de transparência</div>
+  <!-- Section 3: Índice de transparência -->
+  <div class="section-title no-print"><i class="ph ph-trophy"></i> Índice de transparência</div>
   <div class="panels-2">
-    <div class="panel">
-      <div class="panel-head"><h3><i class="ph ph-arrow-up" style="color:#16a34a"></i> Top 5 maiores notas</h3></div>
-      <div id="topRanking"></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h3><i class="ph ph-arrow-down" style="color:#dc2626"></i> 5 menores notas</h3></div>
-      <div id="bottomRanking"></div>
-    </div>
+    <div class="panel"><div class="panel-head"><h3><i class="ph ph-arrow-up" style="color:#16a34a"></i> Top 5 maiores notas</h3></div><div id="topRanking"></div></div>
+    <div class="panel"><div class="panel-head"><h3><i class="ph ph-arrow-down" style="color:#dc2626"></i> 5 menores notas</h3></div><div id="bottomRanking"></div></div>
   </div>
   <div class="chart-wrap">
     <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:#1e293b">Distribuição por faixa de nota</h3>
@@ -165,47 +172,37 @@ tr:hover td{background:#f8fafc}
   </div>
 
   <!-- Section 4: Alertas -->
-  <div id="alertasContainer" class="hidden">
-    <div class="alert-card">
-      <h3><i class="ph ph-warning"></i> Alertas — OSCs com nota zerada</h3>
-      <div id="alertasList"></div>
-    </div>
-  </div>
+  <div id="alertasContainer" class="hidden"><div class="alert-card"><h3><i class="ph ph-warning"></i> Alertas — OSCs com nota zerada</h3><div id="alertasList"></div></div></div>
 
   <!-- Section 5: Parcerias e contratos -->
-  <div class="section-title"><i class="ph ph-handshake"></i> Parcerias e contratos</div>
+  <div class="section-title no-print"><i class="ph ph-handshake"></i> Parcerias e contratos</div>
   <div id="contratosContainer">
     <div class="contrato-stats" id="contratoStats"></div>
     <div class="contrato-chart-row">
       <div class="chart-wrap" style="margin-bottom:0"><canvas id="contratoChart" style="max-height:260px"></canvas></div>
-      <div class="card" style="margin-bottom:0">
-        <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;color:#1e293b">Top 5 OSCs com mais contratos</h4>
-        <div id="top5Contratos"></div>
-      </div>
+      <div class="card" style="margin-bottom:0"><h4 style="font-size:13px;font-weight:600;margin-bottom:10px;color:#1e293b">Top 5 OSCs com mais contratos</h4><div id="top5Contratos"></div></div>
     </div>
     <div id="semContratosBox" class="sem-contratos-box hidden"></div>
   </div>
 
   <!-- Section 6: Documentos -->
-  <div class="section-title"><i class="ph ph-file-arrow-up"></i> Atualizações de documentos detectadas</div>
+  <div class="section-title no-print"><i class="ph ph-file-arrow-up"></i> Atualizações de documentos detectadas</div>
   <div id="docContainer" class="table-wrapper"></div>
 
   <!-- Section 7: Evolução histórica -->
-  <div class="section-title"><i class="ph ph-chart-line-up"></i> Evolução histórica por OSC</div>
+  <div class="section-title no-print"><i class="ph ph-chart-line-up"></i> Evolução histórica por OSC</div>
   <div class="chart-wrap">
-    <div class="chart-controls">
+    <div class="chart-controls no-print">
       <label><i class="ph ph-plus-circle"></i> Adicionar OSC:</label>
-      <select id="evolOscSelector" onchange="addOscToChart()">
-        <option value="">— Selecione —</option>
-      </select>
+      <select id="evolOscSelector" onchange="addOscToChart()"><option value="">— Selecione —</option></select>
       <button onclick="resetChart()"><i class="ph ph-arrow-counter-clockwise"></i> Redefinir</button>
     </div>
     <canvas id="evolutionChart"></canvas>
   </div>
 
   <!-- Section 8: Ranking completo -->
-  <div class="section-title"><i class="ph ph-list-numbers"></i> Ranking completo</div>
-  <div class="search-bar"><i class="ph ph-magnifying-glass"></i><input type="text" id="searchInput" placeholder="Buscar por nome..." oninput="renderRankingTable()"></div>
+  <div class="section-title no-print"><i class="ph ph-list-numbers"></i> Ranking completo</div>
+  <div class="search-bar no-print"><i class="ph ph-magnifying-glass"></i><input type="text" id="searchInput" placeholder="Buscar por nome..." oninput="renderRankingTable()"></div>
   <div id="rankingTable" class="table-wrapper"></div>
 </main>
 
@@ -217,8 +214,8 @@ const SAS_BRONZE_LIST = 'https://etransparentedata.blob.core.windows.net/etransp
 const hoje = new Date();
 const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2,'0');
 const SAS_TEMPESTIVIDADE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/tempestividade_' + mesAtual + '.json?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
+const SAS_VIEWS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_views_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
 
-// Bronze helpers
 const bronzeBaseUrl = SAS_BRONZE_LIST.split('?')[0];
 const bronzeSasParams = SAS_BRONZE_LIST.split('?')[1];
 
@@ -226,9 +223,8 @@ async function listarBronze(prefixo) {
   const url = bronzeBaseUrl + '?' + bronzeSasParams + '&restype=directory&comp=list&prefix=' + encodeURIComponent(prefixo);
   const res = await fetch(url);
   const xml = await res.text();
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xml, 'application/xml');
-  return Array.from(doc.querySelectorAll('Blob Name')).map(n => n.textContent);
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  return Array.from(doc.querySelectorAll('Name')).map(n => n.textContent);
 }
 
 function bronzeUrl(nome) {
@@ -239,12 +235,14 @@ function bronzeUrl(nome) {
 let historico = [];
 let tempestividade = [];
 let bronzeData = [];
-let viewsData = [];
+let viewsHistorico = [];
 let oscUrlParaNome = {};
+let bronzeUrlParaNome = {};
 let evolutionChart = null;
 let chartOscs = [];
 let ga4Chart = null;
 let ga4Oscs = [];
+let periodoAtual = 'month';
 
 // === AUTH ===
 fetch('/.auth/me').then(r=>r.json()).then(d=>{
@@ -252,7 +250,6 @@ fetch('/.auth/me').then(r=>r.json()).then(d=>{
   document.getElementById('userEmail').textContent = email;
 }).catch(()=>{document.getElementById('userEmail').textContent='conectado'});
 
-// === DATE ===
 (function(){
   const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const d = new Date();
@@ -262,30 +259,19 @@ fetch('/.auth/me').then(r=>r.json()).then(d=>{
 // === LOAD ===
 async function loadData() {
   try {
-    const [histRes, tempRes] = await Promise.all([
+    const [histRes, tempRes, viewsHistRes] = await Promise.all([
       fetch(SAS_HISTORICO),
-      fetch(SAS_TEMPESTIVIDADE).catch(()=>null)
+      fetch(SAS_TEMPESTIVIDADE).catch(()=>null),
+      fetch(SAS_VIEWS_HISTORICO).catch(()=>null)
     ]);
     historico = await histRes.json();
     tempestividade = tempRes?.ok ? await tempRes.json() : [];
+    viewsHistorico = viewsHistRes?.ok ? await viewsHistRes.json() : [];
 
-    // Carregar bronze + views em paralelo
-    const [bronzeNomes, viewsNomes] = await Promise.all([
-      listarBronze('oscs_etransparente_').catch(()=>[]),
-      listarBronze('oscs_views_' + mesAtual).catch(()=>[])
-    ]);
-
-    const [bronzeRes, viewsRes] = await Promise.all([
-      bronzeNomes.length ? fetch(bronzeUrl(bronzeNomes.sort().reverse()[0])).catch(()=>null) : Promise.resolve(null),
-      viewsNomes.length ? fetch(bronzeUrl(viewsNomes[0])).catch(()=>null) : Promise.resolve(null)
-    ]);
-
-    bronzeData = bronzeRes?.ok ? await bronzeRes.json() : [];
-    viewsData = viewsRes?.ok ? await viewsRes.json() : [];
-
-    // Mapa URL -> Nome
-    bronzeData.forEach(o => { if(o.url) oscUrlParaNome[o.url.replace(/\/$/,'')] = o.nome; });
-
+    const bronzeNomes = await listarBronze('oscs_etransparente_').catch(()=>[]);
+    const bronzeRes = bronzeNomes.length ? fetch(bronzeUrl(bronzeNomes.sort().reverse()[0])).catch(()=>null) : null;
+    bronzeData = bronzeRes?.ok ? await (await bronzeRes).json() : [];
+    bronzeData.forEach(o => { if(o.url) { const u = o.url.replace(/\/$/,''); bronzeUrlParaNome[u] = o.nome; oscUrlParaNome[u] = o.nome; } });
     render();
   } catch(e) {
     document.getElementById('spinner').innerHTML = '<div style="color:#dc2626">Erro ao carregar dados. Tente novamente.</div>';
@@ -294,35 +280,95 @@ async function loadData() {
 }
 
 // === HELPERS ===
-function getCiclos() {
-  return [...new Set(historico.map(h=>h.ciclo))].sort();
-}
-function getDadosCiclo(ciclo) {
-  const m = {};
-  historico.filter(h=>h.ciclo===ciclo).forEach(h=>{m[h.nome]=h});
-  return Object.values(m);
-}
-function getUltimoCiclo() {
-  const c = getCiclos(); return c.length ? c[c.length-1] : null;
-}
-function getPenultimoCiclo() {
-  const c = getCiclos(); return c.length>1 ? c[c.length-2] : null;
-}
+function getCiclos() { return [...new Set(historico.map(h=>h.ciclo))].sort(); }
+function getDadosCiclo(ciclo) { const m={}; historico.filter(h=>h.ciclo===ciclo).forEach(h=>{m[h.nome]=h}); return Object.values(m); }
+function getUltimoCiclo() { const c=getCiclos(); return c.length?c[c.length-1]:null; }
+function getPenultimoCiclo() { const c=getCiclos(); return c.length>1?c[c.length-2]:null; }
 function formatarNomeCiclo(ciclo) {
   if(!ciclo) return '—';
-  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const [ano, mes] = ciclo.split('-');
-  return meses[parseInt(mes)-1] + '/' + ano;
+  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [ano,mes]=ciclo.split('-'); return meses[parseInt(mes)-1]+'/'+ano;
 }
-function calcPct(item) {
-  return item.max_nota > 0 ? (item.nota_final / item.max_nota * 100) : 0;
-}
+function calcPct(item) { return item.max_nota>0?(item.nota_final/item.max_nota*100):0; }
 function classPill(classe) {
   if(!classe) return 'pill-regular';
-  const c = classe.toLowerCase().replace('ó','o');
-  if(c==='otimo') return 'pill-otimo';
-  if(c==='bom') return 'pill-bom';
-  return 'pill-regular';
+  const c=classe.toLowerCase().replace('ó','o');
+  return c==='otimo'?'pill-otimo':c==='bom'?'pill-bom':'pill-regular';
+}
+
+function getLogoUrl(nome) {
+  const osc = bronzeData.find(o=>o.nome===nome);
+  return osc?.logo_url || '';
+}
+
+function formatarMesAno(mesStr) {
+  if(!mesStr) return '';
+  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [ano,mes]=mesStr.split('-');
+  return meses[parseInt(mes)-1]+'/'+ano;
+}
+
+// === FILTER VIEWS BY PERIOD ===
+function getFilteredViews() {
+  if(!viewsHistorico.length) return {dailyTotals:[], oscTotals:{}, labels:[], top10:[]};
+  const diasAcum = {};
+  const oscAcum = {};
+  const oscMap = {}; // nome -> daily array
+
+  // Sort months ascending
+  const meses = viewsHistorico.map(m=>m.mes).sort();
+  if(!meses.length) return {dailyTotals:[], oscTotals:{}, labels:[], top10:[]};
+
+  // Determine date range based on period
+  const hojeDate = new Date();
+  let dataCorte = null;
+  if(periodoAtual==='week') dataCorte = new Date(hojeDate.getTime()-7*24*60*60*1000);
+  else if(periodoAtual==='month') dataCorte = new Date(hojeDate.getTime()-30*24*60*60*1000);
+  else if(periodoAtual==='year') dataCorte = new Date(hojeDate.getTime()-365*24*60*60*1000);
+
+  // Filter meses within range
+  const mesesFiltrados = dataCorte ? meses.filter(m=>{
+    const [ano,mes]=m.split('-').map(Number);
+    return new Date(ano,mes-1,1) >= dataCorte;
+  }) : meses;
+
+  // Accumulate day by day across filtered months
+  let idx=0;
+  mesesFiltrados.forEach(mesKey=>{
+    const entry = viewsHistorico.find(v=>v.mes===mesKey);
+    if(!entry||!entry.oscs) return;
+    entry.oscs.forEach(osc=>{
+      if(!osc.views) return;
+      const nome = bronzeUrlParaNome[osc.url?.replace(/\/$/,'')] || osc.url;
+      oscAcum[nome] = (oscAcum[nome]||0) + osc.views.reduce((s,v)=>s+(typeof v==='number'?v:0),0);
+      if(!oscMap[nome]) oscMap[nome] = [];
+      osc.views.forEach((v,i)=>{
+        const dayKey = mesKey + '-' + String(i+1).padStart(2,'0');
+        diasAcum[dayKey] = (diasAcum[dayKey]||0) + (typeof v==='number'?v:0);
+        if(!oscMap[nome][i]) oscMap[nome][i]=0;
+        oscMap[nome][i] += (typeof v==='number'?v:0);
+      });
+    });
+    idx++;
+  });
+
+  // Sort by date key
+  const sortedDays = Object.keys(diasAcum).sort();
+  const dailyTotals = sortedDays.map(d=>diasAcum[d]);
+  const labels = sortedDays.map(d=>{
+    const p = d.split('-');
+    return p[2]+'/'+p[1];
+  });
+
+  const top10 = Object.entries(oscAcum).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+  return {dailyTotals, oscTotals:oscAcum, labels, top10, oscMap};
+}
+
+function setPeriodo(period) {
+  periodoAtual = period;
+  document.querySelectorAll('.periodo-btn').forEach(b=>b.classList.toggle('active', b.dataset.period===period));
+  renderGA4();
 }
 
 // === RENDER ===
@@ -330,7 +376,6 @@ function render() {
   const ultimoCiclo = getUltimoCiclo();
   if(!ultimoCiclo) return;
   const dadosUltimo = getDadosCiclo(ultimoCiclo);
-
   renderKPIs(dadosUltimo, ultimoCiclo);
   renderTopBottom(dadosUltimo);
   renderDistribuicao(dadosUltimo);
@@ -340,412 +385,127 @@ function render() {
   renderRankingTable();
   initEvolChart(dadosUltimo, ultimoCiclo);
   renderGA4();
-
   document.getElementById('spinner').classList.add('hidden');
   document.getElementById('app').style.opacity = '1';
 }
 
-// --- KPIs ---
 function renderKPIs(dados, ciclo) {
-  const total = dados.length;
-  const soma = dados.reduce((s,d)=>s+calcPct(d),0);
-  const media = total ? soma/total : 0;
-  const ob = dados.filter(d=>d.classificacao && (d.classificacao.toLowerCase().replace('ó','o')==='otimo'||d.classificacao.toLowerCase()==='bom'));
-  const pct_ob = total ? (ob.length/total*100) : 0;
-
-  document.getElementById('kpiTotal').textContent = total;
-  document.getElementById('kpiMedia').textContent = media.toFixed(1)+'%';
-  document.getElementById('kpiOtimoBom').textContent = pct_ob.toFixed(1)+'%';
-  document.getElementById('kpiCiclo').textContent = formatarNomeCiclo(ciclo);
+  const total=dados.length, soma=dados.reduce((s,d)=>s+calcPct(d),0);
+  const media=total?soma/total:0;
+  const ob=dados.filter(d=>d.classificacao&&(d.classificacao.toLowerCase().replace('ó','o')==='otimo'||d.classificacao.toLowerCase()==='bom'));
+  const pct_ob=total?(ob.length/total*100):0;
+  document.getElementById('kpiTotal').textContent=total;
+  document.getElementById('kpiMedia').textContent=media.toFixed(1)+'%';
+  document.getElementById('kpiOtimoBom').textContent=pct_ob.toFixed(1)+'%';
+  document.getElementById('kpiCiclo').textContent=formatarNomeCiclo(ciclo);
 }
 
-// --- Top/Bottom ---
 function renderTopBottom(dados) {
-  const sorted = [...dados].sort((a,b)=>b.nota_final-a.nota_final);
-  const top5 = sorted.slice(0,5);
-  const bottom5 = [...dados].sort((a,b)=>a.nota_final-b.nota_final).slice(0,5);
-
-  document.getElementById('topRanking').innerHTML = top5.map((d,i)=>`
-    <div class="rank-item top">
-      <div class="rank-pos">${i+1}</div>
-      <span class="rank-name"><a href="osc.html?nome=${encodeURIComponent(d.nome)}">${d.nome}</a></span>
-      <span class="rank-score">${d.nota_final.toFixed(1)}/${d.max_nota}</span>
-      <span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span>
-    </div>
+  const sorted=[...dados].sort((a,b)=>b.nota_final-a.nota_final);
+  const top5=sorted.slice(0,5), bottom5=[...dados].sort((a,b)=>a.nota_final-b.nota_final).slice(0,5);
+  document.getElementById('topRanking').innerHTML=top5.map((d,i)=>`
+    <div class="rank-item top"><div class="rank-pos">${i+1}</div><span class="rank-name"><a href="osc.html?nome=${encodeURIComponent(d.nome)}">${d.nome}</a></span><span class="rank-score">${d.nota_final.toFixed(1)}/${d.max_nota}</span><span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span></div>
   `).join('');
-
-  document.getElementById('bottomRanking').innerHTML = bottom5.map((d,i)=>`
-    <div class="rank-item bottom">
-      <div class="rank-pos">${i+1}</div>
-      <span class="rank-name"><a href="osc.html?nome=${encodeURIComponent(d.nome)}">${d.nome}</a></span>
-      <span class="rank-score">${d.nota_final.toFixed(1)}/${d.max_nota}</span>
-      <span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span>
-    </div>
+  document.getElementById('bottomRanking').innerHTML=bottom5.map((d,i)=>`
+    <div class="rank-item bottom"><div class="rank-pos">${i+1}</div><span class="rank-name"><a href="osc.html?nome=${encodeURIComponent(d.nome)}">${d.nome}</a></span><span class="rank-score">${d.nota_final.toFixed(1)}/${d.max_nota}</span><span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span></div>
   `).join('');
 }
 
-// --- Distribuição ---
 function renderDistribuicao(dados) {
-  const faixas = {regular:0, bom:0, otimo:0};
-  dados.forEach(d=>{
-    const pct = calcPct(d);
-    if(pct<=30) faixas.regular++;
-    else if(pct<=69) faixas.bom++;
-    else faixas.otimo++;
-  });
-  const ctx = document.getElementById('distribuicaoChart');
-  new Chart(ctx, {
-    type:'bar',
-    data:{
-      labels:['0–30% (Regular)','30–69% (Bom)','70–100% (Ótimo)'],
-      datasets:[{
-        data:[faixas.regular, faixas.bom, faixas.otimo],
-        backgroundColor:['#dc2626','#d97706','#16a34a'],
-        borderRadius:4
-      }]
-    },
-    options:{
-      indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{grid:{display:false}, beginAtZero:true, ticks:{stepSize:1}},
-        y:{grid:{display:false}}
-      }
-    }
-  });
+  const f={regular:0,bom:0,otimo:0};
+  dados.forEach(d=>{const p=calcPct(d);if(p<=30)f.regular++;else if(p<=69)f.bom++;else f.otimo++;});
+  new Chart(document.getElementById('distribuicaoChart'),{type:'bar',data:{labels:['0-30% (Regular)','30-69% (Bom)','70-100% (Otimo)'],datasets:[{data:[f.regular,f.bom,f.otimo],backgroundColor:['#dc2626','#d97706','#16a34a'],borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},beginAtZero:true,ticks:{stepSize:1}},y:{grid:{display:false}}}}});
 }
 
-// --- Alertas ---
 function renderAlertas(dados) {
-  const zeradas = dados.filter(d=>d.nota_final===0);
-  const el = document.getElementById('alertasContainer');
-  const list = document.getElementById('alertasList');
-  if(zeradas.length) {
-    el.classList.remove('hidden');
-    list.innerHTML = zeradas.map(d=>`
-      <div class="alert-item">
-        <span class="osc-name"><i class="ph ph-buildings"></i> ${d.nome}</span>
-        <a class="btn-contact" href="mailto:?subject=${encodeURIComponent('etransparente.org — OSC com índice zerado: '+d.nome)}&body=${encodeURIComponent('Prezados,\n\nIdentificamos que a OSC '+d.nome+' está com nota zero no Índice de Transparência do etransparente.org. Solicitamos contato para regularização.\n\nAtenciosamente,\nEquipe etransparente')}">
-          <i class="ph ph-envelope"></i> Contatar responsável
-        </a>
-      </div>
-    `).join('');
-  } else {
-    el.classList.add('hidden');
-  }
+  const z=dados.filter(d=>d.nota_final===0);
+  const el=document.getElementById('alertasContainer'),list=document.getElementById('alertasList');
+  if(z.length){el.classList.remove('hidden');list.innerHTML=z.map(d=>`<div class="alert-item"><span class="osc-name"><i class="ph ph-buildings"></i> ${d.nome}</span><a class="btn-contact" href="mailto:?subject=${encodeURIComponent('etransparente.org - OSC com indice zerado: '+d.nome)}&body=${encodeURIComponent('Prezados,\n\nIdentificamos que a OSC '+d.nome+' esta com nota zero no Indice de Transparencia do etransparente.org. Solicitamos contato para regularizacao.\n\nAtenciosamente,\nEquipe etransparente')}"><i class="ph ph-envelope"></i> Contatar responsavel</a></div>`).join('');}
+  else el.classList.add('hidden');
 }
 
-// --- Contratos ---
 function renderContratos(bronze) {
-  if(!bronze.length) { document.getElementById('contratosContainer').innerHTML = '<div class="card empty-msg">Dados de contratos não disponíveis</div>'; return; }
-
-  const esferas = ['municipio','estado','uniao','emendas_parlamentares'];
-  const labels = {'municipio':'Município','estado':'Estado','uniao':'União','emendas_parlamentares':'Emendas'};
-
-  // Contar termos reais por esfera
-  const totais = {municipio:0, estado:0, uniao:0, emendas_parlamentares:0};
-  const oscContagens = {};
-
-  bronze.forEach(o=>{
-    if(!o.termos) return;
-    oscContagens[o.nome] = 0;
-    esferas.forEach(e=>{
-      const arr = o.termos[e]?.termos || [];
-      const reais = arr.filter(t=>{
-        const vals = Object.values(t).filter(v=>typeof v==='string' && v.trim());
-        return vals.length > 2;
-      });
-      totais[e] += reais.length;
-      oscContagens[o.nome] += reais.length;
-    });
-  });
-
-  // Stats
-  const statsEl = document.getElementById('contratoStats');
-  statsEl.innerHTML = esferas.map(e=>`
-    <div class="contrato-stat">
-      <div class="stat-number">${totais[e]}</div>
-      <div class="stat-label">${labels[e]}</div>
-    </div>
-  `).join('');
-
-  // Rosca
-  const ctx = document.getElementById('contratoChart');
-  new Chart(ctx, {
-    type:'doughnut',
-    data:{
-      labels:esferas.map(e=>labels[e]),
-      datasets:[{
-        data:esferas.map(e=>totais[e]),
-        backgroundColor:['#1e3a8a','#3b82f6','#93c5fd','#bfdbfe'],
-        borderWidth:0
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      cutout:'60%',
-      plugins:{legend:{position:'bottom', labels:{boxWidth:12, padding:12, font:{size:11}}}}
-    }
-  });
-
-  // Top 5
-  const top5 = Object.entries(oscContagens).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  document.getElementById('top5Contratos').innerHTML = top5.map(([nome,count],i)=>`
-    <div class="rank-item" style="padding:6px 0">
-      <div class="rank-pos" style="background:#e2e8f0;color:#475569">${i+1}</div>
-      <span class="rank-name" title="${nome}">${nome}</span>
-      <span style="font-size:13px;font-weight:600;color:#1e3a8a">${count}</span>
-    </div>
-  `).join('');
-
-  // Sem contratos
-  const sem = Object.entries(oscContagens).filter(([,c])=>c===0).map(([n])=>n).slice(0,20);
-  const semEl = document.getElementById('semContratosBox');
-  if(sem.length) {
-    semEl.classList.remove('hidden');
-    semEl.innerHTML = '<h4><i class="ph ph-warning-circle"></i> OSCs sem contratos registrados ('+sem.length+')</h4><ul>'+sem.map(n=>'<li>'+n+'</li>').join('')+'</ul>';
-  }
+  if(!bronze.length){document.getElementById('contratosContainer').innerHTML='<div class="card empty-msg">Dados de contratos nao disponiveis</div>';return;}
+  const esf=['municipio','estado','uniao','emendas_parlamentares'], lbs={'municipio':'Municipio','estado':'Estado','uniao':'Uniao','emendas_parlamentares':'Emendas'};
+  const tot={municipio:0,estado:0,uniao:0,emendas_parlamentares:0}, oscC={};
+  bronze.forEach(o=>{if(!o.termos)return;oscC[o.nome]=0;esf.forEach(e=>{const arr=o.termos[e]?.termos||[], reais=arr.filter(t=>Object.values(t).filter(v=>typeof v==='string'&&v.trim()).length>2);tot[e]+=reais.length;oscC[o.nome]+=reais.length;});});
+  document.getElementById('contratoStats').innerHTML=esf.map(e=>`<div class="contrato-stat"><div class="stat-number">${tot[e]}</div><div class="stat-label">${lbs[e]}</div></div>`).join('');
+  new Chart(document.getElementById('contratoChart'),{type:'doughnut',data:{labels:esf.map(e=>lbs[e]),datasets:[{data:esf.map(e=>tot[e]),backgroundColor:['#1e3a8a','#3b82f6','#93c5fd','#bfdbfe'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:12,font:{size:11}}}}}});
+  const top5=Object.entries(oscC).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('top5Contratos').innerHTML=top5.map(([n,c],i)=>`<div class="rank-item" style="padding:6px 0"><div class="rank-pos" style="background:#e2e8f0;color:#475569">${i+1}</div><span class="rank-name" title="${n}">${n}</span><span style="font-size:13px;font-weight:600;color:#1e3a8a">${c}</span></div>`).join('');
+  const sem=Object.entries(oscC).filter(([,c])=>c===0).map(([n])=>n).slice(0,20), semEl=document.getElementById('semContratosBox');
+  if(sem.length){semEl.classList.remove('hidden');semEl.innerHTML='<h4><i class="ph ph-warning-circle"></i> OSCs sem contratos registrados ('+sem.length+')</h4><ul>'+sem.map(n=>'<li>'+n+'</li>').join('')+'</ul>';}
 }
 
-// --- Documentos ---
 function renderDocumentos() {
-  const el = document.getElementById('docContainer');
-  if(!tempestividade.length) {
-    el.innerHTML = '<div class="card empty-msg"><i class="ph ph-check-circle" style="font-size:22px;display:block;margin-bottom:8px;color:#16a34a"></i>Nenhuma alteração detectada no último ciclo</div>';
-    return;
-  }
-  const campoLabel = {
-    estatuto:'Estatuto', cneas:'CNEAS', cebas:'CEBAS', plano_acao:'Plano de Ação',
-    ata_eleicao:'Ata de Eleição', relatorio_atividades:'Relatório de Atividades',
-    balanco_2021:'Balanço 2021', balanco_2022:'Balanço 2022', balanco_2023:'Balanço 2023', balanco_2024:'Balanço 2024'
-  };
-  el.innerHTML = `
-    <table>
-      <thead><tr><th>OSC</th><th>Documento</th><th>Ciclo de detecção</th><th>Anterior</th><th>Atual</th></tr></thead>
-      <tbody>
-        ${tempestividade.map(d=>`
-          <tr>
-            <td><strong>${d.nome}</strong></td>
-            <td>${campoLabel[d.campo]||d.campo}</td>
-            <td>${d.ciclo_deteccao||'—'}</td>
-            <td>${d.url_anterior ? '<a href="'+d.url_anterior+'" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>' : '—'}</td>
-            <td>${d.url_nova ? '<a href="'+d.url_nova+'" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>' : '—'}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
+  const el=document.getElementById('docContainer');
+  if(!tempestividade.length){el.innerHTML='<div class="card empty-msg"><i class="ph ph-check-circle" style="font-size:22px;display:block;margin-bottom:8px;color:#16a34a"></i>Nenhuma alteracao detectada no ultimo ciclo</div>';return;}
+  const cl={estatuto:'Estatuto',cneas:'CNEAS',cebas:'CEBAS',plano_acao:'Plano de Acao',ata_eleicao:'Ata de Eleicao',relatorio_atividades:'Relatorio de Atividades',balanco_2021:'Balanco 2021',balanco_2022:'Balanco 2022',balanco_2023:'Balanco 2023',balanco_2024:'Balanco 2024'};
+  el.innerHTML=`<table><thead><tr><th>OSC</th><th>Documento</th><th>Ciclo</th><th>Anterior</th><th>Atual</th></tr></thead><tbody>${tempestividade.map(d=>`<tr><td><strong>${d.nome}</strong></td><td>${cl[d.campo]||d.campo}</td><td>${d.ciclo_deteccao||'---'}</td><td>${d.url_anterior?'<a href="'+d.url_anterior+'" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>':'---'}</td><td>${d.url_nova?'<a href="'+d.url_nova+'" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>':'---'}</td></tr>`).join('')}</tbody></table>`;
 }
 
-// --- Evolução Chart ---
 function initEvolChart(dadosUltimo, ultimoCiclo) {
-  const ciclos = getCiclos();
-  const penultimoCiclo = getPenultimoCiclo();
-
-  // Default top 3 most improved
-  let defaultOscs = [];
-  if(penultimoCiclo && ultimoCiclo) {
-    const dp = {}, du = {};
-    getDadosCiclo(penultimoCiclo).forEach(d=>{dp[d.nome]=d});
-    dadosUltimo.forEach(d=>{du[d.nome]=d});
-    defaultOscs = Object.keys(du).filter(n=>dp[n])
-      .map(n=>({nome:n, dif:du[n].nota_final-dp[n].nota_final}))
-      .sort((a,b)=>b.dif-a.dif).slice(0,3).map(m=>m.nome);
-  }
-  chartOscs = defaultOscs;
-  refreshEvolChart(ciclos);
-
-  // Populate selector
-  const nomes = [...new Set(historico.map(h=>h.nome))].sort();
-  const sel = document.getElementById('evolOscSelector');
-  sel.innerHTML = '<option value="">— Selecione uma OSC —</option>' + nomes.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
+  const ciclos=getCiclos(), penultimoCiclo=getPenultimoCiclo();
+  let def=[];
+  if(penultimoCiclo&&ultimoCiclo){const dp={},du={};getDadosCiclo(penultimoCiclo).forEach(d=>{dp[d.nome]=d});dadosUltimo.forEach(d=>{du[d.nome]=d});def=Object.keys(du).filter(n=>dp[n]).map(n=>({nome:n,dif:du[n].nota_final-dp[n].nota_final})).sort((a,b)=>b.dif-a.dif).slice(0,3).map(m=>m.nome);}
+  chartOscs=def;refreshEvolChart(ciclos);
+  const nomes=[...new Set(historico.map(h=>h.nome))].sort();
+  document.getElementById('evolOscSelector').innerHTML='<option value="">-- Selecione uma OSC --</option>'+nomes.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
 }
 
 function refreshEvolChart(ciclos) {
-  if(!ciclos.length) return;
-  const ctx = document.getElementById('evolutionChart');
-  if(!ctx) return;
-  if(evolutionChart) evolutionChart.destroy();
-
-  const cores = ['#1e3a8a','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#be123c','#15803d','#ca8a04','#0284c7'];
-  const datasets = chartOscs.map((nome,idx)=>{
-    const map = {};
-    historico.filter(h=>h.nome===nome).forEach(d=>{map[d.ciclo]=calcPct(d)});
-    return {
-      label: nome,
-      data: ciclos.map(c=>map[c]!==undefined?map[c]:null),
-      borderColor: cores[idx%cores.length],
-      backgroundColor: cores[idx%cores.length]+'20',
-      borderWidth: 2, tension: .3, spanGaps: true, pointRadius: 3
-    };
-  });
-
-  evolutionChart = new Chart(ctx, {
-    type:'line',
-    data:{labels:ciclos.map(c=>formatarNomeCiclo(c)), datasets},
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{position:'top', labels:{boxWidth:12, padding:14, font:{size:11}}},
-        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.parsed.y!==null?ctx.parsed.y.toFixed(1)+'%':'—')}}
-      },
-      scales:{
-        y:{beginAtZero:true, max:100, title:{display:true, text:'% do índice'}, ticks:{font:{size:11}}},
-        x:{ticks:{maxRotation:45, font:{size:10}}}
-      }
-    }
-  });
+  if(!ciclos.length)return;
+  const ctx=document.getElementById('evolutionChart');if(!ctx)return;
+  if(evolutionChart)evolutionChart.destroy();
+  const cores=['#1e3a8a','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#be123c','#15803d','#ca8a04','#0284c7'];
+  evolutionChart=new Chart(ctx,{type:'line',data:{labels:ciclos.map(c=>formatarNomeCiclo(c)),datasets:chartOscs.map((nome,idx)=>{const m={};historico.filter(h=>h.nome===nome).forEach(d=>{m[d.ciclo]=calcPct(d)});return{label:nome,data:ciclos.map(c=>m[c]!==undefined?m[c]:null),borderColor:cores[idx%cores.length],backgroundColor:cores[idx%cores.length]+'20',borderWidth:2,tension:.3,spanGaps:true,pointRadius:3};})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:14,font:{size:11}}},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.parsed.y!==null?ctx.parsed.y.toFixed(1)+'%':'---')}}},scales:{y:{beginAtZero:true,max:100,title:{display:true,text:'% do indice'},ticks:{font:{size:11}}},x:{ticks:{maxRotation:45,font:{size:10}}}}}});
 }
 
-function addOscToChart() {
-  const sel = document.getElementById('evolOscSelector');
-  const nome = sel.value;
-  if(!nome||chartOscs.includes(nome)) return;
-  chartOscs.push(nome);
-  refreshEvolChart(getCiclos());
-  sel.value = '';
-}
+function addOscToChart(){const sel=document.getElementById('evolOscSelector'),nome=sel.value;if(!nome||chartOscs.includes(nome))return;chartOscs.push(nome);refreshEvolChart(getCiclos());sel.value='';}
+function resetChart(){const ultimoCiclo=getUltimoCiclo(),penultimoCiclo=getPenultimoCiclo();let def=[];if(penultimoCiclo&&ultimoCiclo){const dp={},du={};getDadosCiclo(penultimoCiclo).forEach(d=>{dp[d.nome]=d});getDadosCiclo(ultimoCiclo).forEach(d=>{du[d.nome]=d});def=Object.keys(du).filter(n=>dp[n]).map(n=>({nome:n,dif:du[n].nota_final-dp[n].nota_final})).sort((a,b)=>b.dif-a.dif).slice(0,3).map(m=>m.nome);}chartOscs=def;refreshEvolChart(getCiclos());}
 
-function resetChart() {
-  const ultimoCiclo = getUltimoCiclo();
-  const penultimoCiclo = getPenultimoCiclo();
-  let def = [];
-  if(penultimoCiclo && ultimoCiclo) {
-    const dp={}, du={};
-    getDadosCiclo(penultimoCiclo).forEach(d=>{dp[d.nome]=d});
-    getDadosCiclo(ultimoCiclo).forEach(d=>{du[d.nome]=d});
-    def = Object.keys(du).filter(n=>dp[n])
-      .map(n=>({nome:n, dif:du[n].nota_final-dp[n].nota_final}))
-      .sort((a,b)=>b.dif-a.dif).slice(0,3).map(m=>m.nome);
-  }
-  chartOscs = def;
-  refreshEvolChart(getCiclos());
-}
-
-// --- Ranking Table ---
 function renderRankingTable() {
-  const ultimoCiclo = getUltimoCiclo();
-  if(!ultimoCiclo) {document.getElementById('rankingTable').innerHTML=''; return;}
-  let dados = getDadosCiclo(ultimoCiclo);
-  const q = (document.getElementById('searchInput').value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  if(q) dados = dados.filter(d=>d.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q));
+  const ultimoCiclo=getUltimoCiclo();if(!ultimoCiclo){document.getElementById('rankingTable').innerHTML='';return;}
+  let dados=getDadosCiclo(ultimoCiclo);
+  const q=(document.getElementById('searchInput').value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(q)dados=dados.filter(d=>d.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q));
   dados.sort((a,b)=>b.nota_final-a.nota_final);
-
-  document.getElementById('rankingTable').innerHTML = `
-    <table>
-      <thead><tr><th>#</th><th>OSC</th><th>Nota</th><th>Max</th><th>%</th><th>Classificação</th></tr></thead>
-      <tbody>
-        ${dados.map((d,i)=>`
-          <tr>
-            <td class="rank-num">${i+1}º</td>
-            <td><strong><a href="osc.html?nome=${encodeURIComponent(d.nome)}" style="color:#1e293b;text-decoration:none">${d.nome}</a></strong></td>
-            <td>${d.nota_final.toFixed(1)}</td>
-            <td>${d.max_nota}</td>
-            <td>${calcPct(d).toFixed(1)}%</td>
-            <td><span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span></td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
+  document.getElementById('rankingTable').innerHTML=`<table><thead><tr><th>#</th><th>OSC</th><th>Nota</th><th>Max</th><th>%</th><th>Classificacao</th></tr></thead><tbody>${dados.map((d,i)=>{const logo=getLogoUrl(d.nome);return`<tr><td class="rank-num">${i+1}o</td><td><span class="rank-logo">${logo?'<img src="'+logo+'" alt="" onerror="this.outerHTML=\''+d.nome.charAt(0)+'\'">':d.nome.charAt(0)}</span> <a href="osc.html?nome=${encodeURIComponent(d.nome)}" style="color:#1e293b;text-decoration:none;font-weight:500">${d.nome}</a></td><td>${d.nota_final.toFixed(1)}</td><td>${d.max_nota}</td><td>${calcPct(d).toFixed(1)}%</td><td><span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span></td></tr>`;}).join('')}</tbody></table>`;
 }
 
-// --- GA4 Views ---
+// === GA4 ===
 function renderGA4() {
-  if(!viewsData || !viewsData.length) {
-    document.querySelector('.section-title .ph-eye').closest('.section-title') && (
-      document.querySelector('.section-title .ph-eye').closest('.section-title').nextElementSibling.innerHTML = '<div class="card empty-msg">Dados de visualizações não disponíveis para este mês</div>'
-    );
+  if(!viewsHistorico.length) {
+    document.getElementById('ga4SemDados').classList.remove('hidden');
+    document.getElementById('ga4Chart').style.display='none';
+    document.getElementById('top10Views').innerHTML='';
     return;
   }
+  document.getElementById('ga4SemDados').classList.add('hidden');
+  document.getElementById('ga4Chart').style.display='block';
 
-  // Sum daily views across all OSCs
-  const daysInMonth = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
-  const dailyTotals = new Array(daysInMonth).fill(0);
-  const oscTotals = {};
+  const filt=getFilteredViews();
+  const ctx=document.getElementById('ga4Chart');if(!ctx)return;
+  if(ga4Chart)ga4Chart.destroy();
 
-  viewsData.forEach(item=>{
-    const nome = oscUrlParaNome[item.url?.replace(/\/$/,'')] || item.url;
-    const views = item.views || [];
-    oscTotals[nome] = 0;
-    views.forEach((v,i)=>{
-      if(i<daysInMonth) dailyTotals[i] += (typeof v==='number'?v:0);
-      oscTotals[nome] += (typeof v==='number'?v:0);
-    });
-  });
+  const oscMap = filt.oscMap || {};
+  const daysInPeriod = filt.labels.length;
+  const dataArr = new Array(daysInPeriod).fill(0);
+  filt.dailyTotals.forEach((v,i)=>{if(i<daysInPeriod)dataArr[i]=v;});
 
-  // Labels: dias do mês
-  const labels = Array.from({length:daysInMonth}, (_,i)=>String(i+1).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0'));
+  ga4Chart=new Chart(ctx,{type:'line',data:{labels:filt.labels,datasets:[{label:'Total plataforma',data:dataArr,borderColor:'#1e3a8a',backgroundColor:'#1e3a8a10',borderWidth:2,tension:.3,fill:true,pointRadius:1,spanGaps:false},...ga4Oscs.map((nome,idx)=>{const cores=['#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];return{label:nome,data:dataArr.map((_,di)=>oscMap[nome]?.[di]||null),borderColor:cores[idx%cores.length],borderWidth:1.5,tension:.3,pointRadius:1,borderDash:[4,3]};})]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,font:{size:11}}},tooltip:{mode:'index',intersect:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'Visualizacoes'},ticks:{font:{size:10}}},x:{ticks:{font:{size:9},maxTicksLimit:15}}},interaction:{mode:'nearest',axis:'x',intersect:false}}});
 
-  // Chart total + OSCs individuais
-  const ctxGa4 = document.getElementById('ga4Chart');
-  if(ctxGa4) {
-    if(ga4Chart) ga4Chart.destroy();
-    ga4Chart = new Chart(ctxGa4, {
-      type:'line',
-      data:{
-        labels,
-        datasets:[
-          {
-            label:'Total plataforma',
-            data:dailyTotals,
-            borderColor:'#1e3a8a', backgroundColor:'#1e3a8a10',
-            borderWidth:2, tension:.3, fill:true, pointRadius:1
-          },
-          ...ga4Oscs.map((nome,idx)=>{
-            const item = viewsData.find(v=>(oscUrlParaNome[v.url?.replace(/\/$/,'')]||v.url)===nome);
-            const data = new Array(daysInMonth).fill(null);
-            if(item && item.views) {
-              item.views.forEach((v,i)=>{if(i<daysInMonth) data[i]=typeof v==='number'?v:0});
-            }
-            const cores = ['#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];
-            return {
-              label: nome,
-              data,
-              borderColor: cores[idx%cores.length],
-              borderWidth: 1.5, tension:.3, pointRadius:1,
-              borderDash: [4,3]
-            };
-          })
-        ]
-      },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{
-          legend:{position:'top', labels:{boxWidth:12, padding:12, font:{size:11}}},
-          tooltip:{mode:'index', intersect:false}
-        },
-        scales:{
-          y:{beginAtZero:true, title:{display:true, text:'Visualizações'}, ticks:{font:{size:10}}},
-          x:{ticks:{font:{size:9}, maxTicksLimit:15}}
-        },
-        interaction:{mode:'nearest', axis:'x', intersect:false}
-      }
-    });
-  }
+  document.getElementById('top10Views').innerHTML=filt.top10.map(([nome,total])=>`<div class="top10-item"><span class="osc-name" title="${nome}">${nome}</span><span class="views-count">${total}</span></div>`).join('');
 
-  // Top 10 table
-  const top10 = Object.entries(oscTotals).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  document.getElementById('top10Views').innerHTML = top10.map(([nome, total])=>`
-    <div class="top10-item">
-      <span class="osc-name" title="${nome}">${nome}</span>
-      <span class="views-count">${total}</span>
-    </div>
-  `).join('');
-
-  // Populate OSC selector
-  const sel = document.getElementById('ga4OscSelector');
-  const oscNames = [...new Set(viewsData.map(v=>oscUrlParaNome[v.url?.replace(/\/$/,'')]||v.url).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">— Selecione uma OSC —</option>'+oscNames.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
+  const sel=document.getElementById('ga4OscSelector');
+  const oscNames=filt.top10.map(([n])=>n).sort();
+  sel.innerHTML='<option value="">-- Selecione uma OSC --</option>'+oscNames.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
 }
 
 function addGa4Osc() {
-  const sel = document.getElementById('ga4OscSelector');
-  const nome = sel.value;
-  if(!nome||ga4Oscs.includes(nome)) return;
-  ga4Oscs.push(nome);
-  renderGA4();
-  sel.value = '';
+  const sel=document.getElementById('ga4OscSelector'),nome=sel.value;
+  if(!nome||ga4Oscs.includes(nome))return;
+  ga4Oscs.push(nome);renderGA4();sel.value='';
 }
 
 // === BOOT ===

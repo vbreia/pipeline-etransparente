@@ -19,6 +19,14 @@
       "rewrite": "/.auth/login/aad"
     },
     {
+      "route": "/oscs",
+      "rewrite": "/oscs.html"
+    },
+    {
+      "route": "/osc",
+      "rewrite": "/osc.html"
+    },
+    {
       "route": "/*",
       "allowedRoles": ["etransparente_acesso"]
     }

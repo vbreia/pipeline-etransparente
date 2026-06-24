@@ -40,7 +40,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .identity-card .osc-cnpj{font-size:12px;color:#64748b;margin-bottom:12px}
 .identity-card .osc-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#1e3a8a;text-decoration:none}
 .identity-card .osc-link:hover{text-decoration:underline}
-.identity-details{display:flex;flex-direction:column;gap:0}
 .detail-row{display:flex;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f1f5f9;gap:10px}
 .detail-row:last-child{border-bottom:none}
 .detail-icon{color:#94a3b8;font-size:18px;width:22px;text-align:center;flex-shrink:0;margin-top:1px}
@@ -76,10 +75,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .contrato-table-wrap table{margin-bottom:0}
 .contrato-table-wrap table th{font-size:10px;padding:8px 10px}
 .contrato-table-wrap table td{font-size:11px;padding:8px 10px}
-.table-wrapper{overflow-x:auto;margin-bottom:20px}
-table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07)}
-th{background:#f8fafc;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;text-align:left;font-weight:600}
-td{padding:10px 14px;font-size:13px;border-top:1px solid #f1f5f9}
 .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap}
 .pill-otimo{background:#dcfce7;color:#16a34a}
 .pill-bom{background:#fef9c3;color:#d97706}
@@ -89,15 +84,19 @@ td{padding:10px 14px;font-size:13px;border-top:1px solid #f1f5f9}
 @keyframes spin{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
 .empty-msg{padding:32px;text-align:center;color:#94a3b8;font-size:13px}
+.periodo-filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.periodo-btn{padding:5px 14px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;cursor:pointer;font-size:12px;color:#64748b;transition:all .15s}
+.periodo-btn:hover{background:#f1f5f9}
+.periodo-btn.active{background:#1e3a8a;color:#fff;border-color:#1e3a8a}
 @media(max-width:1024px){.card-grid-2{grid-template-columns:1fr}.contrato-cards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.sidebar{width:56px}.sidebar-logo .logo-text,.sidebar-logo .logo-sub,.sidebar-nav a span,.sidebar-footer .user-email,.sidebar-footer a span{display:none}.sidebar-nav a{padding:12px;justify-content:center}.sidebar-footer{padding:12px;display:flex;flex-direction:column;align-items:center}.sidebar-footer a{justify-content:center}.content{margin-left:56px;padding:20px}.contrato-cards{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.contrato-cards{grid-template-columns:1fr}.content{padding:16px}.doc-grid{grid-template-columns:1fr}}
+@media print{body{display:block}.sidebar{display:none!important}.content{margin-left:0!important;padding:16px!important}}
 </style>
 </head>
 <body>
 <div id="spinner" class="spinner-overlay"><div class="spinner"></div><div style="font-size:13px;color:#64748b">Carregando perfil...</div></div>
 
-<!-- Sidebar -->
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-text">etransparente.org</div>
@@ -105,7 +104,7 @@ td{padding:10px 14px;font-size:13px;border-top:1px solid #f1f5f9}
   </div>
   <nav class="sidebar-nav">
     <a href="index.html"><i class="ph ph-chart-bar"></i><span>Visão Geral</span></a>
-    <a href="#" class="active"><i class="ph ph-buildings"></i><span>OSCs</span></a>
+    <a href="oscs.html" class="active"><i class="ph ph-buildings"></i><span>OSCs</span></a>
   </nav>
   <div class="sidebar-footer">
     <div class="user-email" id="userEmail">Carregando...</div>
@@ -113,44 +112,37 @@ td{padding:10px 14px;font-size:13px;border-top:1px solid #f1f5f9}
   </div>
 </aside>
 
-<!-- Content -->
 <main class="content" id="app" style="opacity:0;transition:opacity .3s">
-  <a href="index.html" class="back-link"><i class="ph ph-arrow-left"></i> Voltar para visão geral</a>
+  <a href="oscs.html" class="back-link"><i class="ph ph-arrow-left"></i> Voltar para lista de OSCs</a>
 
   <div class="page-header">
     <h1 id="oscNome">Carregando...</h1>
-    <div class="subtitle" id="oscSubtitle">Perfil da Organização da Sociedade Civil</div>
+    <div class="subtitle">Perfil da Organizacao da Sociedade Civil</div>
   </div>
 
   <!-- Section 1: Identidade -->
   <div class="section-title"><i class="ph ph-identification-card"></i> Identidade</div>
   <div class="card-grid-2">
-    <div class="identity-card" id="identityCard">
+    <div class="identity-card">
       <div class="logo-placeholder" id="logoPlaceholder"><i class="ph ph-buildings"></i></div>
-      <div class="osc-name" id="oscNomeCard">—</div>
-      <div class="osc-cnpj" id="oscCnpj">—</div>
+      <div class="osc-name" id="oscNomeCard">---</div>
+      <div class="osc-cnpj" id="oscCnpj">---</div>
       <a class="osc-link" id="oscSiteLink" href="#" target="_blank"><i class="ph ph-arrow-square-out"></i> Ver no etransparente.org</a>
     </div>
-    <div class="card" style="margin-bottom:0">
-      <div id="oscDetails"></div>
-    </div>
+    <div class="card" style="margin-bottom:0"><div id="oscDetails"></div></div>
   </div>
 
-  <!-- Section 2: Índice de transparência -->
-  <div class="section-title"><i class="ph ph-chart-line"></i> Índice de transparência</div>
+  <!-- Section 2: Indice -->
+  <div class="section-title"><i class="ph ph-chart-line"></i> Indice de transparencia</div>
   <div class="card" style="margin-bottom:16px">
     <div class="score-row">
-      <div>
-        <span class="score-main" id="oscScore">—</span>
-        <span class="score-max" id="oscScoreMax">/ —</span>
-        <span class="score-pct" id="oscScorePct"></span>
-      </div>
-      <span class="pill" id="oscClassifPill" style="font-size:12px">—</span>
+      <div><span class="score-main" id="oscScore">---</span><span class="score-max" id="oscScoreMax">/ ---</span><span class="score-pct" id="oscScorePct"></span></div>
+      <span class="pill" id="oscClassifPill" style="font-size:12px">---</span>
       <div class="badges" id="oscBadges"></div>
     </div>
   </div>
   <div class="chart-wrap">
-    <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:#1e293b">Evolução da nota</h3>
+    <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:#1e293b">Evolucao da nota</h3>
     <canvas id="oscEvolChart"></canvas>
   </div>
 
@@ -162,396 +154,221 @@ td{padding:10px 14px;font-size:13px;border-top:1px solid #f1f5f9}
   <div class="section-title"><i class="ph ph-handshake"></i> Contratos e parcerias</div>
   <div id="oscContratos"></div>
 
-  <!-- Section 5: Visualizações GA4 -->
-  <div class="section-title"><i class="ph ph-eye"></i> Visualizações da página</div>
-  <div id="oscViews" class="chart-wrap" style="display:none">
+  <!-- Section 5: Visualizacoes GA4 -->
+  <div class="section-title"><i class="ph ph-eye"></i> Visualizacoes da pagina</div>
+  <div class="chart-wrap" id="oscViewsWrap" style="display:none">
+    <div class="periodo-filtros" id="oscPeriodoFiltros">
+      <button class="periodo-btn" data-period="week" onclick="setOscPeriodo('week')">Ultima semana</button>
+      <button class="periodo-btn active" data-period="month" onclick="setOscPeriodo('month')">Ultimo mes</button>
+      <button class="periodo-btn" data-period="year" onclick="setOscPeriodo('year')">Ultimo ano</button>
+      <button class="periodo-btn" data-period="all" onclick="setOscPeriodo('all')">Completo</button>
+    </div>
     <canvas id="oscViewsChart"></canvas>
     <div style="display:flex;gap:20px;margin-top:12px;font-size:13px;color:#475569">
-      <span><strong>Total no mês:</strong> <span id="viewsTotal">—</span></span>
-      <span><strong>Média diária:</strong> <span id="viewsMedia">—</span></span>
+      <span><strong>Total no periodo:</strong> <span id="viewsTotal">---</span></span>
+      <span><strong>Media diaria:</strong> <span id="viewsMedia">---</span></span>
     </div>
   </div>
+  <div id="oscViewsEmpty" class="card empty-msg hidden">Dados GA4 disponiveis a partir do proximo ciclo.</div>
 </main>
 
 <script>
-// === CONSTANTES ===
 const SAS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
 const SAS_BRONZE_LIST = 'https://etransparentedata.blob.core.windows.net/etransparente/bronze?sp=rl&st=2026-06-24T17:56:04Z&se=2028-06-25T02:11:04Z&spr=https&sv=2026-02-06&sr=d&sig=OwaqdmE6L7MPsopXnQYODx5M%2FUK9yst8rNKfzH8vVfk%3D&sdd=1';
 const hoje = new Date();
-const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2,'0');
-const SAS_TEMPESTIVIDADE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/tempestividade_' + mesAtual + '.json?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
+const mesAtual = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+const SAS_TEMPESTIVIDADE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/tempestividade_'+mesAtual+'.json?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
+const SAS_VIEWS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_views_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
 
 const bronzeBaseUrl = SAS_BRONZE_LIST.split('?')[0];
 const bronzeSasParams = SAS_BRONZE_LIST.split('?')[1];
 
 async function listarBronze(prefixo) {
-  const url = bronzeBaseUrl + '?' + bronzeSasParams + '&restype=directory&comp=list&prefix=' + encodeURIComponent(prefixo);
+  const url = bronzeBaseUrl+'?'+bronzeSasParams+'&restype=directory&comp=list&prefix='+encodeURIComponent(prefixo);
   const res = await fetch(url);
   const xml = await res.text();
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xml, 'application/xml');
-  return Array.from(doc.querySelectorAll('Blob Name')).map(n => n.textContent);
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  return Array.from(doc.querySelectorAll('Name')).map(n => n.textContent);
 }
+function bronzeUrl(nome) { return bronzeBaseUrl+'/'+nome+'?'+bronzeSasParams; }
 
-function bronzeUrl(nome) {
-  return bronzeBaseUrl + '/' + nome + '?' + bronzeSasParams;
-}
+let oscNome='', bronzeOsc=null, historico=[], tempestividade=[], viewsHistorico=[], evolChart=null, oscPeriodo='month';
 
-// === STATE ===
-let oscNome = '';
-let bronzeOsc = null;
-let historico = [];
-let tempestividade = [];
-let viewsData = [];
-let evolChart = null;
-
-// === AUTH ===
 fetch('/.auth/me').then(r=>r.json()).then(d=>{
-  const email = d.clientPrincipal?.userDetails || d.clientPrincipal?.userId || 'Usuario';
-  document.getElementById('userEmail').textContent = email;
+  document.getElementById('userEmail').textContent = d.clientPrincipal?.userDetails||d.clientPrincipal?.userId||'Usuario';
 }).catch(()=>{});
 
-// === LOAD ===
 async function loadData() {
   try {
-    // Get nome from URL
-    const params = new URLSearchParams(window.location.search);
-    oscNome = params.get('nome');
-    if(!oscNome) { document.getElementById('spinner').innerHTML = '<div style="color:#dc2626">Nenhuma OSC especificada. <a href="index.html" style="color:#1e3a8a">Voltar</a></div>'; return; }
+    const params=new URLSearchParams(window.location.search);
+    oscNome=params.get('nome');
+    if(!oscNome){document.getElementById('spinner').innerHTML='<div style="color:#dc2626">Nenhuma OSC especificada. <a href="oscs.html" style="color:#1e3a8a">Voltar</a></div>';return;}
 
-    document.getElementById('oscNome').textContent = oscNome;
-    document.getElementById('oscNomeCard').textContent = oscNome;
+    document.getElementById('oscNome').textContent=oscNome;
+    document.getElementById('oscNomeCard').textContent=oscNome;
 
-    // Load historico + tempestividade + bronze in parallel
-    const [histRes, tempRes, bronzeNomes] = await Promise.all([
+    const [histRes, tempRes, viewsHistRes, bronzeNomes] = await Promise.all([
       fetch(SAS_HISTORICO),
       fetch(SAS_TEMPESTIVIDADE).catch(()=>null),
+      fetch(SAS_VIEWS_HISTORICO).catch(()=>null),
       listarBronze('oscs_etransparente_').catch(()=>[])
     ]);
 
-    historico = await histRes.json();
-    tempestividade = tempRes?.ok ? await tempRes.json() : [];
+    historico=await histRes.json();
+    tempestividade=tempRes?.ok?await tempRes.json():[];
+    viewsHistorico=viewsHistRes?.ok?await viewsHistRes.json():[];
 
-    // Bronze + views
-    const [bronzeRes, viewsNomes] = await Promise.all([
-      bronzeNomes.length ? fetch(bronzeUrl(bronzeNomes.sort().reverse()[0])).catch(()=>null) : Promise.resolve(null),
-      listarBronze('oscs_views_' + mesAtual).catch(()=>[])
-    ]);
-
-    const bronzeData = bronzeRes?.ok ? await bronzeRes.json() : [];
-    bronzeOsc = bronzeData.find(o => o.nome === oscNome) || null;
-
-    const viewsRes = viewsNomes.length ? await fetch(bronzeUrl(viewsNomes[0])).catch(()=>null) : null;
-    viewsData = viewsRes?.ok ? await viewsRes.json() : [];
+    const bronzeRes=bronzeNomes.length?await fetch(bronzeUrl(bronzeNomes.sort().reverse()[0])).catch(()=>null):null;
+    const bronzeData=bronzeRes?.ok?await bronzeRes.json():[];
+    bronzeOsc=bronzeData.find(o=>o.nome===oscNome)||null;
 
     render();
   } catch(e) {
-    document.getElementById('spinner').innerHTML = '<div style="color:#dc2626">Erro ao carregar dados: ' + e.message + '</div>';
+    document.getElementById('spinner').innerHTML='<div style="color:#dc2626">Erro ao carregar dados: '+e.message+'</div>';
   }
 }
 
-// === HELPERS ===
 function formatarNomeCiclo(ciclo) {
-  if(!ciclo) return '—';
-  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const [ano, mes] = ciclo.split('-');
-  return meses[parseInt(mes)-1] + '/' + ano;
+  if(!ciclo)return'---';
+  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [ano,mes]=ciclo.split('-');return meses[parseInt(mes)-1]+'/'+ano;
 }
 
-// === RENDER ===
 function render() {
   renderIdentity();
   renderScore();
   renderDocs();
   renderContratos();
   renderViews();
-
   document.getElementById('spinner').classList.add('hidden');
-  document.getElementById('app').style.opacity = '1';
+  document.getElementById('app').style.opacity='1';
 }
 
-// --- Identity ---
 function renderIdentity() {
-  const o = bronzeOsc;
-  if(!o) {
-    document.getElementById('oscDetails').innerHTML = '<div class="empty-msg">Dados detalhados não disponíveis no bronze</div>';
-    return;
+  if(!bronzeOsc){document.getElementById('oscDetails').innerHTML='<div class="empty-msg">Dados detalhados nao disponiveis</div>';return;}
+  if(bronzeOsc.url) document.getElementById('oscSiteLink').href=bronzeOsc.url;
+  const det=[{icon:'ph ph-identification-card',label:'CNPJ',val:bronzeOsc.cnpj||'---'},{icon:'ph ph-map-pin',label:'Localizacao',val:bronzeOsc.localizacao||'---'},{icon:'ph ph-envelope',label:'Email',val:bronzeOsc.email?'<a href="mailto:'+bronzeOsc.email+'" style="color:#1e3a8a">'+bronzeOsc.email+'</a>':'---'},{icon:'ph ph-phone',label:'Telefone',val:bronzeOsc.telefone||'---'},{icon:'ph ph-globe',label:'Website',val:bronzeOsc.website?'<a href="'+bronzeOsc.website+'" target="_blank" style="color:#1e3a8a">'+bronzeOsc.website+'</a>':'---'}];
+  const social=[];
+  if(bronzeOsc.redes_sociais){
+    const rs=bronzeOsc.redes_sociais;
+    if(rs.instagram) social.push({nome:'instagram',url:rs.instagram,icon:'ph ph-instagram-logo'});
+    if(rs.linkedin) social.push({nome:'linkedin',url:rs.linkedin,icon:'ph ph-linkedin-logo'});
+    if(rs.youtube) social.push({nome:'youtube',url:rs.youtube,icon:'ph ph-youtube-logo'});
+    if(rs.outras) rs.outras.split(';').filter(Boolean).forEach(u=>{social.push({nome:'link',url:u,icon:'ph ph-link'})});
   }
-
-  // Link
-  const link = document.getElementById('oscSiteLink');
-  if(o.url) link.href = o.url;
-
-  // Details
-  const details = [
-    {icon:'ph ph-identification-card', label:'CNPJ', val:o.cnpj||'—'},
-    {icon:'ph ph-map-pin', label:'Localização', val:o.localizacao||'—'},
-    {icon:'ph ph-envelope', label:'Email', val:o.email ? '<a href="mailto:'+o.email+'" style="color:#1e3a8a">'+o.email+'</a>' : '—'},
-    {icon:'ph ph-phone', label:'Telefone', val:o.telefone||'—'},
-    {icon:'ph ph-globe', label:'Website', val:o.website ? '<a href="'+o.website+'" target="_blank" style="color:#1e3a8a">'+o.website+'</a>' : '—'},
-  ];
-
-  // Social
-  const social = [];
-  if(o.redes_sociais) {
-    const rs = o.redes_sociais;
-    if(rs.instagram) social.push({nome:'instagram', url:rs.instagram, icon:'ph ph-instagram-logo'});
-    if(rs.linkedin) social.push({nome:'linkedin', url:rs.linkedin, icon:'ph ph-linkedin-logo'});
-    if(rs.youtube) social.push({nome:'youtube', url:rs.youtube, icon:'ph ph-youtube-logo'});
-    if(rs.outras) {
-      rs.outras.split(';').filter(Boolean).forEach(u=>{social.push({nome:'link', url:u, icon:'ph ph-link'})});
-    }
-  }
-  if(social.length) {
-    details.push({
-      icon:'ph ph-share-network',
-      label:'Redes Sociais',
-      val: '<div class="social-links">' + social.map(s => '<a href="'+s.url+'" target="_blank" title="'+s.nome+'"><i class="'+s.icon+'"></i></a>').join('') + '</div>'
-    });
-  }
-
-  document.getElementById('oscDetails').innerHTML = details.map(d => `
-    <div class="detail-row">
-      <i class="${d.icon} detail-icon"></i>
-      <div class="detail-content"><div class="detail-label">${d.label}</div>${d.val}</div>
-    </div>
-  `).join('') + (
-    o.descricao_objeto_social ? `
-    <div class="detail-row">
-      <i class="ph ph-file-text detail-icon"></i>
-      <div class="detail-content"><div class="detail-label">Descrição / Objeto Social</div>${o.descricao_objeto_social}</div>
-    </div>` : ''
-  );
-
-  // Logo
-  if(o.logo_url) {
-    document.getElementById('logoPlaceholder').innerHTML = '<img src="'+o.logo_url+'" alt="'+o.nome+'" onerror="this.outerHTML=\'<i class=\\\'ph ph-buildings\\\'></i>\'">';
-  }
+  if(social.length) det.push({icon:'ph ph-share-network',label:'Redes Sociais',val:'<div class="social-links">'+social.map(s=>'<a href="'+s.url+'" target="_blank" title="'+s.nome+'"><i class="'+s.icon+'"></i></a>').join('')+'</div>'});
+  document.getElementById('oscDetails').innerHTML=det.map(d=>`<div class="detail-row"><i class="${d.icon} detail-icon"></i><div class="detail-content"><div class="detail-label">${d.label}</div>${d.val}</div></div>`).join('')+(bronzeOsc.descricao_objeto_social?`<div class="detail-row"><i class="ph ph-file-text detail-icon"></i><div class="detail-content"><div class="detail-label">Descricao / Objeto Social</div>${bronzeOsc.descricao_objeto_social}</div></div>`:'');
+  if(bronzeOsc.logo_url) document.getElementById('logoPlaceholder').innerHTML='<img src="'+bronzeOsc.logo_url+'" alt="'+bronzeOsc.nome+'" onerror="this.outerHTML=\'<i class=\\\'ph ph-buildings\\\'></i>\'">';
 }
 
-// --- Score ---
 function renderScore() {
-  const ciclos = [...new Set(historico.filter(h=>h.nome===oscNome).map(h=>h.ciclo))].sort();
-  const ultimo = historico.filter(h=>h.nome===oscNome && h.ciclo===ciclos[ciclos.length-1])[0];
+  const ciclos=[...new Set(historico.filter(h=>h.nome===oscNome).map(h=>h.ciclo))].sort();
+  const ultimo=historico.filter(h=>h.nome===oscNome&&h.ciclo===ciclos[ciclos.length-1])[0];
+  if(ultimo){
+    const pct=ultimo.max_nota>0?(ultimo.nota_final/ultimo.max_nota*100):0;
+    document.getElementById('oscScore').textContent=ultimo.nota_final.toFixed(1);
+    document.getElementById('oscScoreMax').textContent='/ '+ultimo.max_nota;
+    document.getElementById('oscScorePct').textContent='('+pct.toFixed(1)+'%)';
+    const pill=document.getElementById('oscClassifPill');
+    const cl=(ultimo.classificacao||'Regular').toLowerCase().replace('ó','o');
+    pill.textContent=ultimo.classificacao||'Regular';
+    pill.className=cl==='otimo'?'pill pill-otimo':cl==='bom'?'pill pill-bom':'pill pill-regular';
 
-  if(ultimo) {
-    const pct = ultimo.max_nota>0 ? (ultimo.nota_final/ultimo.max_nota*100) : 0;
-    document.getElementById('oscScore').textContent = ultimo.nota_final.toFixed(1);
-    document.getElementById('oscScoreMax').textContent = '/ ' + ultimo.max_nota;
-    document.getElementById('oscScorePct').textContent = '(' + pct.toFixed(1) + '%)';
-    const pill = document.getElementById('oscClassifPill');
-    const cl = (ultimo.classificacao||'Regular').toLowerCase().replace('ó','o');
-    pill.textContent = ultimo.classificacao||'Regular';
-    if(cl==='otimo') pill.className = 'pill pill-otimo';
-    else if(cl==='bom') pill.className = 'pill pill-bom';
-    else pill.className = 'pill pill-regular';
-
-    // Badges - check historico for cebas/utilidade_publica
-    // Bronze has documentos.cebas and documentos.utilidade_publica
-    const badgesEl = document.getElementById('oscBadges');
-    const hasCebas = bronzeOsc?.documentos?.cebas ? true : false;
-    const hasUtilPub = bronzeOsc?.documentos?.utilidade_publica ? true : false;
-    badgesEl.innerHTML = '';
-    if(hasCebas) badgesEl.innerHTML += '<span class="badge badge-cebas"><i class="ph ph-seal-check"></i>CEBAS</span>';
-    if(hasUtilPub) badgesEl.innerHTML += '<span class="badge badge-utilidade"><i class="ph ph-stamp"></i>Utilidade Pública</span>';
+    // Badges from historico badgess or bronze documentos
+    const badgesEl=document.getElementById('oscBadges');
+    badgesEl.innerHTML='';
+    const hasCebas = ultimo.badges?.cebas || bronzeOsc?.documentos?.cebas ? true : false;
+    const hasUtilPub = ultimo.badges?.utilidade_publica || bronzeOsc?.documentos?.utilidade_publica ? true : false;
+    if(hasCebas) badgesEl.innerHTML+='<span class="badge badge-cebas"><i class="ph ph-seal-check"></i>CEBAS</span>';
+    if(hasUtilPub) badgesEl.innerHTML+='<span class="badge badge-utilidade"><i class="ph ph-stamp"></i>Utilidade Publica</span>';
   }
-
-  // Evolution chart
-  if(ciclos.length>1) {
-    const ctx = document.getElementById('oscEvolChart');
-    const data = ciclos.map(c=>{
-      const h = historico.filter(d=>d.nome===oscNome && d.ciclo===c)[0];
-      return h && h.max_nota>0 ? (h.nota_final/h.max_nota*100) : null;
-    });
-    new Chart(ctx, {
-      type:'line',
-      data:{
-        labels:ciclos.map(c=>formatarNomeCiclo(c)),
-        datasets:[{
-          label:oscNome,
-          data,
-          borderColor:'#1e3a8a', backgroundColor:'#1e3a8a20',
-          borderWidth:2, tension:.3, fill:true, pointRadius:4
-        }]
-      },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{
-          legend:{display:false},
-          tooltip:{callbacks:{label:ctx=>ctx.parsed.y!==null?ctx.parsed.y.toFixed(1)+'%':'—'}}
-        },
-        scales:{
-          y:{beginAtZero:true, max:100, title:{display:true, text:'% do índice'}},
-          x:{ticks:{maxRotation:45}}
-        }
-      }
-    });
+  if(ciclos.length>1){
+    const ctx=document.getElementById('oscEvolChart');
+    new Chart(ctx,{type:'line',data:{labels:ciclos.map(c=>formatarNomeCiclo(c)),datasets:[{label:oscNome,data:ciclos.map(c=>{const h=historico.filter(d=>d.nome===oscNome&&d.ciclo===c)[0];return h&&h.max_nota>0?(h.nota_final/h.max_nota*100):null;}),borderColor:'#1e3a8a',backgroundColor:'#1e3a8a20',borderWidth:2,tension:.3,fill:true,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y!==null?ctx.parsed.y.toFixed(1)+'%':'---'}}},scales:{y:{beginAtZero:true,max:100,title:{display:true,text:'% do indice'}},x:{ticks:{maxRotation:45}}}}});
   }
 }
 
-// --- Documents ---
 function renderDocs() {
-  if(!bronzeOsc) { document.getElementById('oscDocs').innerHTML = '<div class="empty-msg">Dados não disponíveis</div>'; return; }
-
-  const campos = [
-    {field:'estatuto', label:'Estatuto'},
-    {field:'cneas', label:'CNEAS'},
-    {field:'cebas', label:'CEBAS'},
-    {field:'utilidade_publica', label:'Utilidade Pública'},
-    {field:'relatorio_atividades', label:'Relatório de Atividades'},
-    {field:'plano_acao', label:'Plano de Ação'},
-    {field:'ata_eleicao', label:'Ata de Eleição'},
-    {field:'balanco_2021', label:'Balanço 2021'},
-    {field:'balanco_2022', label:'Balanço 2022'},
-    {field:'balanco_2023', label:'Balanço 2023'},
-    {field:'balanco_2024', label:'Balanço 2024'},
-  ];
-
-  // Docs from bronze
-  const docs = bronzeOsc.documentos || {};
-
-  // Check tempestividade for this OSC
-  const tempMap = {};
-  tempestividade.filter(t=>t.nome===oscNome).forEach(t=>{tempMap[t.campo]=true});
-
-  const el = document.getElementById('oscDocs');
-  el.innerHTML = campos.map(c=>{
-    const url = docs[c.field];
-    const changed = tempMap[c.field];
-    let status, statusClass;
-    if(url && changed) { status='Atualizado'; statusClass='doc-status-green'; }
-    else if(url) { status='Presente'; statusClass='doc-status-yellow'; }
-    else { status='Ausente'; statusClass='doc-status-red'; }
-
-    return `
-      <div class="doc-item">
-        <span class="doc-name"><span class="doc-status ${statusClass}"></span>${c.label}</span>
-        ${url ? '<a href="'+url+'" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>' : '<span style="color:#94a3b8;font-size:11px">—</span>'}
-      </div>
-    `;
+  if(!bronzeOsc){document.getElementById('oscDocs').innerHTML='<div class="empty-msg">Dados nao disponiveis</div>';return;}
+  const campos=[{field:'estatuto',label:'Estatuto'},{field:'cneas',label:'CNEAS'},{field:'cebas',label:'CEBAS'},{field:'utilidade_publica',label:'Utilidade Publica'},{field:'relatorio_atividades',label:'Relatorio de Atividades'},{field:'plano_acao',label:'Plano de Acao'},{field:'ata_eleicao',label:'Ata de Eleicao'},{field:'balanco_2021',label:'Balanco 2021'},{field:'balanco_2022',label:'Balanco 2022'},{field:'balanco_2023',label:'Balanco 2023'},{field:'balanco_2024',label:'Balanco 2024'}];
+  const docs=bronzeOsc.documentos||{};
+  const tempMap={};tempestividade.filter(t=>t.nome===oscNome).forEach(t=>{tempMap[t.campo]=true});
+  document.getElementById('oscDocs').innerHTML=campos.map(c=>{
+    const url=docs[c.field];const changed=tempMap[c.field];
+    let status,sc;
+    if(url&&changed){status='Atualizado';sc='doc-status-green';}
+    else if(url){status='Presente';sc='doc-status-yellow';}
+    else{status='Ausente';sc='doc-status-red';}
+    return `<div class="doc-item"><span class="doc-name"><span class="doc-status ${sc}"></span>${c.label}</span>${url?'<a href="'+url+'" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>':'<span style="color:#94a3b8;font-size:11px">---</span>'}</div>`;
   }).join('');
 }
 
-// --- Contracts ---
 function renderContratos() {
-  if(!bronzeOsc || !bronzeOsc.termos) {
-    document.getElementById('oscContratos').innerHTML = '<div class="card empty-msg">Nenhum contrato registrado</div>';
-    return;
-  }
-
-  const termos = bronzeOsc.termos;
-  const esferas = ['municipio','estado','uniao','emendas_parlamentares'];
-  const labels = {'municipio':'Município','estado':'Estado','uniao':'União','emendas_parlamentares':'Emendas'};
-
-  // Cards summary
-  const el = document.getElementById('oscContratos');
-  el.innerHTML = `
-    <div class="contrato-cards">
-      ${esferas.map(e=>{
-        const arr = termos[e]?.termos || [];
-        const reais = arr.filter(t=>Object.values(t).filter(v=>typeof v==='string'&&v.trim()).length>2);
-        return `<div class="contrato-card"><div class="num">${reais.length}</div><div class="label">${labels[e]}</div></div>`;
-      }).join('')}
-    </div>
-  `;
-
-  // Expandable tables per sphere
-  esferas.forEach(e=>{
-    const arr = termos[e]?.termos || [];
-    const reais = arr.filter(t=>Object.values(t).filter(v=>typeof v==='string'&&v.trim()).length>2);
-    if(!reais.length) return;
-
-    // Identify columns dynamically
-    const cols = Object.keys(reais[0]).filter(k=>typeof reais[0][k]==='string' || typeof reais[0][k]==='number');
-    const colLabel = {
-      identificacao_do_instrumento_de_parceria:'ID Parceria', orgao_ou_entidade_convenente:'Órgão',
-      orgao_ou_entidade:'Órgão', termo_assinado:'Assinado', valor_total_do_termo:'Valor',
-      data_da_assinatura:'Assinatura', data_final_da_vigencia:'Vigência', situacao_do_termo:'Situação',
-      numero_do_contrato_ou_do_convenio:'Nº Contrato', respectivo_processo_administrativo:'Processo',
-      descricao_do_objeto_da_parceria:'Objeto', prestacao_de_contas_da_parceria:'Prest. Contas',
-      resultado_da_prestacao_de_contas:'Resultado', cidade_termo:'Cidade', cidade:'Cidade',
-      estado_termo:'Estado', data_de_publicacao:'Publicação', data_de_assinatura_do_termo:'Assinatura',
-      data_prevista_para_apresentacao_da_prestacao_de_contas:'Data Prev. PC',
-      data_de_apresentacao_da_prestacao_de_contas:'Data Apres. PC',
-      plano_de_trabalho:'Plano Trabalho', termos_aditivos:'Termos Adit.',
-      valor:'Valor', titulo:'Título', tipo:'Tipo', nome_do_parlamentar:'Parlamentar',
-      orgao_responsavel_pela_gestao_do_recurso:'Órgão Gestor'
-    };
-
-    // Key columns to show (prioritize meaningful ones)
-    const keyCols = [];
-    const prioridade = ['numero_do_contrato_ou_do_convenio','identificacao_do_instrumento_de_parceria','titulo','orgao_ou_entidade_convenente','orgao_ou_entidade','descricao_do_objeto_da_parceria','valor_total_do_termo','valor','data_da_assinatura','data_de_assinatura_do_termo','data_final_da_vigencia','situacao_do_termo','resultado_da_prestacao_de_contas','nome_do_parlamentar','tipo'];
-    prioridade.forEach(p=>{if(cols.includes(p) && !keyCols.includes(p)) keyCols.push(p)});
-    // Add remaining cols not in priority
-    cols.forEach(c=>{if(!keyCols.includes(c)) keyCols.push(c)});
-
-    // Limit to max 6 cols
-    const displayCols = keyCols.slice(0,6);
-
-    el.innerHTML += `
-      <div style="margin-bottom:14px">
-        <h4 style="font-size:13px;font-weight:600;margin-bottom:8px;color:#1e3a8a"><i class="ph ph-building"></i> ${labels[e]} (${reais.length})</h4>
-        <div class="contrato-table-wrap">
-          <table>
-            <thead><tr>${displayCols.map(c=>'<th>'+(colLabel[c]||c)+'</th>').join('')}</tr></thead>
-            <tbody>${reais.map(t=>'<tr>'+displayCols.map(c=>'<td>'+(t[c]!==undefined&&t[c]!==''?t[c]:'—')+'</td>').join('')+'</tr>').join('')}</tbody>
-          </table>
-        </div>
-      </div>
-    `;
+  if(!bronzeOsc||!bronzeOsc.termos){document.getElementById('oscContratos').innerHTML='<div class="card empty-msg">Nenhum contrato registrado</div>';return;}
+  const t=bronzeOsc.termos, esf=['municipio','estado','uniao','emendas_parlamentares'], lbs={'municipio':'Municipio','estado':'Estado','uniao':'Uniao','emendas_parlamentares':'Emendas'};
+  const el=document.getElementById('oscContratos');
+  el.innerHTML=`<div class="contrato-cards">${esf.map(e=>{const arr=t[e]?.termos||[], r=arr.filter(x=>Object.values(x).filter(v=>typeof v==='string'&&v.trim()).length>2);return `<div class="contrato-card"><div class="num">${r.length}</div><div class="label">${lbs[e]}</div></div>`;}).join('')}</div>`;
+  esf.forEach(e=>{
+    const arr=t[e]?.termos||[], r=arr.filter(x=>Object.values(x).filter(v=>typeof v==='string'&&v.trim()).length>2);
+    if(!r.length)return;
+    const cols=Object.keys(r[0]).filter(k=>typeof r[0][k]==='string'||typeof r[0][k]==='number');
+    const cl={identificacao_do_instrumento_de_parceria:'ID Parceria',orgao_ou_entidade_convenente:'Orgao',orgao_ou_entidade:'Orgao',termo_assinado:'Assinado',valor_total_do_termo:'Valor',data_da_assinatura:'Assinatura',data_final_da_vigencia:'Vigencia',situacao_do_termo:'Situacao',numero_do_contrato_ou_do_convenio:'No Contrato',respectivo_processo_administrativo:'Processo',descricao_do_objeto_da_parceria:'Objeto',prestacao_de_contas_da_parceria:'Prest. Contas',resultado_da_prestacao_de_contas:'Resultado',cidade_termo:'Cidade',cidade:'Cidade',estado_termo:'Estado',data_de_publicacao:'Publicacao',data_de_assinatura_do_termo:'Assinatura',data_prevista_para_apresentacao_da_prestacao_de_contas:'Data Prev. PC',data_de_apresentacao_da_prestacao_de_contas:'Data Apres. PC',plano_de_trabalho:'Plano Trabalho',termos_aditivos:'Termos Adit.',valor:'Valor',titulo:'Titulo',tipo:'Tipo',nome_do_parlamentar:'Parlamentar',orgao_responsavel_pela_gestao_do_recurso:'Orgao Gestor'};
+    const pri=['numero_do_contrato_ou_do_convenio','identificacao_do_instrumento_de_parceria','titulo','orgao_ou_entidade_convenente','orgao_ou_entidade','descricao_do_objeto_da_parceria','valor_total_do_termo','valor','data_da_assinatura','data_de_assinatura_do_termo','data_final_da_vigencia','situacao_do_termo','resultado_da_prestacao_de_contas','nome_do_parlamentar','tipo'];
+    const keyCols=[];pri.forEach(p=>{if(cols.includes(p)&&!keyCols.includes(p))keyCols.push(p)});cols.forEach(c=>{if(!keyCols.includes(c))keyCols.push(c)});
+    const dc=keyCols.slice(0,6);
+    el.innerHTML+=`<div style="margin-bottom:14px"><h4 style="font-size:13px;font-weight:600;margin-bottom:8px;color:#1e3a8a"><i class="ph ph-building"></i> ${lbs[e]} (${r.length})</h4><div class="contrato-table-wrap"><table><thead><tr>${dc.map(c=>'<th>'+(cl[c]||c)+'</th>').join('')}</tr></thead><tbody>${r.map(x=>'<tr>'+dc.map(c=>'<td>'+(x[c]!==undefined&&x[c]!==''?x[c]:'---')+'</td>').join('')+'</tr>').join('')}</tbody></table></div></div>`;
   });
 }
 
-// --- Views ---
 function renderViews() {
-  if(!viewsData || !viewsData.length) return;
+  if(!viewsHistorico.length){document.getElementById('oscViewsEmpty').classList.remove('hidden');return;}
+  const bronzeUrl=bronzeOsc?.url?.replace(/\/$/,'');
+  if(!bronzeUrl) return;
 
-  // Match this OSC's page URL
-  const bronzeUrl = bronzeOsc?.url?.replace(/\/$/,'');
-  const match = viewsData.find(v=>v.url?.replace(/\/$/, '') === bronzeUrl);
-
-  if(!match || !match.views || !match.views.length) return;
-
-  document.getElementById('oscViews').style.display = 'block';
-  const views = match.views;
-  const daysInMonth = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
-  const labels = Array.from({length:daysInMonth}, (_,i)=>String(i+1).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0'));
-
-  // Pad views array to month length
-  const data = new Array(daysInMonth).fill(0);
-  views.forEach((v,i)=>{if(i<daysInMonth) data[i]=typeof v==='number'?v:0});
-
-  const total = data.reduce((s,v)=>s+v,0);
-  const media = (total/data.length).toFixed(1);
-  document.getElementById('viewsTotal').textContent = total;
-  document.getElementById('viewsMedia').textContent = media;
-
-  new Chart(document.getElementById('oscViewsChart'), {
-    type:'line',
-    data:{
-      labels,
-      datasets:[{
-        label: oscNome,
-        data,
-        borderColor:'#16a34a', backgroundColor:'#16a34a15',
-        borderWidth:2, tension:.3, fill:true, pointRadius:2
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>ctx.parsed.y!==null?ctx.parsed.y+' visualizações':'—'}}
-      },
-      scales:{
-        y:{beginAtZero:true, ticks:{font:{size:10}}},
-        x:{ticks:{font:{size:9}, maxTicksLimit:15}}
-      }
-    }
+  const oscViews=[];
+  viewsHistorico.forEach(m=>{
+    if(!m.oscs)return;
+    const match=m.oscs.find(v=>v.url?.replace(/\/$/,'')===bronzeUrl);
+    if(match&&match.views) oscViews.push({mes:m.mes,views:match.views});
   });
+  if(!oscViews.length) return;
+
+  document.getElementById('oscViewsWrap').style.display='block';
+
+  const hojeDate=new Date();
+  let dataCorte=null;
+  if(oscPeriodo==='week') dataCorte=new Date(hojeDate.getTime()-7*24*60*60*1000);
+  else if(oscPeriodo==='month') dataCorte=new Date(hojeDate.getTime()-30*24*60*60*1000);
+  else if(oscPeriodo==='year') dataCorte=new Date(hojeDate.getTime()-365*24*60*60*1000);
+
+  const filtMeses=oscViews.filter(m=>{
+    if(!dataCorte)return true;
+    const [ano,mes]=m.mes.split('-').map(Number);
+    return new Date(ano,mes-1,1)>=dataCorte;
+  });
+
+  const dias={};
+  let totalViews=0, totalDias=0;
+  filtMeses.forEach(m=>{
+    m.views.forEach((v,i)=>{
+      const dk=m.mes+'-'+String(i+1).padStart(2,'0');
+      dias[dk]=(dias[dk]||0)+(typeof v==='number'?v:0);
+    });
+  });
+  const sorted=Object.keys(dias).sort();
+  const labels=sorted.map(d=>{const p=d.split('-');return p[2]+'/'+p[1];});
+  const data=sorted.map(d=>dias[d]);
+  totalViews=data.reduce((s,v)=>s+v,0);
+  totalDias=data.length||1;
+
+  document.getElementById('viewsTotal').textContent=totalViews;
+  document.getElementById('viewsMedia').textContent=(totalViews/totalDias).toFixed(1);
+
+  new Chart(document.getElementById('oscViewsChart'),{type:'line',data:{labels,datasets:[{label:oscNome,data,borderColor:'#16a34a',backgroundColor:'#16a34a15',borderWidth:2,tension:.3,fill:true,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y!==null?ctx.parsed.y+' visualizacoes':'---'}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10}}},x:{ticks:{font:{size:9},maxTicksLimit:15}}}}});
 }
 
-// === BOOT ===
+function setOscPeriodo(p){oscPeriodo=p;document.querySelectorAll('#oscPeriodoFiltros .periodo-btn').forEach(b=>b.classList.toggle('active',b.dataset.period===p));renderViews();}
+
 loadData();
 </script>
 </body>

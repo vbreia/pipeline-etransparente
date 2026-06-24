@@ -141,6 +141,50 @@ def query_batch_daily(client: BetaAnalyticsDataClient, property_id: str, paths: 
     return out
 
 
+def get_blob_service_client():
+    from azure.storage.blob import BlobServiceClient
+    conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+    if not conn_str:
+        raise RuntimeError('AZURE_STORAGE_CONNECTION_STRING nao definida')
+    return BlobServiceClient.from_connection_string(conn_str)
+
+
+def accumulate_views_historico(client, month: str, monthly_data: list):
+    """Accumulate monthly views into gold/oscs_views_historico.json.
+
+    Structure:
+    [
+      { "mes": "2026-06", "oscs": [ {"url": "...", "views": [0, ...]}, ... ] },
+      ...
+    ]
+    """
+    container = 'etransparente'
+    blob_path = 'gold/oscs_views_historico.json'
+    blob_client = client.get_blob_client(container=container, blob=blob_path)
+
+    existing_all = []
+    try:
+        existing_data = blob_client.download_blob().readall()
+        existing_all = json.loads(existing_data)
+    except Exception:
+        pass
+
+    month_entry = {"mes": month, "oscs": monthly_data}
+
+    existing_all = [e for e in existing_all if e.get('mes') != month]
+    existing_all.append(month_entry)
+
+    all_path = os.path.join(os.getcwd(), 'output', 'oscs_views_historico.json')
+    with open(all_path, 'w', encoding='utf-8') as f:
+        json.dump(existing_all, f, ensure_ascii=False, indent=2)
+
+    with open(all_path, 'rb') as f:
+        blob_client.upload_blob(f, overwrite=True)
+
+    logger = logging.getLogger(__name__)
+    logger.info(f'oscs_views_historico.json atualizado: {len(existing_all)} meses acumulados')
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate daily views per OSC for a month")
     parser.add_argument("--input", required=False, help="Input JSON file produced by ong_extractor (defaults to latest output/oscs_etransparente_*.json)")
@@ -249,6 +293,14 @@ def main():
         json.dump(output, f, ensure_ascii=False, indent=2)
 
     print(f"Wrote {len(output)} entries to {outpath}")
+
+    # Acumulação no Azure
+    try:
+        azure_client = get_blob_service_client()
+        accumulate_views_historico(azure_client, month, output)
+        print("Acumulacao em gold/oscs_views_historico.json concluida")
+    except Exception as e:
+        print(f"Aviso: acumulacao no Azure falhou ({e}), mensal salvo em {outpath}")
 
 
 if __name__ == '__main__':
