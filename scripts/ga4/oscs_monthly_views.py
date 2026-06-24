@@ -33,11 +33,14 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import logging
 import os
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Tuple
 from urllib.parse import urlparse
+
+OUTPUT_DIR = '/home/airflow/output'
 
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import (
@@ -174,7 +177,7 @@ def accumulate_views_historico(client, month: str, monthly_data: list):
     existing_all = [e for e in existing_all if e.get('mes') != month]
     existing_all.append(month_entry)
 
-    all_path = os.path.join(os.getcwd(), 'output', 'oscs_views_historico.json')
+    all_path = os.path.join(OUTPUT_DIR, 'oscs_views_historico.json')
     with open(all_path, 'w', encoding='utf-8') as f:
         json.dump(existing_all, f, ensure_ascii=False, indent=2)
 
@@ -199,7 +202,7 @@ def main():
     input_path = args.input
     # If input not provided, pick the latest generated file in ./output matching pattern
     if not input_path:
-        pattern = os.path.join(os.getcwd(), 'output', 'oscs_etransparente_*.json')
+        pattern = os.path.join(OUTPUT_DIR, 'oscs_etransparente_*.json')
         matches = glob.glob(pattern)
         if not matches:
             raise RuntimeError(f"Nenhum arquivo encontrado em {pattern}. Execute primeiro o `ong_extractor` ou passe --input.")
@@ -285,7 +288,7 @@ def main():
     # Write output
     outpath = args.output
     if not outpath:
-        outdir = os.path.join(os.getcwd(), 'output')
+        outdir = OUTPUT_DIR
         os.makedirs(outdir, exist_ok=True)
         outpath = os.path.join(outdir, f"oscs_views_{month}.json")
 

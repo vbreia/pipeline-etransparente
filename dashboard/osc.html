@@ -178,19 +178,19 @@ const SAS_BRONZE_LIST = 'https://etransparentedata.blob.core.windows.net/etransp
 const hoje = new Date();
 const mesAtual = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
 const SAS_TEMPESTIVIDADE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/tempestividade_'+mesAtual+'.json?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
-const SAS_VIEWS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_views_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
+const SAS_VIEWS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_views_historico.json?sp=r&st=2026-06-24T19:47:28Z&se=2028-06-25T04:02:28Z&spr=https&sv=2026-02-06&sr=b&sig=2M%2ByMM874QJfkMMVncS4PrQ6FoB%2BcJhJMgRk%2Bpqln60%3D';
 
-const bronzeBaseUrl = SAS_BRONZE_LIST.split('?')[0];
+const bronzeContainer = 'https://etransparentedata.blob.core.windows.net/etransparente';
 const bronzeSasParams = SAS_BRONZE_LIST.split('?')[1];
 
-async function listarBronze(prefixo) {
-  const url = bronzeBaseUrl+'?'+bronzeSasParams+'&restype=directory&comp=list&prefix='+encodeURIComponent(prefixo);
+async function carregarBronzeOSCs(prefix) {
+  const url = bronzeContainer+'?'+bronzeSasParams+'&restype=container&comp=list&prefix='+encodeURIComponent(prefix);
   const res = await fetch(url);
   const xml = await res.text();
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   return Array.from(doc.querySelectorAll('Name')).map(n => n.textContent);
 }
-function bronzeUrl(nome) { return bronzeBaseUrl+'/'+nome+'?'+bronzeSasParams; }
+function bronzeUrl(nome) { return bronzeContainer+'/'+nome+'?'+bronzeSasParams; }
 
 let oscNome='', bronzeOsc=null, historico=[], tempestividade=[], viewsHistorico=[], evolChart=null, oscPeriodo='month';
 
@@ -211,7 +211,7 @@ async function loadData() {
       fetch(SAS_HISTORICO),
       fetch(SAS_TEMPESTIVIDADE).catch(()=>null),
       fetch(SAS_VIEWS_HISTORICO).catch(()=>null),
-      listarBronze('oscs_etransparente_').catch(()=>[])
+      carregarBronzeOSCs('bronze/oscs_etransparente_').catch(()=>[])
     ]);
 
     historico=await histRes.json();
@@ -258,7 +258,7 @@ function renderIdentity() {
   }
   if(social.length) det.push({icon:'ph ph-share-network',label:'Redes Sociais',val:'<div class="social-links">'+social.map(s=>'<a href="'+s.url+'" target="_blank" title="'+s.nome+'"><i class="'+s.icon+'"></i></a>').join('')+'</div>'});
   document.getElementById('oscDetails').innerHTML=det.map(d=>`<div class="detail-row"><i class="${d.icon} detail-icon"></i><div class="detail-content"><div class="detail-label">${d.label}</div>${d.val}</div></div>`).join('')+(bronzeOsc.descricao_objeto_social?`<div class="detail-row"><i class="ph ph-file-text detail-icon"></i><div class="detail-content"><div class="detail-label">Descricao / Objeto Social</div>${bronzeOsc.descricao_objeto_social}</div></div>`:'');
-  if(bronzeOsc.logo_url) document.getElementById('logoPlaceholder').innerHTML='<img src="'+bronzeOsc.logo_url+'" alt="'+bronzeOsc.nome+'" onerror="this.outerHTML=\'<i class=\\\'ph ph-buildings\\\'></i>\'">';
+  if(bronzeOsc.logo_url) document.getElementById('logoPlaceholder').innerHTML='<img src="'+bronzeOsc.logo_url+'" alt="'+bronzeOsc.nome+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" style="width:100%;height:100%;object-fit:cover;border-radius:50%"><div style="display:none;width:100px;height:100px;border-radius:50%;background:#e2e8f0;color:#94a3b8;align-items:center;justify-content:center;font-size:36px"><i class="ph ph-buildings"></i></div>';
 }
 
 function renderScore() {
@@ -335,23 +335,24 @@ function renderViews() {
 
   document.getElementById('oscViewsWrap').style.display='block';
 
-  const hojeDate=new Date();
-  let dataCorte=null;
-  if(oscPeriodo==='week') dataCorte=new Date(hojeDate.getTime()-7*24*60*60*1000);
-  else if(oscPeriodo==='month') dataCorte=new Date(hojeDate.getTime()-30*24*60*60*1000);
-  else if(oscPeriodo==='year') dataCorte=new Date(hojeDate.getTime()-365*24*60*60*1000);
-
-  const filtMeses=oscViews.filter(m=>{
-    if(!dataCorte)return true;
-    const [ano,mes]=m.mes.split('-').map(Number);
-    return new Date(ano,mes-1,1)>=dataCorte;
-  });
+  const mesesOrd=oscViews.map(m=>m.mes).sort();
+  const ultimoMes=mesesOrd.length?mesesOrd[mesesOrd.length-1]:null;
+  let filtMeses;
+  if(oscPeriodo==='week'||oscPeriodo==='month'){
+    filtMeses=ultimoMes?oscViews.filter(m=>m.mes===ultimoMes):[];
+  } else {
+    filtMeses=oscViews;
+  }
 
   const dias={};
   let totalViews=0, totalDias=0;
   filtMeses.forEach(m=>{
-    m.views.forEach((v,i)=>{
-      const dk=m.mes+'-'+String(i+1).padStart(2,'0');
+    const original=m.views;
+    let views=m.views;
+    let dayStart=0;
+    if(oscPeriodo==='week'){dayStart=Math.max(0,original.length-7);views=original.slice(dayStart);}
+    views.forEach((v,i)=>{
+      const dk=m.mes+'-'+String(dayStart+i+1).padStart(2,'0');
       dias[dk]=(dias[dk]||0)+(typeof v==='number'?v:0);
     });
   });

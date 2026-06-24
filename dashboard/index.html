@@ -214,13 +214,13 @@ const SAS_BRONZE_LIST = 'https://etransparentedata.blob.core.windows.net/etransp
 const hoje = new Date();
 const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2,'0');
 const SAS_TEMPESTIVIDADE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/tempestividade_' + mesAtual + '.json?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
-const SAS_VIEWS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_views_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
+const SAS_VIEWS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_views_historico.json?sp=r&st=2026-06-24T19:47:28Z&se=2028-06-25T04:02:28Z&spr=https&sv=2026-02-06&sr=b&sig=2M%2ByMM874QJfkMMVncS4PrQ6FoB%2BcJhJMgRk%2Bpqln60%3D';
 
-const bronzeBaseUrl = SAS_BRONZE_LIST.split('?')[0];
+const bronzeContainer = 'https://etransparentedata.blob.core.windows.net/etransparente';
 const bronzeSasParams = SAS_BRONZE_LIST.split('?')[1];
 
-async function listarBronze(prefixo) {
-  const url = bronzeBaseUrl + '?' + bronzeSasParams + '&restype=directory&comp=list&prefix=' + encodeURIComponent(prefixo);
+async function carregarBronzeOSCs(prefix) {
+  const url = bronzeContainer + '?' + bronzeSasParams + '&restype=container&comp=list&prefix=' + encodeURIComponent(prefix);
   const res = await fetch(url);
   const xml = await res.text();
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
@@ -228,7 +228,7 @@ async function listarBronze(prefixo) {
 }
 
 function bronzeUrl(nome) {
-  return bronzeBaseUrl + '/' + nome + '?' + bronzeSasParams;
+  return bronzeContainer + '/' + nome + '?' + bronzeSasParams;
 }
 
 // === STATE ===
@@ -268,7 +268,7 @@ async function loadData() {
     tempestividade = tempRes?.ok ? await tempRes.json() : [];
     viewsHistorico = viewsHistRes?.ok ? await viewsHistRes.json() : [];
 
-    const bronzeNomes = await listarBronze('oscs_etransparente_').catch(()=>[]);
+    const bronzeNomes = await carregarBronzeOSCs('bronze/oscs_etransparente_').catch(()=>[]);
     const bronzeRes = bronzeNomes.length ? fetch(bronzeUrl(bronzeNomes.sort().reverse()[0])).catch(()=>null) : null;
     bronzeData = bronzeRes?.ok ? await (await bronzeRes).json() : [];
     bronzeData.forEach(o => { if(o.url) { const u = o.url.replace(/\/$/,''); bronzeUrlParaNome[u] = o.nome; oscUrlParaNome[u] = o.nome; } });
@@ -319,37 +319,40 @@ function getFilteredViews() {
   const meses = viewsHistorico.map(m=>m.mes).sort();
   if(!meses.length) return {dailyTotals:[], oscTotals:{}, labels:[], top10:[]};
 
-  // Determine date range based on period
-  const hojeDate = new Date();
-  let dataCorte = null;
-  if(periodoAtual==='week') dataCorte = new Date(hojeDate.getTime()-7*24*60*60*1000);
-  else if(periodoAtual==='month') dataCorte = new Date(hojeDate.getTime()-30*24*60*60*1000);
-  else if(periodoAtual==='year') dataCorte = new Date(hojeDate.getTime()-365*24*60*60*1000);
-
-  // Filter meses within range
-  const mesesFiltrados = dataCorte ? meses.filter(m=>{
-    const [ano,mes]=m.split('-').map(Number);
-    return new Date(ano,mes-1,1) >= dataCorte;
-  }) : meses;
+  // Filter months by period
+  const ultimoMes = meses.length ? meses[meses.length - 1] : null;
+  let mesesFiltrados;
+  if(periodoAtual==='week' || periodoAtual==='month') {
+    mesesFiltrados = ultimoMes ? [ultimoMes] : [];
+  } else {
+    mesesFiltrados = meses;
+  }
 
   // Accumulate day by day across filtered months
-  let idx=0;
   mesesFiltrados.forEach(mesKey=>{
     const entry = viewsHistorico.find(v=>v.mes===mesKey);
     if(!entry||!entry.oscs) return;
+    const isUltimoMes = mesKey === ultimoMes;
     entry.oscs.forEach(osc=>{
       if(!osc.views) return;
       const nome = bronzeUrlParaNome[osc.url?.replace(/\/$/,'')] || osc.url;
-      oscAcum[nome] = (oscAcum[nome]||0) + osc.views.reduce((s,v)=>s+(typeof v==='number'?v:0),0);
+      let dayStart = 0;
+      let dayCount = osc.views.length;
+      if(periodoAtual==='week' && isUltimoMes) {
+        dayStart = Math.max(0, osc.views.length - 7);
+        dayCount = osc.views.length - dayStart;
+      }
+      const viewsSlice = osc.views.slice(dayStart, dayStart + dayCount);
+      oscAcum[nome] = (oscAcum[nome]||0) + viewsSlice.reduce((s,v)=>s+(typeof v==='number'?v:0),0);
       if(!oscMap[nome]) oscMap[nome] = [];
-      osc.views.forEach((v,i)=>{
-        const dayKey = mesKey + '-' + String(i+1).padStart(2,'0');
+      viewsSlice.forEach((v,i)=>{
+        const dayIdx = dayStart + i + 1;
+        const dayKey = mesKey + '-' + String(dayIdx).padStart(2,'0');
         diasAcum[dayKey] = (diasAcum[dayKey]||0) + (typeof v==='number'?v:0);
-        if(!oscMap[nome][i]) oscMap[nome][i]=0;
-        oscMap[nome][i] += (typeof v==='number'?v:0);
+        if(!oscMap[nome][dayStart + i]) oscMap[nome][dayStart + i]=0;
+        oscMap[nome][dayStart + i] += (typeof v==='number'?v:0);
       });
     });
-    idx++;
   });
 
   // Sort by date key
@@ -470,7 +473,7 @@ function renderRankingTable() {
   const q=(document.getElementById('searchInput').value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   if(q)dados=dados.filter(d=>d.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q));
   dados.sort((a,b)=>b.nota_final-a.nota_final);
-  document.getElementById('rankingTable').innerHTML=`<table><thead><tr><th>#</th><th>OSC</th><th>Nota</th><th>Max</th><th>%</th><th>Classificacao</th></tr></thead><tbody>${dados.map((d,i)=>{const logo=getLogoUrl(d.nome);return`<tr><td class="rank-num">${i+1}o</td><td><span class="rank-logo">${logo?'<img src="'+logo+'" alt="" onerror="this.outerHTML=\''+d.nome.charAt(0)+'\'">':d.nome.charAt(0)}</span> <a href="osc.html?nome=${encodeURIComponent(d.nome)}" style="color:#1e293b;text-decoration:none;font-weight:500">${d.nome}</a></td><td>${d.nota_final.toFixed(1)}</td><td>${d.max_nota}</td><td>${calcPct(d).toFixed(1)}%</td><td><span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span></td></tr>`;}).join('')}</tbody></table>`;
+  document.getElementById('rankingTable').innerHTML=`<table><thead><tr><th>#</th><th>OSC</th><th>Nota</th><th>Max</th><th>%</th><th>Classificacao</th></tr></thead><tbody>${dados.map((d,i)=>{const logo=getLogoUrl(d.nome);return`<tr><td class="rank-num">${i+1}o</td><td><span class="rank-logo">${logo?'<img src="'+logo+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" style="width:100%;height:100%;object-fit:cover;border-radius:50%"><div style="display:none;width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#64748b;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+d.nome.charAt(0)+'</div>':d.nome.charAt(0)}</span> <a href="osc.html?nome=${encodeURIComponent(d.nome)}" style="color:#1e293b;text-decoration:none;font-weight:500">${d.nome}</a></td><td>${d.nota_final.toFixed(1)}</td><td>${d.max_nota}</td><td>${calcPct(d).toFixed(1)}%</td><td><span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span></td></tr>`;}).join('')}</tbody></table>`;
 }
 
 // === GA4 ===

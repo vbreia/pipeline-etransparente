@@ -97,7 +97,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 <script>
 const SAS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
 const SAS_BRONZE_LIST = 'https://etransparentedata.blob.core.windows.net/etransparente/bronze?sp=rl&st=2026-06-24T17:56:04Z&se=2028-06-25T02:11:04Z&spr=https&sv=2026-02-06&sr=d&sig=OwaqdmE6L7MPsopXnQYODx5M%2FUK9yst8rNKfzH8vVfk%3D&sdd=1';
-const bronzeBaseUrl = SAS_BRONZE_LIST.split('?')[0];
+const bronzeContainer = 'https://etransparentedata.blob.core.windows.net/etransparente';
 const bronzeSasParams = SAS_BRONZE_LIST.split('?')[1];
 
 let historico = [];
@@ -114,21 +114,21 @@ fetch('/.auth/me').then(r=>r.json()).then(d=>{
   document.getElementById('dataAtual').textContent = d.getDate()+' de '+meses[d.getMonth()]+' de '+d.getFullYear();
 })();
 
-async function listarBronze(prefixo) {
-  const url = bronzeBaseUrl+'?'+bronzeSasParams+'&restype=directory&comp=list&prefix='+encodeURIComponent(prefixo);
+async function carregarBronzeOSCs(prefix) {
+  const url = bronzeContainer+'?'+bronzeSasParams+'&restype=container&comp=list&prefix='+encodeURIComponent(prefix);
   const res = await fetch(url);
   const xml = await res.text();
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   return Array.from(doc.querySelectorAll('Name')).map(n => n.textContent);
 }
 
-function bronzeUrl(nome) { return bronzeBaseUrl+'/'+nome+'?'+bronzeSasParams; }
+function bronzeUrl(nome) { return bronzeContainer+'/'+nome+'?'+bronzeSasParams; }
 
 async function loadData() {
   try {
     const [histRes, bronzeNomes] = await Promise.all([
       fetch(SAS_HISTORICO),
-      listarBronze('oscs_etransparente_').catch(()=>[])
+      carregarBronzeOSCs('bronze/oscs_etransparente_').catch(()=>[])
     ]);
     historico = await histRes.json();
     const bronzeRes = bronzeNomes.length ? await fetch(bronzeUrl(bronzeNomes.sort().reverse()[0])).catch(()=>null) : null;
@@ -193,7 +193,7 @@ function renderGrid() {
     const pct=calcPct(d);
     return `
     <div class="osc-card">
-      <div class="osc-logo">${logo?'<img src="'+logo+'" alt="" onerror="this.outerHTML=\''+d.nome.charAt(0)+'\'">':d.nome.charAt(0)}</div>
+      <div class="osc-logo">${logo?'<img src="'+logo+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" style="width:100%;height:100%;object-fit:cover;border-radius:50%"><div style="display:none;width:72px;height:72px;border-radius:50%;background:#e2e8f0;color:#64748b;align-items:center;justify-content:center;font-size:28px;font-weight:700">'+d.nome.charAt(0)+'</div>':d.nome.charAt(0)}</div>
       <div class="osc-name">${d.nome}</div>
       <div class="osc-score"><strong>${d.nota_final.toFixed(1)}</strong>/${d.max_nota} · ${pct.toFixed(1)}%</div>
       <span class="pill ${classPill(d.classificacao)}" style="margin-bottom:12px">${d.classificacao||'Regular'}</span>
