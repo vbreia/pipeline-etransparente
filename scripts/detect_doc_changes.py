@@ -96,6 +96,7 @@ def main():
         return
 
     alteracoes = []
+    # Substituições e adições entre OSCs que existem em ambos os ciclos
     for _, row in merged.iterrows():
         nome = row['nome']
         for campo in DOC_CAMPOS:
@@ -103,33 +104,80 @@ def main():
             url_anterior = str(row.get(f'{campo}_anterior', '') or '')
             if url_atual and url_anterior and url_atual != url_anterior:
                 alteracoes.append({
+                    'tipo': 'substituicao',
                     'nome': nome,
                     'campo': campo,
                     'url_anterior': url_anterior,
                     'url_nova': url_atual,
                     'ciclo_deteccao': mes_ano_label(hoje.year, hoje.month),
                     'ciclo_anterior': mes_ano_label(ano_ant, mes_ant),
+                    'ciclo_key': ciclo_atual,
+                })
+            elif url_atual and not url_anterior:
+                alteracoes.append({
+                    'tipo': 'adicao',
+                    'nome': nome,
+                    'campo': campo,
+                    'url_anterior': '',
+                    'url_nova': url_atual,
+                    'ciclo_deteccao': mes_ano_label(hoje.year, hoje.month),
+                    'ciclo_anterior': mes_ano_label(ano_ant, mes_ant),
+                    'ciclo_key': ciclo_atual,
                 })
 
-    # 4. Salvar local
+    # Novas OSCs
+    nomes_atual = set(df_atual['nome'].unique())
+    nomes_anterior = set(df_anterior['nome'].unique())
+    for nome in nomes_atual - nomes_anterior:
+        alteracoes.append({
+            'tipo': 'nova_osc',
+            'nome': nome,
+            'campo': '',
+            'url_anterior': '',
+            'url_nova': '',
+            'ciclo_deteccao': mes_ano_label(hoje.year, hoje.month),
+            'ciclo_anterior': mes_ano_label(ano_ant, mes_ant),
+            'ciclo_key': ciclo_atual,
+        })
+
+    # 4. Dashboard: upload apenas substituições e adições (sem nova_osc)
+    dashboard_alt = [a for a in alteracoes if a['tipo'] != 'nova_osc']
+
     gold_file = f'tempestividade_{ciclo_atual}.json'
     local_path = os.path.join(
         os.path.dirname(__file__), '..', 'output', gold_file
     )
     os.makedirs(os.path.dirname(local_path), exist_ok=True)
     with open(local_path, 'w', encoding='utf-8') as f:
-        json.dump(alteracoes, f, ensure_ascii=False, indent=2)
+        json.dump(dashboard_alt, f, ensure_ascii=False, indent=2)
     logger.info(f'Salvo local: {local_path}')
 
-    # 5. Upload para gold
     gold_blob = f'gold/{gold_file}'
-    upload_json(client, gold_blob, alteracoes)
+    upload_json(client, gold_blob, dashboard_alt)
+
+    # 5. Feed histórico acumulado (inclui nova_osc)
+    feed_blob = 'gold/feed_historico.json'
+    try:
+        feed_blob_client = client.get_blob_client(container=CONTAINER, blob=feed_blob)
+        feed_data = json.loads(feed_blob_client.download_blob().readall())
+        if not isinstance(feed_data, list):
+            feed_data = []
+    except Exception:
+        feed_data = []
+
+    # Remover eventos do ciclo atual (evita duplicatas em re-execução)
+    feed_data = [e for e in feed_data if e.get('ciclo_key') != ciclo_atual]
+    feed_data.extend(alteracoes)
+    feed_data.sort(key=lambda e: e.get('ciclo_key', ''))
+
+    upload_json(client, feed_blob, feed_data)
+    logger.info(f'feed_historico.json acumulado: {len(feed_data)} eventos')
 
     # 6. Log
     if alteracoes:
-        logger.info(f'{len(alteracoes)} alteração(ões) detectada(s)')
+        logger.info(f'{len(alteracoes)} evento(s) detectado(s) neste ciclo')
         for alt in alteracoes:
-            logger.info(f'  {alt["nome"]}: {alt["campo"]} alterado')
+            logger.info(f'  [{alt["tipo"]}] {alt["nome"]}: {alt["campo"] or "-"}')
     else:
         logger.info('Nenhuma alteração detectada')
 
