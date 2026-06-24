@@ -104,6 +104,13 @@ def main():
         upload_file(client, container, 'gold/verificacoes_all.json', all_path)
         logger.info(f'verificacoes_all.json atualizado: {len(existing_all)} registros totais')
 
+    # Gold — oscs_atual.json (dados completos para o dashboard)
+    ongs_files = glob.glob(os.path.join(out, 'oscs_etransparente_*.json'))
+    if ongs_files:
+        latest_ongs = sorted(ongs_files)[-1]
+        upload_file(client, container, 'gold/oscs_atual.json', latest_ongs)
+        logger.info('gold/oscs_atual.json atualizado')
+
     logger.info(f'Upload concluído para {month}')
 
 if __name__ == '__main__':

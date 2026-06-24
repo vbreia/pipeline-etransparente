@@ -96,9 +96,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 
 <script>
 const SAS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
-const SAS_BRONZE_LIST = 'https://etransparentedata.blob.core.windows.net/etransparente/bronze?sp=rl&st=2026-06-24T17:56:04Z&se=2028-06-25T02:11:04Z&spr=https&sv=2026-02-06&sr=d&sig=OwaqdmE6L7MPsopXnQYODx5M%2FUK9yst8rNKfzH8vVfk%3D&sdd=1';
-const bronzeContainer = 'https://etransparentedata.blob.core.windows.net/etransparente';
-const bronzeSasParams = SAS_BRONZE_LIST.split('?')[1];
+const SAS_OSCS_ATUAL = '';
 
 let historico = [];
 let bronzeData = [];
@@ -114,25 +112,16 @@ fetch('/.auth/me').then(r=>r.json()).then(d=>{
   document.getElementById('dataAtual').textContent = d.getDate()+' de '+meses[d.getMonth()]+' de '+d.getFullYear();
 })();
 
-async function carregarBronzeOSCs(prefix) {
-  const url = bronzeContainer+'?'+bronzeSasParams+'&restype=container&comp=list&prefix='+encodeURIComponent(prefix);
-  const res = await fetch(url);
-  const xml = await res.text();
-  const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  return Array.from(doc.querySelectorAll('Name')).map(n => n.textContent);
-}
-
-function bronzeUrl(nome) { return bronzeContainer+'/'+nome+'?'+bronzeSasParams; }
-
 async function loadData() {
   try {
-    const [histRes, bronzeNomes] = await Promise.all([
-      fetch(SAS_HISTORICO),
-      carregarBronzeOSCs('bronze/oscs_etransparente_').catch(()=>[])
-    ]);
+    const histRes = await fetch(SAS_HISTORICO);
     historico = await histRes.json();
-    const bronzeRes = bronzeNomes.length ? await fetch(bronzeUrl(bronzeNomes.sort().reverse()[0])).catch(()=>null) : null;
-    bronzeData = bronzeRes?.ok ? await bronzeRes.json() : [];
+    if(SAS_OSCS_ATUAL) {
+      try {
+        const bronzeRes = await fetch(SAS_OSCS_ATUAL);
+        bronzeData = bronzeRes.ok ? await bronzeRes.json() : [];
+      } catch(e) {}
+    }
     render();
   } catch(e) {
     document.getElementById('spinner').innerHTML = '<div style="color:#dc2626">Erro ao carregar dados.</div>';

@@ -210,26 +210,11 @@ tr:hover td{background:#f8fafc}
 // === CONSTANTES ===
 const SAS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
 const SAS_VERIFICACOES = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/verificacoes_all.json?sp=r&st=2026-06-24T17:42:10Z&se=2028-06-25T01:57:10Z&spr=https&sv=2026-02-06&sr=b&sig=lTXIti6Byy5IU2P5p9CcZLbQGwCakV00hoG3xOdYebQ%3D';
-const SAS_BRONZE_LIST = 'https://etransparentedata.blob.core.windows.net/etransparente/bronze?sp=rl&st=2026-06-24T17:56:04Z&se=2028-06-25T02:11:04Z&spr=https&sv=2026-02-06&sr=d&sig=OwaqdmE6L7MPsopXnQYODx5M%2FUK9yst8rNKfzH8vVfk%3D&sdd=1';
 const hoje = new Date();
 const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2,'0');
 const SAS_TEMPESTIVIDADE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/tempestividade_' + mesAtual + '.json?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
-const SAS_VIEWS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_views_historico.json?sp=r&st=2026-06-24T19:47:28Z&se=2028-06-25T04:02:28Z&spr=https&sv=2026-02-06&sr=b&sig=2M%2ByMM874QJfkMMVncS4PrQ6FoB%2BcJhJMgRk%2Bpqln60%3D';
-
-const bronzeContainer = 'https://etransparentedata.blob.core.windows.net/etransparente';
-const bronzeSasParams = SAS_BRONZE_LIST.split('?')[1];
-
-async function carregarBronzeOSCs(prefix) {
-  const url = bronzeContainer + '?' + bronzeSasParams + '&restype=container&comp=list&prefix=' + encodeURIComponent(prefix);
-  const res = await fetch(url);
-  const xml = await res.text();
-  const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  return Array.from(doc.querySelectorAll('Name')).map(n => n.textContent);
-}
-
-function bronzeUrl(nome) {
-  return bronzeContainer + '/' + nome + '?' + bronzeSasParams;
-}
+const SAS_VIEWS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_views_historico.json?sp=r&st=2026-06-24T19:59:48Z&se=2028-06-25T04:14:48Z&spr=https&sv=2026-02-06&sr=b&sig=xsNyxARyX0D1lm0agEj2z4gxqPyhctpFrMHuT1J901M%3D';
+const SAS_OSCS_ATUAL = '';
 
 // === STATE ===
 let historico = [];
@@ -268,10 +253,13 @@ async function loadData() {
     tempestividade = tempRes?.ok ? await tempRes.json() : [];
     viewsHistorico = viewsHistRes?.ok ? await viewsHistRes.json() : [];
 
-    const bronzeNomes = await carregarBronzeOSCs('bronze/oscs_etransparente_').catch(()=>[]);
-    const bronzeRes = bronzeNomes.length ? fetch(bronzeUrl(bronzeNomes.sort().reverse()[0])).catch(()=>null) : null;
-    bronzeData = bronzeRes?.ok ? await (await bronzeRes).json() : [];
-    bronzeData.forEach(o => { if(o.url) { const u = o.url.replace(/\/$/,''); bronzeUrlParaNome[u] = o.nome; oscUrlParaNome[u] = o.nome; } });
+    if(SAS_OSCS_ATUAL) {
+      try {
+        const bronzeRes = await fetch(SAS_OSCS_ATUAL);
+        bronzeData = bronzeRes.ok ? await bronzeRes.json() : [];
+        bronzeData.forEach(o => { if(o.url) { const u = o.url.replace(/\/$/,''); bronzeUrlParaNome[u] = o.nome; oscUrlParaNome[u] = o.nome; } });
+      } catch(e) {}
+    }
     render();
   } catch(e) {
     document.getElementById('spinner').innerHTML = '<div style="color:#dc2626">Erro ao carregar dados. Tente novamente.</div>';
