@@ -177,5 +177,22 @@ send_task = PythonOperator(
     dag=dag,
 )
 
+def run_generate_silver(**context):
+    script_path = '/home/airflow/scripts/generate_silver.py'
+    result = subprocess.run(['python', script_path], capture_output=True, text=True, cwd='/home/airflow')
+    if result.returncode != 0:
+        raise Exception(f'generate_silver falhou:\n{result.stderr}')
+    print(result.stdout)
+
+def run_detect_doc_changes(**context):
+    script_path = '/home/airflow/scripts/detect_doc_changes.py'
+    result = subprocess.run(['python', script_path], capture_output=True, text=True, cwd='/home/airflow')
+    if result.returncode != 0:
+        raise Exception(f'detect_doc_changes falhou:\n{result.stderr}')
+    print(result.stdout)
+
+silver_task = PythonOperator(task_id='generate_silver', python_callable=run_generate_silver, dag=dag)
+doc_changes_task = PythonOperator(task_id='detect_doc_changes', python_callable=run_detect_doc_changes, dag=dag)
+
 # Define task dependencies
-extract_task >> scores_task >> fetch_ga4_task >> dashboard_task >> upload_task >> send_task
+extract_task >> scores_task >> fetch_ga4_task >> dashboard_task >> upload_task >> silver_task >> doc_changes_task >> send_task
