@@ -72,6 +72,7 @@ def main():
 
     if df.empty or 'ciclo' not in df.columns:
         logger.info('Silver vazio — nenhuma alteração para detectar')
+        upload_json(client, f'gold/tempestividade_{ciclo_atual}.json', [])
         return
 
     # 2. Filtrar ciclos atual e anterior
@@ -80,15 +81,18 @@ def main():
 
     if df_atual.empty:
         logger.info(f'Nenhum registro para o ciclo atual {ciclo_atual}')
+        upload_json(client, f'gold/tempestividade_{ciclo_atual}.json', [])
         return
     if df_anterior.empty:
-        logger.info(f'Nenhum registro para o ciclo anterior {ciclo_anterior_str}')
+        logger.info(f'Nenhum registro para o ciclo anterior {ciclo_anterior_str} — primeira execução')
+        upload_json(client, f'gold/tempestividade_{ciclo_atual}.json', [])
         return
 
     # 3. Merge por nome para comparar
     merged = df_atual.merge(df_anterior, on='nome', suffixes=('_atual', '_anterior'))
     if merged.empty:
         logger.info('Nenhuma ONG em comum entre os dois ciclos')
+        upload_json(client, f'gold/tempestividade_{ciclo_atual}.json', [])
         return
 
     alteracoes = []
