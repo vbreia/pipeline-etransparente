@@ -3,110 +3,168 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>eTransparente — Dashboard IDC</title>
+<title>etransparente.org — Dashboard IDC</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
-header{background:#1e3a8a;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
-header .logo{font-size:20px;font-weight:700;letter-spacing:-0.5px}
-header .logo i{color:#93c5fd;margin-right:8px}
-header .user-area{display:flex;align-items:center;gap:16px;font-size:14px}
-header .user-area .user-name{opacity:.9}
-header .user-area a{color:#93c5fd;text-decoration:none;font-weight:500}
-header .user-area a:hover{text-decoration:underline}
-.container{max-width:1400px;margin:0 auto;padding:24px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:#0f172a;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
+.sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-logo .logo-text{color:#fff;font-size:16px;font-weight:700;letter-spacing:-.3px}
+.sidebar-logo .logo-sub{color:#94a3b8;font-size:12px;margin-top:2px}
+.sidebar-nav{padding:12px 0;flex:1}
+.sidebar-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#94a3b8;text-decoration:none;font-size:14px;transition:all .15s}
+.sidebar-nav a:hover{color:#fff;background:rgba(255,255,255,.05)}
+.sidebar-nav a.active{color:#fff;background:rgba(59,130,246,.15);border-right:3px solid #3b82f6;font-weight:500}
+.sidebar-nav a i{font-size:18px;width:20px;text-align:center}
+.sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08)}
+.sidebar-footer .user-email{color:#94a3b8;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-footer a{display:flex;align-items:center;gap:8px;color:#94a3b8;text-decoration:none;font-size:12px;margin-top:6px;transition:color .15s}
+.sidebar-footer a:hover{color:#fca5a5}
+.content{margin-left:220px;flex:1;padding:32px;max-width:1400px}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+.page-header h1{font-size:24px;font-weight:700;color:#0f172a}
+.page-header .date{font-size:14px;color:#64748b}
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-.card{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.card .card-label{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:4px}
+.card{background:#fff;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.card .card-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:2px}
 .card .card-value{font-size:28px;font-weight:700;color:#1e3a8a}
-.card .card-sub{font-size:13px;color:#64748b;margin-top:4px}
-.section-title{font-size:18px;font-weight:600;color:#1e3a8a;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card .card-sub{font-size:12px;color:#64748b;margin-top:2px}
+.section-title{font-size:17px;font-weight:600;color:#1e3a8a;margin-bottom:16px;margin-top:32px;display:flex;align-items:center;gap:8px}
+.section-title:first-of-type{margin-top:0}
 .section-title i{color:#64748b}
 .panels-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
-.panel{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.panel-head h3{font-size:15px;font-weight:600}
-.rank-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.panel{background:#fff;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.panel-head h3{font-size:14px;font-weight:600}
+.rank-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9}
 .rank-item:last-child{border-bottom:none}
-.rank-pos{width:24px;height:24px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#475569;flex-shrink:0}
+.rank-pos{width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#475569;flex-shrink:0}
 .rank-item.top .rank-pos{background:#1e3a8a;color:#fff}
 .rank-item.bottom .rank-pos{background:#dc2626;color:#fff}
-.rank-name{flex:1;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rank-score{font-size:14px;font-weight:600;color:#1e3a8a;margin-right:8px}
-.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600;text-transform:uppercase}
+.rank-name{flex:1;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-name a{color:#1e293b;text-decoration:none}
+.rank-name a:hover{color:#1e3a8a;text-decoration:underline}
+.rank-score{font-size:13px;font-weight:600;color:#1e3a8a;margin-right:6px;white-space:nowrap}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap}
 .pill-otimo{background:#dcfce7;color:#16a34a}
 .pill-bom{background:#fef9c3;color:#d97706}
 .pill-regular{background:#fee2e2;color:#dc2626}
 .alert-card{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:20px;margin-bottom:24px}
-.alert-card h3{color:#dc2626;font-size:16px;margin-bottom:12px}
+.alert-card h3{color:#dc2626;font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .alert-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #fecaca;flex-wrap:wrap;gap:8px}
 .alert-item:last-child{border-bottom:none}
-.alert-item .osc-name{font-weight:500;font-size:14px}
-.alert-item .btn-contact{background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.alert-item .osc-name{font-weight:500;font-size:13px}
+.alert-item .btn-contact{background:#dc2626;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
 .alert-item .btn-contact:hover{background:#b91c1c}
 .table-wrapper{overflow-x:auto;margin-bottom:24px}
-table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-th{background:#f8fafc;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.5px;padding:12px 16px;text-align:left;font-weight:600}
-td{padding:12px 16px;font-size:14px;border-top:1px solid #f1f5f9}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+th{background:#f8fafc;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;text-align:left;font-weight:600}
+td{padding:10px 14px;font-size:13px;border-top:1px solid #f1f5f9}
 tr:hover td{background:#f8fafc}
-.rank-num{font-weight:600;color:#475569;width:40px}
-.doc-link{color:#1e3a8a;text-decoration:none;cursor:pointer}
+.rank-num{font-weight:600;color:#475569;width:32px}
+.doc-link{color:#1e3a8a;text-decoration:none}
 .doc-link:hover{text-decoration:underline}
-.search-bar{position:relative;margin-bottom:16px;max-width:400px}
-.search-bar input{width:100%;padding:10px 16px 10px 40px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;background:#fff}
+.search-bar{position:relative;margin-bottom:14px;max-width:360px}
+.search-bar input{width:100%;padding:9px 14px 9px 36px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:#fff}
 .search-bar input:focus{border-color:#1e3a8a;box-shadow:0 0 0 3px rgba(30,58,138,.1)}
-.search-bar i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:16px}
-.chart-wrap{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:24px}
-.chart-wrap canvas{max-height:400px}
-.chart-controls{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-.chart-controls label{font-size:13px;font-weight:500;color:#475569}
-.chart-controls select{padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;background:#fff;outline:none;cursor:pointer;min-width:200px}
-.empty-msg{padding:24px;text-align:center;color:#94a3b8;font-size:14px}
+.search-bar i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:15px}
+.chart-wrap{background:#fff;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:24px}
+.chart-wrap canvas{max-height:320px;max-width:100%}
+.chart-controls{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.chart-controls label{font-size:12px;font-weight:500;color:#475569;display:flex;align-items:center;gap:5px}
+.chart-controls select{padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;background:#fff;outline:none;cursor:pointer;min-width:180px;color:#1e293b}
+.chart-controls button{padding:5px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#475569;transition:all .15s}
+.chart-controls button:hover{background:#f1f5f9;border-color:#94a3b8}
+.empty-msg{padding:32px;text-align:center;color:#94a3b8;font-size:13px}
 .spinner-overlay{position:fixed;inset:0;background:#f1f5f9;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:16px}
-.spinner{width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:#1e3a8a;border-radius:50%;animation:spin .8s linear infinite}
+.spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#1e3a8a;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
-@media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr)}.panels-2{grid-template-columns:1fr}}
-@media(max-width:600px){.grid-4{grid-template-columns:1fr}header{flex-direction:column;text-align:center}}
-.mt-16{margin-top:16px}
-.text-center{text-align:center}
+.top10-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.top10-item{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#f8fafc;border-radius:6px;font-size:12px}
+.top10-item .osc-name{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.top10-item .views-count{color:#1e3a8a;font-weight:600;margin-left:8px;white-space:nowrap}
+.contrato-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.contrato-stat{background:#f8fafc;border-radius:8px;padding:14px;text-align:center}
+.contrato-stat .stat-number{font-size:22px;font-weight:700;color:#1e3a8a}
+.contrato-stat .stat-label{font-size:11px;color:#64748b;margin-top:2px}
+.contrato-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.sem-contratos-box{background:#fef9c3;border:1px solid #fef08a;border-radius:8px;padding:12px 16px;margin-bottom:16px}
+.sem-contratos-box h4{font-size:13px;color:#d97706;margin-bottom:6px}
+.sem-contratos-box ul{padding-left:18px;font-size:12px;color:#92400e}
+.sem-contratos-box li{margin-bottom:3px}
+@media(max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr)}.panels-2{grid-template-columns:1fr}.contrato-stats{grid-template-columns:repeat(2,1fr)}.contrato-chart-row{grid-template-columns:1fr}}
+@media(max-width:768px){.sidebar{width:56px}.sidebar-logo .logo-text,.sidebar-logo .logo-sub,.sidebar-nav a span,.sidebar-footer .user-email,.sidebar-footer a span{display:none}.sidebar-nav a{padding:12px;justify-content:center}.sidebar-footer{padding:12px;display:flex;flex-direction:column;align-items:center}.sidebar-footer a{justify-content:center}.content{margin-left:56px;padding:20px}.grid-4{grid-template-columns:1fr 1fr}.top10-list{grid-template-columns:1fr}.contrato-stats{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.grid-4{grid-template-columns:1fr}.contrato-stats{grid-template-columns:1fr}.content{padding:16px}}
 </style>
 </head>
 <body>
-<div id="spinner" class="spinner-overlay"><div class="spinner"></div><div style="font-size:14px;color:#64748b">Carregando dados...</div></div>
+<div id="spinner" class="spinner-overlay"><div class="spinner"></div><div style="font-size:13px;color:#64748b">Carregando dados...</div></div>
 
-<header>
-  <div class="logo"><i class="ph ph-gauge"></i>eTransparente · Dashboard IDC</div>
-  <div class="user-area">
-    <span class="user-name" id="userName">Carregando...</span>
-    <a href="/.auth/logout"><i class="ph ph-sign-out"></i> Sair</a>
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">etransparente.org</div>
+    <div class="logo-sub">Dashboard IDC</div>
   </div>
-</header>
+  <nav class="sidebar-nav">
+    <a href="index.html" class="active"><i class="ph ph-chart-bar"></i><span>Visão Geral</span></a>
+    <a href="#" id="oscListLink"><i class="ph ph-buildings"></i><span>OSCs</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-email" id="userEmail">Carregando...</div>
+    <a href="/.auth/logout"><i class="ph ph-sign-out"></i><span>Sair</span></a>
+  </div>
+</aside>
 
-<div class="container" id="app" style="opacity:0;transition:opacity .3s">
-  <!-- KPIs -->
-  <div class="grid-4" id="kpiGrid">
-    <div class="card"><div class="card-label">OSCs Monitoradas</div><div class="card-value" id="kpiTotal">—</div><div class="card-sub">total ativas</div></div>
+<!-- Content -->
+<main class="content" id="app" style="opacity:0;transition:opacity .3s">
+  <div class="page-header">
+    <h1>Visão Geral</h1>
+    <span class="date" id="dataAtual"></span>
+  </div>
+
+  <!-- Section 1: KPIs -->
+  <div class="grid-4">
+    <div class="card"><div class="card-label">OSCs Monitoradas</div><div class="card-value" id="kpiTotal">—</div><div class="card-sub">total no ciclo atual</div></div>
     <div class="card"><div class="card-label">Média Geral</div><div class="card-value" id="kpiMedia">—</div><div class="card-sub">% do índice</div></div>
     <div class="card"><div class="card-label">Ótimo + Bom</div><div class="card-value" id="kpiOtimoBom">—</div><div class="card-sub">% das OSCs</div></div>
     <div class="card"><div class="card-label">Ciclo Atual</div><div class="card-value" id="kpiCiclo">—</div><div class="card-sub">referência</div></div>
   </div>
 
-  <!-- Top/Bottom -->
+  <!-- Section 2: GA4 Visualizações -->
+  <div class="section-title"><i class="ph ph-eye"></i> Visualizações da plataforma</div>
+  <div class="chart-wrap">
+    <div class="chart-controls">
+      <label><i class="ph ph-plus-circle"></i> Adicionar OSC:</label>
+      <select id="ga4OscSelector" onchange="addGa4Osc()">
+        <option value="">— Selecione —</option>
+      </select>
+    </div>
+    <canvas id="ga4Chart"></canvas>
+    <div id="top10Views" class="top10-list"></div>
+  </div>
+
+  <!-- Section 3: Índice de transparência (Top/Bottom + Distribuição) -->
+  <div class="section-title"><i class="ph ph-trophy"></i> Índice de transparência</div>
   <div class="panels-2">
     <div class="panel">
-      <div class="panel-head"><h3><i class="ph ph-trophy" style="color:#d97706"></i> Top 5 maiores notas</h3></div>
+      <div class="panel-head"><h3><i class="ph ph-arrow-up" style="color:#16a34a"></i> Top 5 maiores notas</h3></div>
       <div id="topRanking"></div>
     </div>
     <div class="panel">
-      <div class="panel-head"><h3><i class="ph ph-warning-circle" style="color:#dc2626"></i> 5 menores notas</h3></div>
+      <div class="panel-head"><h3><i class="ph ph-arrow-down" style="color:#dc2626"></i> 5 menores notas</h3></div>
       <div id="bottomRanking"></div>
     </div>
   </div>
+  <div class="chart-wrap">
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:#1e293b">Distribuição por faixa de nota</h3>
+    <canvas id="distribuicaoChart" style="max-height:200px"></canvas>
+  </div>
 
-  <!-- Alertas -->
+  <!-- Section 4: Alertas -->
   <div id="alertasContainer" class="hidden">
     <div class="alert-card">
       <h3><i class="ph ph-warning"></i> Alertas — OSCs com nota zerada</h3>
@@ -114,369 +172,583 @@ tr:hover td{background:#f8fafc}
     </div>
   </div>
 
-  <!-- Documentos -->
+  <!-- Section 5: Parcerias e contratos -->
+  <div class="section-title"><i class="ph ph-handshake"></i> Parcerias e contratos</div>
+  <div id="contratosContainer">
+    <div class="contrato-stats" id="contratoStats"></div>
+    <div class="contrato-chart-row">
+      <div class="chart-wrap" style="margin-bottom:0"><canvas id="contratoChart" style="max-height:260px"></canvas></div>
+      <div class="card" style="margin-bottom:0">
+        <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;color:#1e293b">Top 5 OSCs com mais contratos</h4>
+        <div id="top5Contratos"></div>
+      </div>
+    </div>
+    <div id="semContratosBox" class="sem-contratos-box hidden"></div>
+  </div>
+
+  <!-- Section 6: Documentos -->
   <div class="section-title"><i class="ph ph-file-arrow-up"></i> Atualizações de documentos detectadas</div>
   <div id="docContainer" class="table-wrapper"></div>
 
-  <!-- Evolução -->
+  <!-- Section 7: Evolução histórica -->
   <div class="section-title"><i class="ph ph-chart-line-up"></i> Evolução histórica por OSC</div>
   <div class="chart-wrap">
     <div class="chart-controls">
-      <label><i class="ph ph-magnifying-glass"></i> Adicionar OSC:</label>
-      <select id="oscSelector" onchange="addOscToChart()">
-        <option value="">— Selecione uma OSC —</option>
+      <label><i class="ph ph-plus-circle"></i> Adicionar OSC:</label>
+      <select id="evolOscSelector" onchange="addOscToChart()">
+        <option value="">— Selecione —</option>
       </select>
-      <button onclick="resetChart()" style="padding:6px 14px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:13px">Redefinir</button>
+      <button onclick="resetChart()"><i class="ph ph-arrow-counter-clockwise"></i> Redefinir</button>
     </div>
     <canvas id="evolutionChart"></canvas>
   </div>
 
-  <!-- Ranking -->
+  <!-- Section 8: Ranking completo -->
   <div class="section-title"><i class="ph ph-list-numbers"></i> Ranking completo</div>
-  <div class="search-bar"><i class="ph ph-magnifying-glass"></i><input type="text" id="searchInput" placeholder="Buscar por nome da OSC..." oninput="renderRankingTable()"></div>
+  <div class="search-bar"><i class="ph ph-magnifying-glass"></i><input type="text" id="searchInput" placeholder="Buscar por nome..." oninput="renderRankingTable()"></div>
   <div id="rankingTable" class="table-wrapper"></div>
-</div>
+</main>
 
 <script>
-// --- Config ---
+// === CONSTANTES ===
 const SAS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_historico.json?sp=r&st=2026-06-24T17:39:25Z&se=2028-06-24T01:54:25Z&spr=https&sv=2026-02-06&sr=b&sig=iqgg1FYsnDoDHWg9jYBNWTWDA2AIY8OpDCjYi9%2FskcA%3D';
 const SAS_VERIFICACOES = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/verificacoes_all.json?sp=r&st=2026-06-24T17:42:10Z&se=2028-06-25T01:57:10Z&spr=https&sv=2026-02-06&sr=b&sig=lTXIti6Byy5IU2P5p9CcZLbQGwCakV00hoG3xOdYebQ%3D';
-const SAS_TEMPESTIVIDADE_BASE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/';
-const SAS_TEMPESTIVIDADE_PARAMS = '?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
-
+const SAS_BRONZE_LIST = 'https://etransparentedata.blob.core.windows.net/etransparente/bronze?sp=rl&st=2026-06-24T17:56:04Z&se=2028-06-25T02:11:04Z&spr=https&sv=2026-02-06&sr=d&sig=OwaqdmE6L7MPsopXnQYODx5M%2FUK9yst8rNKfzH8vVfk%3D&sdd=1';
 const hoje = new Date();
 const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2,'0');
-const SAS_TEMPESTIVIDADE = SAS_TEMPESTIVIDADE_BASE + 'tempestividade_' + mesAtual + '.json' + SAS_TEMPESTIVIDADE_PARAMS;
+const SAS_TEMPESTIVIDADE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/tempestividade_' + mesAtual + '.json?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
 
-// --- State ---
+// Bronze helpers
+const bronzeBaseUrl = SAS_BRONZE_LIST.split('?')[0];
+const bronzeSasParams = SAS_BRONZE_LIST.split('?')[1];
+
+async function listarBronze(prefixo) {
+  const url = bronzeBaseUrl + '?' + bronzeSasParams + '&restype=directory&comp=list&prefix=' + encodeURIComponent(prefixo);
+  const res = await fetch(url);
+  const xml = await res.text();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'application/xml');
+  return Array.from(doc.querySelectorAll('Blob Name')).map(n => n.textContent);
+}
+
+function bronzeUrl(nome) {
+  return bronzeBaseUrl + '/' + nome + '?' + bronzeSasParams;
+}
+
+// === STATE ===
 let historico = [];
 let tempestividade = [];
+let bronzeData = [];
+let viewsData = [];
+let oscUrlParaNome = {};
 let evolutionChart = null;
 let chartOscs = [];
+let ga4Chart = null;
+let ga4Oscs = [];
 
-// --- Auth ---
-fetch('/.auth/me')
-  .then(r => r.json())
-  .then(d => {
-    const name = d.clientPrincipal?.userDetails || d.clientPrincipal?.userId || 'Usuário';
-    document.getElementById('userName').textContent = name;
-  })
-  .catch(() => { document.getElementById('userName').textContent = 'Usuário'; });
+// === AUTH ===
+fetch('/.auth/me').then(r=>r.json()).then(d=>{
+  const email = d.clientPrincipal?.userDetails || d.clientPrincipal?.userId || 'Usuario';
+  document.getElementById('userEmail').textContent = email;
+}).catch(()=>{document.getElementById('userEmail').textContent='conectado'});
 
-// --- Load ---
+// === DATE ===
+(function(){
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const d = new Date();
+  document.getElementById('dataAtual').textContent = d.getDate() + ' de ' + meses[d.getMonth()] + ' de ' + d.getFullYear();
+})();
+
+// === LOAD ===
 async function loadData() {
   try {
     const [histRes, tempRes] = await Promise.all([
       fetch(SAS_HISTORICO),
-      fetch(SAS_TEMPESTIVIDADE).catch(() => null)
+      fetch(SAS_TEMPESTIVIDADE).catch(()=>null)
     ]);
     historico = await histRes.json();
     tempestividade = tempRes?.ok ? await tempRes.json() : [];
 
+    // Carregar bronze + views em paralelo
+    const [bronzeNomes, viewsNomes] = await Promise.all([
+      listarBronze('oscs_etransparente_').catch(()=>[]),
+      listarBronze('oscs_views_' + mesAtual).catch(()=>[])
+    ]);
+
+    const [bronzeRes, viewsRes] = await Promise.all([
+      bronzeNomes.length ? fetch(bronzeUrl(bronzeNomes.sort().reverse()[0])).catch(()=>null) : Promise.resolve(null),
+      viewsNomes.length ? fetch(bronzeUrl(viewsNomes[0])).catch(()=>null) : Promise.resolve(null)
+    ]);
+
+    bronzeData = bronzeRes?.ok ? await bronzeRes.json() : [];
+    viewsData = viewsRes?.ok ? await viewsRes.json() : [];
+
+    // Mapa URL -> Nome
+    bronzeData.forEach(o => { if(o.url) oscUrlParaNome[o.url.replace(/\/$/,'')] = o.nome; });
+
     render();
-  } catch (e) {
+  } catch(e) {
     document.getElementById('spinner').innerHTML = '<div style="color:#dc2626">Erro ao carregar dados. Tente novamente.</div>';
     throw e;
   }
 }
 
-// --- Processing ---
+// === HELPERS ===
 function getCiclos() {
-  const ciclos = [...new Set(historico.map(h => h.ciclo))].sort();
-  return ciclos;
+  return [...new Set(historico.map(h=>h.ciclo))].sort();
 }
-
 function getDadosCiclo(ciclo) {
-  const filtrados = historico.filter(h => h.ciclo === ciclo);
-  const agrupados = {};
-  for (const h of filtrados) {
-    agrupados[h.nome] = h;
-  }
-  return Object.values(agrupados);
+  const m = {};
+  historico.filter(h=>h.ciclo===ciclo).forEach(h=>{m[h.nome]=h});
+  return Object.values(m);
 }
-
 function getUltimoCiclo() {
-  const ciclos = getCiclos();
-  return ciclos.length ? ciclos[ciclos.length - 1] : null;
+  const c = getCiclos(); return c.length ? c[c.length-1] : null;
 }
-
 function getPenultimoCiclo() {
-  const ciclos = getCiclos();
-  return ciclos.length > 1 ? ciclos[ciclos.length - 2] : null;
+  const c = getCiclos(); return c.length>1 ? c[c.length-2] : null;
 }
-
 function formatarNomeCiclo(ciclo) {
-  if (!ciclo) return '—';
+  if(!ciclo) return '—';
   const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const [ano, mes] = ciclo.split('-');
-  return meses[parseInt(mes) - 1] + '/' + ano;
+  return meses[parseInt(mes)-1] + '/' + ano;
 }
-
-function calcularPercentual(item) {
+function calcPct(item) {
   return item.max_nota > 0 ? (item.nota_final / item.max_nota * 100) : 0;
 }
-
 function classPill(classe) {
-  if (!classe) return 'pill-regular';
-  const c = classe.toLowerCase();
-  if (c === 'ótimo' || c === 'otimo') return 'pill-otimo';
-  if (c === 'bom') return 'pill-bom';
+  if(!classe) return 'pill-regular';
+  const c = classe.toLowerCase().replace('ó','o');
+  if(c==='otimo') return 'pill-otimo';
+  if(c==='bom') return 'pill-bom';
   return 'pill-regular';
 }
 
-// --- Render ---
+// === RENDER ===
 function render() {
   const ultimoCiclo = getUltimoCiclo();
-  const penultimoCiclo = getPenultimoCiclo();
-  if (!ultimoCiclo) return;
-
+  if(!ultimoCiclo) return;
   const dadosUltimo = getDadosCiclo(ultimoCiclo);
 
-  // KPIs
-  const totalOscs = dadosUltimo.length;
-  const somaPct = dadosUltimo.reduce((s, d) => s + calcularPercentual(d), 0);
-  const mediaGeral = totalOscs ? (somaPct / totalOscs) : 0;
-  const otimoBom = dadosUltimo.filter(d => d.classificacao && (d.classificacao.toLowerCase() === 'ótimo' || d.classificacao.toLowerCase() === 'otimo' || d.classificacao.toLowerCase() === 'bom'));
-  const pctOtimoBom = totalOscs ? (otimoBom.length / totalOscs * 100) : 0;
+  renderKPIs(dadosUltimo, ultimoCiclo);
+  renderTopBottom(dadosUltimo);
+  renderDistribuicao(dadosUltimo);
+  renderAlertas(dadosUltimo);
+  renderContratos(bronzeData);
+  renderDocumentos();
+  renderRankingTable();
+  initEvolChart(dadosUltimo, ultimoCiclo);
+  renderGA4();
 
-  document.getElementById('kpiTotal').textContent = totalOscs;
-  document.getElementById('kpiMedia').textContent = mediaGeral.toFixed(1) + '%';
-  document.getElementById('kpiOtimoBom').textContent = pctOtimoBom.toFixed(1) + '%';
-  document.getElementById('kpiCiclo').textContent = formatarNomeCiclo(ultimoCiclo);
+  document.getElementById('spinner').classList.add('hidden');
+  document.getElementById('app').style.opacity = '1';
+}
 
-  // Top 5
-  const sorted = [...dadosUltimo].sort((a, b) => b.nota_final - a.nota_final);
-  const top5 = sorted.slice(0, 5);
-  const bottom5 = [...dadosUltimo].sort((a, b) => a.nota_final - b.nota_final).slice(0, 5);
+// --- KPIs ---
+function renderKPIs(dados, ciclo) {
+  const total = dados.length;
+  const soma = dados.reduce((s,d)=>s+calcPct(d),0);
+  const media = total ? soma/total : 0;
+  const ob = dados.filter(d=>d.classificacao && (d.classificacao.toLowerCase().replace('ó','o')==='otimo'||d.classificacao.toLowerCase()==='bom'));
+  const pct_ob = total ? (ob.length/total*100) : 0;
 
-  document.getElementById('topRanking').innerHTML = top5.map((d, i) => `
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiMedia').textContent = media.toFixed(1)+'%';
+  document.getElementById('kpiOtimoBom').textContent = pct_ob.toFixed(1)+'%';
+  document.getElementById('kpiCiclo').textContent = formatarNomeCiclo(ciclo);
+}
+
+// --- Top/Bottom ---
+function renderTopBottom(dados) {
+  const sorted = [...dados].sort((a,b)=>b.nota_final-a.nota_final);
+  const top5 = sorted.slice(0,5);
+  const bottom5 = [...dados].sort((a,b)=>a.nota_final-b.nota_final).slice(0,5);
+
+  document.getElementById('topRanking').innerHTML = top5.map((d,i)=>`
     <div class="rank-item top">
-      <div class="rank-pos">${i + 1}</div>
-      <span class="rank-name" title="${d.nome}">${d.nome}</span>
+      <div class="rank-pos">${i+1}</div>
+      <span class="rank-name"><a href="osc.html?nome=${encodeURIComponent(d.nome)}">${d.nome}</a></span>
       <span class="rank-score">${d.nota_final.toFixed(1)}/${d.max_nota}</span>
-      <span class="pill ${classPill(d.classificacao)}">${d.classificacao || 'Regular'}</span>
+      <span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span>
     </div>
   `).join('');
 
-  document.getElementById('bottomRanking').innerHTML = bottom5.map((d, i) => `
+  document.getElementById('bottomRanking').innerHTML = bottom5.map((d,i)=>`
     <div class="rank-item bottom">
-      <div class="rank-pos">${i + 1}</div>
-      <span class="rank-name" title="${d.nome}">${d.nome}</span>
+      <div class="rank-pos">${i+1}</div>
+      <span class="rank-name"><a href="osc.html?nome=${encodeURIComponent(d.nome)}">${d.nome}</a></span>
       <span class="rank-score">${d.nota_final.toFixed(1)}/${d.max_nota}</span>
-      <span class="pill ${classPill(d.classificacao)}">${d.classificacao || 'Regular'}</span>
+      <span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span>
     </div>
   `).join('');
+}
 
-  // Alertas (nota_final == 0)
-  const zeradas = dadosUltimo.filter(d => d.nota_final === 0);
-  const alertasEl = document.getElementById('alertasContainer');
-  const alertasList = document.getElementById('alertasList');
-  if (zeradas.length) {
-    alertasEl.classList.remove('hidden');
-    alertasList.innerHTML = zeradas.map(d => `
+// --- Distribuição ---
+function renderDistribuicao(dados) {
+  const faixas = {regular:0, bom:0, otimo:0};
+  dados.forEach(d=>{
+    const pct = calcPct(d);
+    if(pct<=30) faixas.regular++;
+    else if(pct<=69) faixas.bom++;
+    else faixas.otimo++;
+  });
+  const ctx = document.getElementById('distribuicaoChart');
+  new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:['0–30% (Regular)','30–69% (Bom)','70–100% (Ótimo)'],
+      datasets:[{
+        data:[faixas.regular, faixas.bom, faixas.otimo],
+        backgroundColor:['#dc2626','#d97706','#16a34a'],
+        borderRadius:4
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false}, beginAtZero:true, ticks:{stepSize:1}},
+        y:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+// --- Alertas ---
+function renderAlertas(dados) {
+  const zeradas = dados.filter(d=>d.nota_final===0);
+  const el = document.getElementById('alertasContainer');
+  const list = document.getElementById('alertasList');
+  if(zeradas.length) {
+    el.classList.remove('hidden');
+    list.innerHTML = zeradas.map(d=>`
       <div class="alert-item">
         <span class="osc-name"><i class="ph ph-buildings"></i> ${d.nome}</span>
-        <a class="btn-contact" href="mailto:?subject=${encodeURIComponent('URGENTE - Regularização cadastral - eTransparente - ' + d.nome)}&body=${encodeURIComponent('Prezados,\n\nIdentificamos que a OSC ' + d.nome + ' está com nota zero no Índice de Transparência. Solicitamos que entre em contato conosco para regularização.\n\nAtenciosamente,\nEquipe eTransparente')}">
+        <a class="btn-contact" href="mailto:?subject=${encodeURIComponent('etransparente.org — OSC com índice zerado: '+d.nome)}&body=${encodeURIComponent('Prezados,\n\nIdentificamos que a OSC '+d.nome+' está com nota zero no Índice de Transparência do etransparente.org. Solicitamos contato para regularização.\n\nAtenciosamente,\nEquipe etransparente')}">
           <i class="ph ph-envelope"></i> Contatar responsável
         </a>
       </div>
     `).join('');
   } else {
-    alertasEl.classList.add('hidden');
+    el.classList.add('hidden');
   }
-
-  // Documentos
-  const docEl = document.getElementById('docContainer');
-  if (tempestividade.length) {
-    const campoLabel = {
-      estatuto: 'Estatuto', cneas: 'CNEAS', cebas: 'CEBAS', plano_acao: 'Plano de Ação',
-      ata_eleicao: 'Ata de Eleição', relatorio_atividades: 'Relatório de Atividades',
-      balanco_2021: 'Balanço 2021', balanco_2022: 'Balanço 2022', balanco_2023: 'Balanço 2023', balanco_2024: 'Balanço 2024'
-    };
-    docEl.innerHTML = `
-      <table>
-        <thead><tr><th>OSC</th><th>Documento</th><th>Ciclo de detecção</th><th>Anterior</th><th>Atual</th></tr></thead>
-        <tbody>
-          ${tempestividade.map(d => `
-            <tr>
-              <td><strong>${d.nome}</strong></td>
-              <td>${campoLabel[d.campo] || d.campo}</td>
-              <td>${d.ciclo_deteccao}</td>
-              <td>${d.url_anterior ? '<a href="' + d.url_anterior + '" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>' : '—'}</td>
-              <td>${d.url_nova ? '<a href="' + d.url_nova + '" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>' : '—'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-  } else {
-    docEl.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:#94a3b8"><i class="ph ph-check-circle" style="font-size:24px;display:block;margin-bottom:8px"></i>Nenhuma alteração detectada no último ciclo</div>';
-  }
-
-  // Ranking table
-  renderRankingTable();
-
-  // Evolution chart
-  initChart(dadosUltimo, penultimoCiclo, ultimoCiclo);
-
-  // Show app
-  document.getElementById('spinner').classList.add('hidden');
-  document.getElementById('app').style.opacity = '1';
 }
 
-// --- Ranking Table ---
-function renderRankingTable() {
-  const ultimoCiclo = getUltimoCiclo();
-  if (!ultimoCiclo) return;
-  const dados = getDadosCiclo(ultimoCiclo);
-  const query = (document.getElementById('searchInput').value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const filtrados = query
-    ? dados.filter(d => d.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(query))
-    : dados;
-  filtrados.sort((a, b) => b.nota_final - a.nota_final);
+// --- Contratos ---
+function renderContratos(bronze) {
+  if(!bronze.length) { document.getElementById('contratosContainer').innerHTML = '<div class="card empty-msg">Dados de contratos não disponíveis</div>'; return; }
 
-  const el = document.getElementById('rankingTable');
+  const esferas = ['municipio','estado','uniao','emendas_parlamentares'];
+  const labels = {'municipio':'Município','estado':'Estado','uniao':'União','emendas_parlamentares':'Emendas'};
+
+  // Contar termos reais por esfera
+  const totais = {municipio:0, estado:0, uniao:0, emendas_parlamentares:0};
+  const oscContagens = {};
+
+  bronze.forEach(o=>{
+    if(!o.termos) return;
+    oscContagens[o.nome] = 0;
+    esferas.forEach(e=>{
+      const arr = o.termos[e]?.termos || [];
+      const reais = arr.filter(t=>{
+        const vals = Object.values(t).filter(v=>typeof v==='string' && v.trim());
+        return vals.length > 2;
+      });
+      totais[e] += reais.length;
+      oscContagens[o.nome] += reais.length;
+    });
+  });
+
+  // Stats
+  const statsEl = document.getElementById('contratoStats');
+  statsEl.innerHTML = esferas.map(e=>`
+    <div class="contrato-stat">
+      <div class="stat-number">${totais[e]}</div>
+      <div class="stat-label">${labels[e]}</div>
+    </div>
+  `).join('');
+
+  // Rosca
+  const ctx = document.getElementById('contratoChart');
+  new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels:esferas.map(e=>labels[e]),
+      datasets:[{
+        data:esferas.map(e=>totais[e]),
+        backgroundColor:['#1e3a8a','#3b82f6','#93c5fd','#bfdbfe'],
+        borderWidth:0
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      cutout:'60%',
+      plugins:{legend:{position:'bottom', labels:{boxWidth:12, padding:12, font:{size:11}}}}
+    }
+  });
+
+  // Top 5
+  const top5 = Object.entries(oscContagens).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('top5Contratos').innerHTML = top5.map(([nome,count],i)=>`
+    <div class="rank-item" style="padding:6px 0">
+      <div class="rank-pos" style="background:#e2e8f0;color:#475569">${i+1}</div>
+      <span class="rank-name" title="${nome}">${nome}</span>
+      <span style="font-size:13px;font-weight:600;color:#1e3a8a">${count}</span>
+    </div>
+  `).join('');
+
+  // Sem contratos
+  const sem = Object.entries(oscContagens).filter(([,c])=>c===0).map(([n])=>n).slice(0,20);
+  const semEl = document.getElementById('semContratosBox');
+  if(sem.length) {
+    semEl.classList.remove('hidden');
+    semEl.innerHTML = '<h4><i class="ph ph-warning-circle"></i> OSCs sem contratos registrados ('+sem.length+')</h4><ul>'+sem.map(n=>'<li>'+n+'</li>').join('')+'</ul>';
+  }
+}
+
+// --- Documentos ---
+function renderDocumentos() {
+  const el = document.getElementById('docContainer');
+  if(!tempestividade.length) {
+    el.innerHTML = '<div class="card empty-msg"><i class="ph ph-check-circle" style="font-size:22px;display:block;margin-bottom:8px;color:#16a34a"></i>Nenhuma alteração detectada no último ciclo</div>';
+    return;
+  }
+  const campoLabel = {
+    estatuto:'Estatuto', cneas:'CNEAS', cebas:'CEBAS', plano_acao:'Plano de Ação',
+    ata_eleicao:'Ata de Eleição', relatorio_atividades:'Relatório de Atividades',
+    balanco_2021:'Balanço 2021', balanco_2022:'Balanço 2022', balanco_2023:'Balanço 2023', balanco_2024:'Balanço 2024'
+  };
   el.innerHTML = `
     <table>
-      <thead><tr><th>#</th><th>OSC</th><th>Nota</th><th>Max</th><th>%</th><th>Classificação</th></tr></thead>
+      <thead><tr><th>OSC</th><th>Documento</th><th>Ciclo de detecção</th><th>Anterior</th><th>Atual</th></tr></thead>
       <tbody>
-        ${filtrados.map((d, i) => {
-          const pct = calcularPercentual(d);
-          return `<tr>
-            <td class="rank-num">${i + 1}º</td>
+        ${tempestividade.map(d=>`
+          <tr>
             <td><strong>${d.nome}</strong></td>
-            <td>${d.nota_final.toFixed(1)}</td>
-            <td>${d.max_nota}</td>
-            <td>${pct.toFixed(1)}%</td>
-            <td><span class="pill ${classPill(d.classificacao)}">${d.classificacao || 'Regular'}</span></td>
-          </tr>`;
-        }).join('')}
+            <td>${campoLabel[d.campo]||d.campo}</td>
+            <td>${d.ciclo_deteccao||'—'}</td>
+            <td>${d.url_anterior ? '<a href="'+d.url_anterior+'" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>' : '—'}</td>
+            <td>${d.url_nova ? '<a href="'+d.url_nova+'" target="_blank" class="doc-link"><i class="ph ph-file-pdf"></i> Ver</a>' : '—'}</td>
+          </tr>
+        `).join('')}
       </tbody>
     </table>
   `;
 }
 
-// --- Chart ---
-function initChart(dadosUltimo, penultimoCiclo, ultimoCiclo) {
+// --- Evolução Chart ---
+function initEvolChart(dadosUltimo, ultimoCiclo) {
   const ciclos = getCiclos();
+  const penultimoCiclo = getPenultimoCiclo();
 
-  // Find top 3 most improved
+  // Default top 3 most improved
   let defaultOscs = [];
-  if (penultimoCiclo && ultimoCiclo) {
-    const dadosPenultimo = getDadosCiclo(penultimoCiclo);
-    const dadosPenMap = {};
-    dadosPenultimo.forEach(d => { dadosPenMap[d.nome] = d; });
-    const dadosUltMap = {};
-    dadosUltimo.forEach(d => { dadosUltMap[d.nome] = d; });
-    const melhorias = Object.keys(dadosUltMap)
-      .filter(n => dadosPenMap[n])
-      .map(n => ({ nome: n, dif: dadosUltMap[n].nota_final - dadosPenMap[n].nota_final }))
-      .sort((a, b) => b.dif - a.dif)
-      .slice(0, 3);
-    defaultOscs = melhorias.map(m => m.nome);
+  if(penultimoCiclo && ultimoCiclo) {
+    const dp = {}, du = {};
+    getDadosCiclo(penultimoCiclo).forEach(d=>{dp[d.nome]=d});
+    dadosUltimo.forEach(d=>{du[d.nome]=d});
+    defaultOscs = Object.keys(du).filter(n=>dp[n])
+      .map(n=>({nome:n, dif:du[n].nota_final-dp[n].nota_final}))
+      .sort((a,b)=>b.dif-a.dif).slice(0,3).map(m=>m.nome);
   }
-
   chartOscs = defaultOscs;
-  atualizarChart(ciclos);
+  refreshEvolChart(ciclos);
 
   // Populate selector
-  const nomes = [...new Set(historico.map(h => h.nome))].sort();
-  const sel = document.getElementById('oscSelector');
-  sel.innerHTML = '<option value="">— Selecione uma OSC —</option>' +
-    nomes.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  const nomes = [...new Set(historico.map(h=>h.nome))].sort();
+  const sel = document.getElementById('evolOscSelector');
+  sel.innerHTML = '<option value="">— Selecione uma OSC —</option>' + nomes.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
 }
 
-function atualizarChart(ciclos) {
-  if (!ciclos.length) return;
+function refreshEvolChart(ciclos) {
+  if(!ciclos.length) return;
   const ctx = document.getElementById('evolutionChart');
-  if (!ctx) return;
+  if(!ctx) return;
+  if(evolutionChart) evolutionChart.destroy();
 
-  if (evolutionChart) evolutionChart.destroy();
-
-  const datasets = chartOscs.map((nome, idx) => {
-    const dadosOsc = historico.filter(h => h.nome === nome);
-    const mapCiclo = {};
-    dadosOsc.forEach(d => { mapCiclo[d.ciclo] = d.nota_final; });
-    const data = ciclos.map(c => mapCiclo[c] !== undefined ? mapCiclo[c] : null);
-    const cores = ['#1e3a8a','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#be123c','#15803d'];
+  const cores = ['#1e3a8a','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#be123c','#15803d','#ca8a04','#0284c7'];
+  const datasets = chartOscs.map((nome,idx)=>{
+    const map = {};
+    historico.filter(h=>h.nome===nome).forEach(d=>{map[d.ciclo]=calcPct(d)});
     return {
       label: nome,
-      data,
-      borderColor: cores[idx % cores.length],
-      backgroundColor: cores[idx % cores.length] + '20',
-      borderWidth: 2,
-      tension: 0.3,
-      spanGaps: true,
-      pointRadius: 3
+      data: ciclos.map(c=>map[c]!==undefined?map[c]:null),
+      borderColor: cores[idx%cores.length],
+      backgroundColor: cores[idx%cores.length]+'20',
+      borderWidth: 2, tension: .3, spanGaps: true, pointRadius: 3
     };
   });
 
   evolutionChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ciclos.map(c => formatarNomeCiclo(c)),
-      datasets
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'top',
-          labels: { boxWidth: 12, padding: 16, font: { size: 12 } }
-        },
-        tooltip: {
-          callbacks: {
-            label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) : '—')
-          }
-        }
+    type:'line',
+    data:{labels:ciclos.map(c=>formatarNomeCiclo(c)), datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top', labels:{boxWidth:12, padding:14, font:{size:11}}},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.parsed.y!==null?ctx.parsed.y.toFixed(1)+'%':'—')}}
       },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: { display: true, text: 'Nota' }
-        },
-        x: {
-          ticks: { maxRotation: 45 }
-        }
+      scales:{
+        y:{beginAtZero:true, max:100, title:{display:true, text:'% do índice'}, ticks:{font:{size:11}}},
+        x:{ticks:{maxRotation:45, font:{size:10}}}
       }
     }
   });
 }
 
 function addOscToChart() {
-  const sel = document.getElementById('oscSelector');
+  const sel = document.getElementById('evolOscSelector');
   const nome = sel.value;
-  if (!nome || chartOscs.includes(nome)) return;
+  if(!nome||chartOscs.includes(nome)) return;
   chartOscs.push(nome);
-  const ciclos = getCiclos();
-  atualizarChart(ciclos);
+  refreshEvolChart(getCiclos());
   sel.value = '';
 }
 
 function resetChart() {
-  const ciclos = getCiclos();
   const ultimoCiclo = getUltimoCiclo();
   const penultimoCiclo = getPenultimoCiclo();
-  let defaultOscs = [];
-  if (penultimoCiclo && ultimoCiclo) {
-    const dadosPenultimo = getDadosCiclo(penultimoCiclo);
-    const dadosPenMap = {};
-    dadosPenultimo.forEach(d => { dadosPenMap[d.nome] = d; });
-    const dadosUltMap = {};
-    getDadosCiclo(ultimoCiclo).forEach(d => { dadosUltMap[d.nome] = d; });
-    defaultOscs = Object.keys(dadosUltMap)
-      .filter(n => dadosPenMap[n])
-      .map(n => ({ nome: n, dif: dadosUltMap[n].nota_final - dadosPenMap[n].nota_final }))
-      .sort((a, b) => b.dif - a.dif)
-      .slice(0, 3)
-      .map(m => m.nome);
+  let def = [];
+  if(penultimoCiclo && ultimoCiclo) {
+    const dp={}, du={};
+    getDadosCiclo(penultimoCiclo).forEach(d=>{dp[d.nome]=d});
+    getDadosCiclo(ultimoCiclo).forEach(d=>{du[d.nome]=d});
+    def = Object.keys(du).filter(n=>dp[n])
+      .map(n=>({nome:n, dif:du[n].nota_final-dp[n].nota_final}))
+      .sort((a,b)=>b.dif-a.dif).slice(0,3).map(m=>m.nome);
   }
-  chartOscs = defaultOscs;
-  atualizarChart(ciclos);
+  chartOscs = def;
+  refreshEvolChart(getCiclos());
 }
 
-// --- Boot ---
+// --- Ranking Table ---
+function renderRankingTable() {
+  const ultimoCiclo = getUltimoCiclo();
+  if(!ultimoCiclo) {document.getElementById('rankingTable').innerHTML=''; return;}
+  let dados = getDadosCiclo(ultimoCiclo);
+  const q = (document.getElementById('searchInput').value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(q) dados = dados.filter(d=>d.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q));
+  dados.sort((a,b)=>b.nota_final-a.nota_final);
+
+  document.getElementById('rankingTable').innerHTML = `
+    <table>
+      <thead><tr><th>#</th><th>OSC</th><th>Nota</th><th>Max</th><th>%</th><th>Classificação</th></tr></thead>
+      <tbody>
+        ${dados.map((d,i)=>`
+          <tr>
+            <td class="rank-num">${i+1}º</td>
+            <td><strong><a href="osc.html?nome=${encodeURIComponent(d.nome)}" style="color:#1e293b;text-decoration:none">${d.nome}</a></strong></td>
+            <td>${d.nota_final.toFixed(1)}</td>
+            <td>${d.max_nota}</td>
+            <td>${calcPct(d).toFixed(1)}%</td>
+            <td><span class="pill ${classPill(d.classificacao)}">${d.classificacao||'Regular'}</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// --- GA4 Views ---
+function renderGA4() {
+  if(!viewsData || !viewsData.length) {
+    document.querySelector('.section-title .ph-eye').closest('.section-title') && (
+      document.querySelector('.section-title .ph-eye').closest('.section-title').nextElementSibling.innerHTML = '<div class="card empty-msg">Dados de visualizações não disponíveis para este mês</div>'
+    );
+    return;
+  }
+
+  // Sum daily views across all OSCs
+  const daysInMonth = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+  const dailyTotals = new Array(daysInMonth).fill(0);
+  const oscTotals = {};
+
+  viewsData.forEach(item=>{
+    const nome = oscUrlParaNome[item.url?.replace(/\/$/,'')] || item.url;
+    const views = item.views || [];
+    oscTotals[nome] = 0;
+    views.forEach((v,i)=>{
+      if(i<daysInMonth) dailyTotals[i] += (typeof v==='number'?v:0);
+      oscTotals[nome] += (typeof v==='number'?v:0);
+    });
+  });
+
+  // Labels: dias do mês
+  const labels = Array.from({length:daysInMonth}, (_,i)=>String(i+1).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0'));
+
+  // Chart total + OSCs individuais
+  const ctxGa4 = document.getElementById('ga4Chart');
+  if(ctxGa4) {
+    if(ga4Chart) ga4Chart.destroy();
+    ga4Chart = new Chart(ctxGa4, {
+      type:'line',
+      data:{
+        labels,
+        datasets:[
+          {
+            label:'Total plataforma',
+            data:dailyTotals,
+            borderColor:'#1e3a8a', backgroundColor:'#1e3a8a10',
+            borderWidth:2, tension:.3, fill:true, pointRadius:1
+          },
+          ...ga4Oscs.map((nome,idx)=>{
+            const item = viewsData.find(v=>(oscUrlParaNome[v.url?.replace(/\/$/,'')]||v.url)===nome);
+            const data = new Array(daysInMonth).fill(null);
+            if(item && item.views) {
+              item.views.forEach((v,i)=>{if(i<daysInMonth) data[i]=typeof v==='number'?v:0});
+            }
+            const cores = ['#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];
+            return {
+              label: nome,
+              data,
+              borderColor: cores[idx%cores.length],
+              borderWidth: 1.5, tension:.3, pointRadius:1,
+              borderDash: [4,3]
+            };
+          })
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{position:'top', labels:{boxWidth:12, padding:12, font:{size:11}}},
+          tooltip:{mode:'index', intersect:false}
+        },
+        scales:{
+          y:{beginAtZero:true, title:{display:true, text:'Visualizações'}, ticks:{font:{size:10}}},
+          x:{ticks:{font:{size:9}, maxTicksLimit:15}}
+        },
+        interaction:{mode:'nearest', axis:'x', intersect:false}
+      }
+    });
+  }
+
+  // Top 10 table
+  const top10 = Object.entries(oscTotals).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  document.getElementById('top10Views').innerHTML = top10.map(([nome, total])=>`
+    <div class="top10-item">
+      <span class="osc-name" title="${nome}">${nome}</span>
+      <span class="views-count">${total}</span>
+    </div>
+  `).join('');
+
+  // Populate OSC selector
+  const sel = document.getElementById('ga4OscSelector');
+  const oscNames = [...new Set(viewsData.map(v=>oscUrlParaNome[v.url?.replace(/\/$/,'')]||v.url).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">— Selecione uma OSC —</option>'+oscNames.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
+}
+
+function addGa4Osc() {
+  const sel = document.getElementById('ga4OscSelector');
+  const nome = sel.value;
+  if(!nome||ga4Oscs.includes(nome)) return;
+  ga4Oscs.push(nome);
+  renderGA4();
+  sel.value = '';
+}
+
+// === BOOT ===
 loadData();
 </script>
 </body>
