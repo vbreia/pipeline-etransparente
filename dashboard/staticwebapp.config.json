@@ -27,6 +27,10 @@
       "rewrite": "/osc.html"
     },
     {
+      "route": "/feed",
+      "rewrite": "/feed.html"
+    },
+    {
       "route": "/*",
       "allowedRoles": ["etransparente_acesso"]
     }

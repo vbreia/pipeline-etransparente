@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>etransparente.org — Feed de atualizações</title>
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:#0f172a;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
+.sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-logo .logo-text{color:#fff;font-size:16px;font-weight:700;letter-spacing:-.3px}
+.sidebar-logo .logo-sub{color:#94a3b8;font-size:12px;margin-top:2px}
+.sidebar-nav{padding:12px 0;flex:1}
+.sidebar-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#94a3b8;text-decoration:none;font-size:14px;transition:all .15s}
+.sidebar-nav a:hover{color:#fff;background:rgba(255,255,255,.05)}
+.sidebar-nav a.active{color:#fff;background:rgba(59,130,246,.15);border-right:3px solid #3b82f6;font-weight:500}
+.sidebar-nav a i{font-size:18px;width:20px;text-align:center}
+.sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08)}
+.sidebar-footer .user-email{color:#94a3b8;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-footer a{display:flex;align-items:center;gap:8px;color:#94a3b8;text-decoration:none;font-size:12px;margin-top:6px;transition:color .15s}
+.sidebar-footer a:hover{color:#fca5a5}
+.content{margin-left:220px;flex:1;padding:32px;max-width:1000px}
+.page-header{margin-bottom:24px}
+.page-header h1{font-size:22px;font-weight:700;color:#0f172a;margin-bottom:4px}
+.page-header .subtitle{font-size:13px;color:#64748b}
+.hidden{display:none!important}
+.empty-msg{padding:48px;text-align:center;color:#94a3b8;font-size:14px}
+.spinner-overlay{position:fixed;inset:0;background:#f1f5f9;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:16px}
+.spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#1e3a8a;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.feed-filters{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.feed-filter-btns{display:flex;gap:6px;flex-wrap:wrap}
+.feed-filter-btn{padding:5px 14px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;cursor:pointer;font-size:12px;color:#64748b;transition:all .15s}
+.feed-filter-btn:hover{background:#f1f5f9}
+.feed-filter-btn.active{background:#1e3a8a;color:#fff;border-color:#1e3a8a}
+.feed-filter-select{padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;background:#fff;outline:none;cursor:pointer;color:#1e293b}
+.feed-timeline{padding-left:20px}
+.feed-item{position:relative;padding:0 0 20px 32px}
+.feed-item:last-child{padding-bottom:0}
+.feed-line{position:absolute;left:15px;top:28px;bottom:0;width:2px;background:#e2e8f0}
+.feed-item:last-child .feed-line{display:none}
+.feed-icon{position:absolute;left:4px;top:0;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px}
+.feed-content{background:#fff;border-radius:8px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.feed-desc{font-size:14px;color:#1e293b;margin-bottom:4px}
+.feed-meta-row{font-size:12px;color:#64748b;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.feed-link{color:#1e3a8a;text-decoration:none}
+.feed-link:hover{text-decoration:underline}
+@media(max-width:768px){.sidebar{width:56px}.sidebar-logo .logo-text,.sidebar-logo .logo-sub,.sidebar-nav a span,.sidebar-footer .user-email,.sidebar-footer a span{display:none}.sidebar-nav a{padding:12px;justify-content:center}.sidebar-footer{padding:12px;display:flex;flex-direction:column;align-items:center}.sidebar-footer a{justify-content:center}.content{margin-left:56px;padding:20px}}
+@media(max-width:480px){.content{padding:16px}}
+</style>
+</head>
+<body>
+<div id="spinner" class="spinner-overlay"><div class="spinner"></div><div style="font-size:13px;color:#64748b">Carregando feed...</div></div>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">etransparente.org</div>
+    <div class="logo-sub">Dashboard IDC</div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="index.html"><i class="ph ph-chart-bar"></i><span>Visão Geral</span></a>
+    <a href="oscs.html"><i class="ph ph-buildings"></i><span>OSCs</span></a>
+    <a href="feed.html" class="active"><i class="ph ph-newspaper"></i><span>Feed</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-email" id="userEmail">Carregando...</div>
+    <a href="/.auth/logout"><i class="ph ph-sign-out"></i><span>Sair</span></a>
+  </div>
+</aside>
+
+<main class="content" id="app" style="opacity:0;transition:opacity .3s">
+  <div class="page-header">
+    <h1>Feed de atualizações</h1>
+    <div class="subtitle">Histórico de alterações cadastrais das OSCs</div>
+  </div>
+
+  <div class="feed-filters">
+    <div class="feed-filter-btns">
+      <button class="feed-filter-btn active" data-filter="all" onclick="filterFeed('all')">Todos</button>
+      <button class="feed-filter-btn" data-filter="substituicao" onclick="filterFeed('substituicao')">Substituições</button>
+      <button class="feed-filter-btn" data-filter="adicao" onclick="filterFeed('adicao')">Adições</button>
+      <button class="feed-filter-btn" data-filter="nova_osc" onclick="filterFeed('nova_osc')">Novas OSCs</button>
+    </div>
+    <select class="feed-filter-select" id="feedCicloFilter" onchange="filterFeed()">
+      <option value="all">Todos os ciclos</option>
+    </select>
+  </div>
+
+  <div id="feedEmpty" class="card empty-msg hidden">Feed disponível a partir do próximo ciclo.</div>
+  <div id="feedTimeline" class="feed-timeline"></div>
+</main>
+
+<script>
+const SAS_FEED = 'PLACEHOLDER_FEED';
+
+const DOC_LABELS = {
+  estatuto:'Estatuto', cneas:'CNEAS', cebas:'CEBAS',
+  plano_acao:'Plano de Ação', ata_eleicao:'Ata de Eleição',
+  relatorio_atividades:'Relatório de Atividades',
+  balanco_2021:'Balanço 2021', balanco_2022:'Balanço 2022',
+  balanco_2023:'Balanço 2023', balanco_2024:'Balanço 2024',
+};
+
+const TIPO_CONFIG = {
+  substituicao:{icon:'ph-arrows-left-right',color:'#d97706'},
+  adicao:{icon:'ph-file-plus',color:'#16a34a'},
+  nova_osc:{icon:'ph-buildings',color:'#1e3a8a'},
+};
+
+let feedData=[];
+let filtroTipo='all';
+let filtroCiclo='all';
+
+fetch('/.auth/me').then(r=>r.json()).then(d=>{
+  document.getElementById('userEmail').textContent=d.clientPrincipal?.userDetails||d.clientPrincipal?.userId||'Usuario';
+}).catch(()=>{});
+
+async function loadFeed(){
+  try{
+    if(!SAS_FEED||SAS_FEED==='PLACEHOLDER_FEED')throw new Error('Placeholder');
+    const res=await fetch(SAS_FEED);
+    if(!res.ok)throw new Error('Fetch failed');
+    feedData=await res.json();
+    if(!Array.isArray(feedData)||!feedData.length)throw new Error('Empty');
+
+    const ciclos=[...new Set(feedData.map(e=>e.ciclo_key).filter(Boolean))].sort().reverse();
+    const sel=document.getElementById('feedCicloFilter');
+    const meses=['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    ciclos.forEach(c=>{
+      const opt=document.createElement('option');
+      opt.value=c;
+      const [ano,mes]=c.split('-');
+      opt.textContent=meses[parseInt(mes)]+'/'+ano;
+      sel.appendChild(opt);
+    });
+
+    renderFeed();
+  }catch(e){
+    document.getElementById('feedEmpty').classList.remove('hidden');
+  }
+  document.getElementById('spinner').classList.add('hidden');
+  document.getElementById('app').style.opacity='1';
+}
+
+function renderFeed(){
+  const el=document.getElementById('feedTimeline');
+  let filtered=[...feedData];
+  if(filtroTipo!=='all')filtered=filtered.filter(e=>e.tipo===filtroTipo);
+  if(filtroCiclo!=='all')filtered=filtered.filter(e=>e.ciclo_key===filtroCiclo);
+  filtered.sort((a,b)=>(b.ciclo_key||'').localeCompare(a.ciclo_key||''));
+
+  if(!filtered.length){
+    document.getElementById('feedEmpty').classList.remove('hidden');
+    el.innerHTML='';return;
+  }
+  document.getElementById('feedEmpty').classList.add('hidden');
+
+  el.innerHTML=filtered.map(e=>{
+    const cfg=TIPO_CONFIG[e.tipo]||TIPO_CONFIG.substituicao;
+    const cicloLabel=e.ciclo_deteccao||e.ciclo_key||'';
+    let desc='';
+    if(e.tipo==='substituicao')desc='<strong>'+e.nome+'</strong> substituiu '+(DOC_LABELS[e.campo]||e.campo);
+    else if(e.tipo==='adicao')desc='<strong>'+e.nome+'</strong> adicionou '+(DOC_LABELS[e.campo]||e.campo);
+    else if(e.tipo==='nova_osc')desc='Nova OSC cadastrada: <strong>'+e.nome+'</strong>';
+
+    let meta='<span class="feed-meta">'+cicloLabel+'</span>';
+    if(e.url_nova&&e.tipo!=='nova_osc')meta+=' · <a href="'+e.url_nova+'" target="_blank" class="feed-link">📎 Ver documento</a>';
+    if(e.tipo==='substituicao'&&e.url_anterior)meta+=' · <a href="'+e.url_anterior+'" target="_blank" class="feed-link">📎 Doc anterior</a>';
+    meta+=' · <a href="osc.html?nome='+encodeURIComponent(e.nome)+'" class="feed-link">Ver perfil →</a>';
+
+    return '<div class="feed-item"><div class="feed-line"></div><div class="feed-icon" style="background:'+cfg.color+'"><i class="ph '+cfg.icon+'"></i></div><div class="feed-content"><div class="feed-desc">'+desc+'</div><div class="feed-meta-row">'+meta+'</div></div></div>';
+  }).join('');
+}
+
+function filterFeed(tipo){
+  if(tipo){filtroTipo=tipo;document.querySelectorAll('.feed-filter-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===tipo));}
+  filtroCiclo=document.getElementById('feedCicloFilter').value;
+  renderFeed();
+}
+
+loadFeed();
+</script>
+</body>
+</html>
