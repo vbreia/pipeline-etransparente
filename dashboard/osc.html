@@ -265,7 +265,7 @@ const ROTULOS_TERMOS = {
 const TERMOS_LABELS = {municipio:'Município',estado:'Estado',uniao:'União',emendas_parlamentares:'Emendas'};
 const TERMOS_ICONS = {municipio:'ph-building',estado:'ph-buildings',uniao:'ph-flag',emendas_parlamentares:'ph-currency-circle-dollar'};
 
-let oscNome='', bronzeOsc=null, historico=[], tempestividade=[], viewsHistorico=[], evolChart=null, oscPeriodo='month';
+let oscNome='', bronzeOsc=null, historico=[], tempestividade=[], viewsHistorico=[], evolChart=null, oscViewsChart=null, oscPeriodo='month';
 
 window.onbeforeprint = () => {
   document.querySelectorAll('.just-accordion-content').forEach(el => el.style.display = 'block');
@@ -499,35 +499,52 @@ function renderViews() {
 
   const mesesOrd=oscViews.map(m=>m.mes).sort();
   const ultimoMes=mesesOrd.length?mesesOrd[mesesOrd.length-1]:null;
-  let filtMeses;
+  let mesesIncluir;
   if(oscPeriodo==='week'||oscPeriodo==='month'){
-    filtMeses=ultimoMes?oscViews.filter(m=>m.mes===ultimoMes):[];
+    mesesIncluir=ultimoMes?[ultimoMes]:[];
+  } else if(oscPeriodo==='year'){
+    mesesIncluir=mesesOrd.slice(-12);
   } else {
-    filtMeses=oscViews;
+    mesesIncluir=mesesOrd;
+  }
+  const filtMeses=mesesIncluir.map(m=>oscViews.find(v=>v.mes===m)).filter(Boolean);
+
+  let labels, data;
+  if(oscPeriodo==='year'||oscPeriodo==='all'){
+    const mesesNomes=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const porMes={};
+    filtMeses.forEach(m=>{
+      const [ano,mes]=m.mes.split('-');
+      const label=mesesNomes[parseInt(mes)-1]+'/'+ano;
+      const total=m.views.reduce((s,v)=>s+(typeof v==='number'?v:0),0);
+      porMes[label]=(porMes[label]||0)+total;
+    });
+    labels=Object.keys(porMes);
+    data=labels.map(l=>porMes[l]);
+  } else {
+    const dias={};
+    filtMeses.forEach(m=>{
+      let dayStart=0;
+      let views=m.views;
+      if(oscPeriodo==='week'){dayStart=Math.max(0,views.length-7);views=views.slice(dayStart);}
+      views.forEach((v,i)=>{
+        const dk=m.mes+'-'+String(dayStart+i+1).padStart(2,'0');
+        dias[dk]=(dias[dk]||0)+(typeof v==='number'?v:0);
+      });
+    });
+    const sorted=Object.keys(dias).sort();
+    labels=sorted.map(d=>{const p=d.split('-');return p[2]+'/'+p[1];});
+    data=sorted.map(d=>dias[d]);
   }
 
-  const dias={};
-  let totalViews=0, totalDias=0;
-  filtMeses.forEach(m=>{
-    const original=m.views;
-    let views=m.views;
-    let dayStart=0;
-    if(oscPeriodo==='week'){dayStart=Math.max(0,original.length-7);views=original.slice(dayStart);}
-    views.forEach((v,i)=>{
-      const dk=m.mes+'-'+String(dayStart+i+1).padStart(2,'0');
-      dias[dk]=(dias[dk]||0)+(typeof v==='number'?v:0);
-    });
-  });
-  const sorted=Object.keys(dias).sort();
-  const labels=sorted.map(d=>{const p=d.split('-');return p[2]+'/'+p[1];});
-  const data=sorted.map(d=>dias[d]);
-  totalViews=data.reduce((s,v)=>s+v,0);
-  totalDias=data.length||1;
-
+  const totalViews=data.reduce((s,v)=>s+v,0);
+  const totalDias=data.length||1;
   document.getElementById('viewsTotal').textContent=totalViews;
   document.getElementById('viewsMedia').textContent=(totalViews/totalDias).toFixed(1);
 
-  new Chart(document.getElementById('oscViewsChart'),{type:'line',data:{labels,datasets:[{label:oscNome,data,borderColor:'#16a34a',backgroundColor:'#16a34a15',borderWidth:2,tension:.3,fill:true,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y!==null?ctx.parsed.y+' visualizacoes':'---'}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10}}},x:{ticks:{font:{size:9},maxTicksLimit:15}}}}});
+  const ctx=document.getElementById('oscViewsChart');
+  if(oscViewsChart){oscViewsChart.destroy();oscViewsChart=null;}
+  oscViewsChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:oscNome,data,borderColor:'#16a34a',backgroundColor:'#16a34a15',borderWidth:2,tension:.3,fill:true,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y!==null?ctx.parsed.y+' visualizacoes':'---'}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10}}},x:{ticks:{font:{size:9},maxTicksLimit:15}}}}});
 }
 
 function setOscPeriodo(p){oscPeriodo=p;document.querySelectorAll('#oscPeriodoFiltros .periodo-btn').forEach(b=>b.classList.toggle('active',b.dataset.period===p));renderViews();}
