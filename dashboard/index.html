@@ -157,6 +157,16 @@ tr:hover td{background:#f8fafc}
     </div>
     <div id="ga4SemDados" class="empty-msg hidden">Dados GA4 disponíveis a partir do próximo ciclo.</div>
     <canvas id="ga4Chart"></canvas>
+    <div id="ga4TotalBox" style="display:flex;align-items:center;gap:16px;padding:16px 20px;background:#f8fafc;border-radius:8px;margin-bottom:16px">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:2px">Total de visualizações no período</div>
+        <div id="ga4TotalVal" style="font-size:32px;font-weight:700;color:#1e3a8a">—</div>
+      </div>
+      <div style="border-left:1px solid #e2e8f0;padding-left:16px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:2px">Média diária</div>
+        <div id="ga4MediaVal" style="font-size:20px;font-weight:600;color:#475569">—</div>
+      </div>
+    </div>
     <div id="top10Views" class="top10-list"></div>
   </div>
 
@@ -301,13 +311,11 @@ function getFilteredViews() {
   if(!viewsHistorico.length) return {dailyTotals:[], oscTotals:{}, labels:[], top10:[]};
   const diasAcum = {};
   const oscAcum = {};
-  const oscMap = {}; // nome -> daily array
+  const oscMap = {};
 
-  // Sort months ascending
   const meses = viewsHistorico.map(m=>m.mes).sort();
   if(!meses.length) return {dailyTotals:[], oscTotals:{}, labels:[], top10:[]};
 
-  // Filter months by period
   const ultimoMes = meses.length ? meses[meses.length - 1] : null;
   let mesesFiltrados;
   if(periodoAtual==='week' || periodoAtual==='month') {
@@ -315,8 +323,37 @@ function getFilteredViews() {
   } else {
     mesesFiltrados = meses;
   }
+  if(periodoAtual==='year') mesesFiltrados = meses.slice(-12);
 
-  // Accumulate day by day across filtered months
+  // Monthly grouping for year/all
+  if(periodoAtual==='year' || periodoAtual==='all') {
+    const mesesNomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const porMes = {};
+    const oscPorMes = {};
+    mesesFiltrados.forEach(mesKey=>{
+      const entry = viewsHistorico.find(v=>v.mes===mesKey);
+      if(!entry||!entry.oscs) return;
+      const [ano,mes]=mesKey.split('-');
+      const label = mesesNomes[parseInt(mes)-1]+'/'+ano;
+      porMes[label] = porMes[label] || 0;
+      entry.oscs.forEach(osc=>{
+        if(!osc.views) return;
+        const total = osc.views.reduce((s,v)=>s+(typeof v==='number'?v:0),0);
+        porMes[label] += total;
+        const nome = bronzeUrlParaNome[osc.url?.replace(/\/$/,'')] || osc.url;
+        if(!oscPorMes[nome]) oscPorMes[nome] = {};
+        oscPorMes[nome][label] = (oscPorMes[nome][label]||0) + total;
+      });
+    });
+    const labels = Object.keys(porMes);
+    const dailyTotals = labels.map(l=>porMes[l]);
+    const oscTotals = {};
+    Object.entries(oscPorMes).forEach(([nome,mmap])=>{oscTotals[nome]=Object.values(mmap).reduce((s,v)=>s+v,0);});
+    const top10 = Object.entries(oscTotals).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    return {dailyTotals, oscTotals, labels, top10, oscMap:oscPorMes, monthly:true};
+  }
+
+  // Day-by-day for week/month
   mesesFiltrados.forEach(mesKey=>{
     const entry = viewsHistorico.find(v=>v.mes===mesKey);
     if(!entry||!entry.oscs) return;
@@ -343,17 +380,12 @@ function getFilteredViews() {
     });
   });
 
-  // Sort by date key
   const sortedDays = Object.keys(diasAcum).sort();
   const dailyTotals = sortedDays.map(d=>diasAcum[d]);
-  const labels = sortedDays.map(d=>{
-    const p = d.split('-');
-    return p[2]+'/'+p[1];
-  });
+  const labels = sortedDays.map(d=>{const p = d.split('-');return p[2]+'/'+p[1];});
 
   const top10 = Object.entries(oscAcum).sort((a,b)=>b[1]-a[1]).slice(0,10);
-
-  return {dailyTotals, oscTotals:oscAcum, labels, top10, oscMap};
+  return {dailyTotals, oscTotals:oscAcum, labels, top10, oscMap, monthly:false};
 }
 
 function setPeriodo(period) {
@@ -470,12 +502,18 @@ function renderGA4() {
     document.getElementById('ga4SemDados').classList.remove('hidden');
     document.getElementById('ga4Chart').style.display='none';
     document.getElementById('top10Views').innerHTML='';
+    document.getElementById('ga4TotalBox').style.display='none';
     return;
   }
   document.getElementById('ga4SemDados').classList.add('hidden');
   document.getElementById('ga4Chart').style.display='block';
+  document.getElementById('ga4TotalBox').style.display='flex';
 
   const filt=getFilteredViews();
+  const totalViews = filt.dailyTotals.reduce((s,v)=>s+v,0);
+  const mediaViews = filt.labels.length ? (totalViews/filt.labels.length).toFixed(1) : 0;
+  document.getElementById('ga4TotalVal').textContent = totalViews.toLocaleString('pt-BR');
+  document.getElementById('ga4MediaVal').textContent = mediaViews;
   const ctx=document.getElementById('ga4Chart');if(!ctx)return;
   if(ga4Chart)ga4Chart.destroy();
 
@@ -484,7 +522,7 @@ function renderGA4() {
   const dataArr = new Array(daysInPeriod).fill(0);
   filt.dailyTotals.forEach((v,i)=>{if(i<daysInPeriod)dataArr[i]=v;});
 
-  ga4Chart=new Chart(ctx,{type:'line',data:{labels:filt.labels,datasets:[{label:'Total plataforma',data:dataArr,borderColor:'#1e3a8a',backgroundColor:'#1e3a8a10',borderWidth:2,tension:.3,fill:true,pointRadius:1,spanGaps:false},...ga4Oscs.map((nome,idx)=>{const cores=['#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];return{label:nome,data:dataArr.map((_,di)=>oscMap[nome]?.[di]||null),borderColor:cores[idx%cores.length],borderWidth:1.5,tension:.3,pointRadius:1,borderDash:[4,3]};})]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,font:{size:11}}},tooltip:{mode:'index',intersect:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'Visualizacoes'},ticks:{font:{size:10}}},x:{ticks:{font:{size:9},maxTicksLimit:15}}},interaction:{mode:'nearest',axis:'x',intersect:false}}});
+  ga4Chart=new Chart(ctx,{type:'line',data:{labels:filt.labels,datasets:[{label:'Total plataforma',data:dataArr,borderColor:'#1e3a8a',backgroundColor:'#1e3a8a10',borderWidth:2,tension:.3,fill:true,pointRadius:1,spanGaps:false},...ga4Oscs.map((nome,idx)=>{const cores=['#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];return{label:nome,data:filt.monthly?filt.labels.map(label=>oscMap[nome]?.[label]||null):dataArr.map((_,di)=>oscMap[nome]?.[di]||null),borderColor:cores[idx%cores.length],borderWidth:1.5,tension:.3,pointRadius:1,borderDash:[4,3]};})]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,font:{size:11}}},tooltip:{mode:'index',intersect:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'Visualizacoes'},ticks:{font:{size:10}}},x:{ticks:{font:{size:9},maxTicksLimit:15}}},interaction:{mode:'nearest',axis:'x',intersect:false}}});
 
   document.getElementById('top10Views').innerHTML=filt.top10.map(([nome,total])=>`<div class="top10-item"><span class="osc-name" title="${nome}">${nome}</span><span class="views-count">${total}</span></div>`).join('');
 
