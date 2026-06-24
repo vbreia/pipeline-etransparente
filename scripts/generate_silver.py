@@ -47,6 +47,11 @@ def upload_parquet(client, blob_path, df):
     client.get_blob_client(container=CONTAINER, blob=blob_path).upload_blob(buf, overwrite=True)
     logger.info(f'Upload silver: {blob_path} ({len(df)} linhas)')
 
+def upload_json(client, blob_path, data):
+    blob_client = client.get_blob_client(container=CONTAINER, blob=blob_path)
+    blob_client.upload_blob(json.dumps(data, ensure_ascii=False, indent=2), overwrite=True)
+    logger.info(f'Upload gold: {blob_path}')
+
 def main():
     month = date.today().strftime('%Y-%m')
     ciclo = month
@@ -120,12 +125,22 @@ def main():
     df_final.to_parquet(local_parquet, index=False)
     logger.info(f'Salvo local: {local_parquet}')
 
-    # 7. Upload
+    # 7. Upload Parquet (silver)
     upload_parquet(client, silver_blob, df_final)
 
-    # 8. Log
+    # 8. Exportar JSON para gold (consumo do dashboard)
+    gold_records = df_final.to_dict(orient='records')
+    local_json = os.path.join(
+        os.path.dirname(__file__), '..', 'output', 'oscs_historico.json'
+    )
+    with open(local_json, 'w', encoding='utf-8') as f:
+        json.dump(gold_records, f, ensure_ascii=False, indent=2)
+    upload_json(client, 'gold/oscs_historico.json', gold_records)
+
+    # 9. Log
     logger.info(f'Silver atualizado: {len(df_final)} registros acumulados '
                 f'(+{len(df_novo)} do ciclo {ciclo})')
+    logger.info(f'gold/oscs_historico.json atualizado: {len(df_final)} registros')
 
 if __name__ == '__main__':
     main()
