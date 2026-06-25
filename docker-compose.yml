@@ -42,9 +42,9 @@ services:
       - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
       - AIRFLOW__SMTP__SMTP_MAIL_FROM=transparencia@direitocoletivo.org.br
       - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
-      - PIPELINE_TEST_MODE=true
+      - PIPELINE_TEST_MODE=false
       - SEND_REPORTS_ENABLED=false
-      - SEND_REPORTS_TEST_MODE=true
+      - SEND_REPORTS_TEST_MODE=false
       - SEND_REPORTS_TEST_EMAIL=comunicacao@direitocoletivo.org.br
     command: airflow scheduler
     volumes:
@@ -81,9 +81,9 @@ services:
       - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
       - AIRFLOW__SMTP__SMTP_MAIL_FROM=transparencia@direitocoletivo.org.br
       - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
-      - PIPELINE_TEST_MODE=true
+      - PIPELINE_TEST_MODE=false
       - SEND_REPORTS_ENABLED=false
-      - SEND_REPORTS_TEST_MODE=true
+      - SEND_REPORTS_TEST_MODE=false
       - SEND_REPORTS_TEST_EMAIL=comunicacao@direitocoletivo.org.br
     command: airflow webserver -p 8080
     volumes:
