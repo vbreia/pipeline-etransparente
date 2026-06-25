@@ -163,8 +163,15 @@ tr:hover td{background:#f8fafc}
         <button class="periodo-btn" data-period="year" onclick="setPeriodo('year')">Último ano</button>
         <button class="periodo-btn" data-period="all" onclick="setPeriodo('all')">Completo</button>
       </div>
-      <label><i class="ph ph-plus-circle"></i> Adicionar OSC:</label>
-      <select id="ga4OscSelector" onchange="addGa4Osc()"><option value="">— Selecione —</option></select>
+      <div style="position:relative;min-width:260px">
+        <input type="text" id="ga4OscInput" placeholder="Buscar OSC..."
+          autocomplete="off"
+          style="width:100%;padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;outline:none"
+          oninput="filterGa4Oscs()"
+          onfocus="showGa4Dropdown()"
+        >
+        <div id="ga4OscDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:220px;overflow-y:auto;z-index:100;margin-top:2px"></div>
+      </div>
       <button class="btn-export" onclick="window.print()"><i class="ph ph-file-pdf"></i> Exportar PDF</button>
     </div>
     <div id="ga4SemDados" class="empty-msg hidden">Dados GA4 disponíveis a partir do próximo ciclo.</div>
@@ -180,6 +187,7 @@ tr:hover td{background:#f8fafc}
       </div>
     </div>
     <div id="top10Views" class="top10-list"></div>
+    <div id="top10Nav"></div>
   </div>
 
   <!-- Section 3: Índice de transparência -->
@@ -250,6 +258,9 @@ let evolutionChart = null;
 let chartOscs = [];
 let ga4Chart = null;
 let ga4Oscs = [];
+let ga4AllOscs = [];
+let top10Page = 0;
+let top10Data = [];
 let periodoAtual = 'month';
 
 // === AUTH ===
@@ -284,6 +295,7 @@ async function loadData() {
       } catch(e) {}
     }
     render();
+    ga4AllOscs = [...new Set(historico.map(h => h.nome))].sort();
   } catch(e) {
     document.getElementById('spinner').innerHTML = '<div style="color:#dc2626">Erro ao carregar dados. Tente novamente.</div>';
     throw e;
@@ -565,18 +577,70 @@ function renderGA4() {
 
   ga4Chart=new Chart(ctx,{type:'line',data:{labels:filt.labels,datasets:[{label:'Total plataforma',data:dataArr,borderColor:'#1e3a8a',backgroundColor:'#1e3a8a10',borderWidth:2,tension:.3,fill:true,pointRadius:1,spanGaps:false},...ga4Oscs.map((nome,idx)=>{const cores=['#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];return{label:nome,data:filt.monthly?filt.labels.map(label=>oscMap[nome]?.[label]||null):dataArr.map((_,di)=>oscMap[nome]?.[di]||null),borderColor:cores[idx%cores.length],borderWidth:1.5,tension:.3,pointRadius:1,borderDash:[4,3]};})]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,font:{size:11}}},tooltip:{mode:'index',intersect:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'Visualizacoes'},ticks:{font:{size:10}}},x:{ticks:{font:{size:9},maxTicksLimit:15}}},interaction:{mode:'nearest',axis:'x',intersect:false}}});
 
-  document.getElementById('top10Views').innerHTML=filt.top10.map(([nome,total])=>`<div class="top10-item"><span class="osc-name" title="${nome}">${nome}</span><span class="views-count">${total}</span></div>`).join('');
-
-  const sel=document.getElementById('ga4OscSelector');
-  const oscNames=filt.top10.map(([n])=>n).sort();
-  sel.innerHTML='<option value="">-- Selecione uma OSC --</option>'+oscNames.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
+  top10Data = Object.entries(filt.oscTotals).sort((a,b) => b[1]-a[1]);
+  top10Page = 0;
+  renderTop10();
 }
 
-function addGa4Osc() {
-  const sel=document.getElementById('ga4OscSelector'),nome=sel.value;
-  if(!nome||ga4Oscs.includes(nome))return;
-  ga4Oscs.push(nome);renderGA4();sel.value='';
+function showGa4Dropdown() {
+  document.getElementById('ga4OscDropdown').style.display = 'block';
+  filterGa4Oscs();
 }
+
+function filterGa4Oscs() {
+  const q = (document.getElementById('ga4OscInput').value || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const filtered = ga4AllOscs.filter(n =>
+    n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q)
+  );
+  const dd = document.getElementById('ga4OscDropdown');
+  dd.innerHTML = filtered.length
+    ? filtered.map(n => `<div onclick="selectGa4Osc('${n.replace(/'/g, "\\'")}')"
+        style="padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9"
+        onmouseover="this.style.background='#f8fafc'"
+        onmouseout="this.style.background=''">${n}</div>`).join('')
+    : '<div style="padding:7px 12px;font-size:12px;color:#94a3b8">Nenhuma OSC encontrada</div>';
+}
+
+function selectGa4Osc(nome) {
+  if (!nome || ga4Oscs.includes(nome)) return;
+  ga4Oscs.push(nome);
+  document.getElementById('ga4OscInput').value = '';
+  document.getElementById('ga4OscDropdown').style.display = 'none';
+  renderGA4();
+}
+
+function renderTop10() {
+  const start = top10Page * 10;
+  const page = top10Data.slice(start, start + 10);
+  const total = top10Data.length;
+  const el = document.getElementById('top10Views');
+  el.innerHTML = page.map(([nome, viewsCount]) =>
+    `<div class="top10-item">
+      <span class="osc-name" title="${nome}">${nome}</span>
+      <span class="views-count">${viewsCount}</span>
+    </div>`
+  ).join('');
+
+  const nav = document.getElementById('top10Nav');
+  const hasNext = start + 10 < total;
+  const hasPrev = top10Page > 0;
+  nav.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;color:#64748b">
+      <span>${start + 1}–${Math.min(start + 10, total)} de ${total} OSCs</span>
+      <div style="display:flex;gap:6px">
+        ${hasPrev ? `<button onclick="top10Page--;renderTop10()" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px">← Anterior</button>` : ''}
+        ${hasNext ? `<button onclick="top10Page++;renderTop10()" style="padding:4px 12px;border:1px solid #1e3a8a;border-radius:6px;background:#1e3a8a;color:#fff;cursor:pointer;font-size:12px">Próximo →</button>` : ''}
+      </div>
+    </div>`;
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#ga4OscInput') && !e.target.closest('#ga4OscDropdown')) {
+    const dd = document.getElementById('ga4OscDropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
 
 // === BOOT ===
 loadData();
