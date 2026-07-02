@@ -80,9 +80,10 @@ tr:hover td{background:#f8fafc}
 .feed-compact-desc{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .feed-compact-meta{color:#94a3b8;font-size:11px;white-space:nowrap}
 .chart-controls{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.chart-controls > * { display:flex; align-items:center; }
 .chart-controls label{font-size:12px;font-weight:500;color:#475569;display:flex;align-items:center;gap:5px}
 .chart-controls select{padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;background:#fff;outline:none;cursor:pointer;min-width:180px;color:#1e293b}
-.chart-controls button{padding:5px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#475569;transition:all .15s}
+.chart-controls button{padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#475569;transition:all .15s}
 .chart-controls button:hover{background:#f1f5f9;border-color:#94a3b8}
 .chart-controls .btn-export{background:#1e3a8a;color:#fff;border-color:#1e3a8a}
 .chart-controls .btn-export:hover{background:#1e40af}
@@ -165,10 +166,10 @@ tr:hover td{background:#f8fafc}
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:8px">
         <label style="font-size:12px;color:#64748b">De:</label>
-        <input type="date" id="dataInicio" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#1e293b">
+        <input type="date" id="dataInicio" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#1e293b">
         <label style="font-size:12px;color:#64748b">Até:</label>
-        <input type="date" id="dataFim" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#1e293b">
-        <button onclick="aplicarPeriodoCustom()" style="padding:5px 14px;border:1px solid #1e3a8a;border-radius:6px;background:#1e3a8a;color:#fff;cursor:pointer;font-size:12px">Aplicar</button>
+        <input type="date" id="dataFim" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#1e293b">
+        <button onclick="aplicarPeriodoCustom()" style="padding:6px 12px;border:1px solid #1e3a8a;border-radius:6px;background:#1e3a8a;color:#fff;cursor:pointer;font-size:12px">Aplicar</button>
       </div>
       <div style="position:relative;min-width:260px">
         <input type="text" id="ga4OscInput" placeholder="Buscar OSC..."
@@ -182,6 +183,10 @@ tr:hover td{background:#f8fafc}
       <button class="btn-export" onclick="window.print()"><i class="ph ph-file-pdf"></i> Exportar PDF</button>
     </div>
     <div id="ga4SemDados" class="empty-msg hidden">Dados GA4 disponíveis a partir do próximo ciclo.</div>
+    <div id="avisoMesAtual" class="hidden" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:12px;color:#1e40af;display:flex;align-items:center;gap:8px">
+      <i class="ph ph-info"></i>
+      <span id="avisoMesAtualTexto"></span>
+    </div>
     <canvas id="ga4Chart"></canvas>
     <div id="ga4TotalBox" style="display:flex;align-items:center;gap:16px;padding:16px 20px;background:#f8fafc;border-radius:8px;margin-bottom:16px">
       <div>
@@ -611,6 +616,7 @@ async function renderFeedBox(){
 // === GA4 ===
 function renderGA4() {
   if(!viewsHistorico.length) {
+    document.getElementById('avisoMesAtual').classList.add('hidden');
     document.getElementById('ga4SemDados').classList.remove('hidden');
     document.getElementById('ga4Chart').style.display='none';
     document.getElementById('top10Views').innerHTML='';
@@ -620,6 +626,20 @@ function renderGA4() {
   document.getElementById('ga4SemDados').classList.add('hidden');
   document.getElementById('ga4Chart').style.display='block';
   document.getElementById('ga4TotalBox').style.display='flex';
+
+  const mesesDisponiveis = viewsHistorico.map(v=>v.mes).sort();
+  const ultimoMesDados = mesesDisponiveis.length ? mesesDisponiveis[mesesDisponiveis.length-1] : null;
+  const avisoEl = document.getElementById('avisoMesAtual');
+  if(ultimoMesDados && ultimoMesDados !== mesAtual) {
+    const [ano, mes] = ultimoMesDados.split('-');
+    const mesesNomes = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    const nomeUltimoMes = mesesNomes[parseInt(mes)-1] + '/' + ano;
+    document.getElementById('avisoMesAtualTexto').textContent =
+      `Os dados exibidos são de ${nomeUltimoMes}, o ciclo mais recente disponível. Os dados do mês atual serão atualizados no dia 1 do próximo ciclo.`;
+    avisoEl.classList.remove('hidden');
+  } else {
+    avisoEl.classList.add('hidden');
+  }
 
   const filt=getFilteredViews();
   const totalViews = filt.dailyTotals.reduce((s,v)=>s+v,0);
