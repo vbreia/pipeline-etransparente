@@ -119,7 +119,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 @media(max-width:1024px){.contrato-cards{grid-template-columns:repeat(2,1fr)}.just-grid{grid-template-columns:1fr}}
 @media(max-width:768px){.sidebar{width:56px}.sidebar-logo .logo-text,.sidebar-logo .logo-sub,.sidebar-nav a span,.sidebar-footer .user-email,.sidebar-footer a span{display:none}.sidebar-nav a{padding:12px;justify-content:center}.sidebar-footer{padding:12px;display:flex;flex-direction:column;align-items:center}.sidebar-footer a{justify-content:center}.content{margin-left:56px;padding:20px}.contrato-cards{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.contrato-cards{grid-template-columns:1fr}.content{padding:16px}.doc-grid{grid-template-columns:1fr}}
-@media print{body{display:block}.sidebar{display:none!important}.content{margin-left:0!important;padding:16px!important}.top-actions{display:none!important}.periodo-filtros{display:none!important}.just-accordion-content{display:block!important}.just-tab-headers{display:none!important}.just-pane{display:block!important}thead{display:table-header-group}tr{page-break-inside:avoid}}
+@media print{body{display:block}.sidebar{display:none!important}.content{margin-left:0!important;padding:16px!important}.top-actions{display:none!important}#btnRelatorioWrap{display:none!important}.periodo-filtros{display:none!important}.just-accordion-content{display:block!important}.just-tab-headers{display:none!important}.just-pane{display:block!important}thead{display:table-header-group}tr{page-break-inside:avoid}}
 </style>
 </head>
 <body>
@@ -147,6 +147,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
       <a href="oscs.html" class="back-link"><i class="ph ph-arrow-left"></i> Voltar para lista de OSCs</a>
     </div>
     <button onclick="window.print()" class="btn-pdf"><i class="ph ph-file-pdf"></i> Exportar PDF</button>
+  </div>
+  <div id="btnRelatorioWrap" style="display:none;margin-top:8px;text-align:right">
+    <a id="btnRelatorioMensal" href="#" target="_blank" rel="noopener"
+       style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:500;text-decoration:none">
+      <i class="ph ph-file-pdf"></i> Último relatório mensal disponível
+    </a>
   </div>
 
   <div class="page-header">
@@ -225,6 +231,8 @@ const mesAtual = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0'
 const SAS_TEMPESTIVIDADE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/tempestividade_'+mesAtual+'.json?sp=r&st=2026-06-24T17:42:42Z&se=2028-06-25T01:57:42Z&spr=https&sv=2026-02-06&sr=b&sig=avcQOB0oVcUjmx89CratzXDbSvqjvTWXT%2BPN3on%2FWMA%3D';
 const SAS_VIEWS_HISTORICO = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_views_historico.json?sp=r&st=2026-06-24T19:59:48Z&se=2028-06-25T04:14:48Z&spr=https&sv=2026-02-06&sr=b&sig=xsNyxARyX0D1lm0agEj2z4gxqPyhctpFrMHuT1J901M%3D';
 const SAS_OSCS_ATUAL = 'https://etransparentedata.blob.core.windows.net/etransparente/gold/oscs_atual.json?sp=r&st=2026-06-24T20:07:43Z&se=2028-06-25T04:22:43Z&spr=https&sv=2026-02-06&sr=b&sig=4msqyyq7mKOZYyeMM84L7ND3JSoHKeRoChU2BTRr%2FOU%3D';
+const SAS_GOLD_BASE = 'https://etransparentedata.blob.core.windows.net/etransparente/gold';
+const SAS_GOLD_PARAMS = '?sp=r&st=2026-07-02T17:50:04Z&se=2028-07-03T02:05:04Z&spr=https&sv=2026-02-06&sr=d&sig=WloJ8AaGE%2FbCIGkuKhdh6kC7hJupzQqMAuNOBFrW66w%3D&sdd=1';
 
 const CAMPOS_GERAIS = [
   { campo: 'logo_local_path', rotulo: 'Logo cadastrada' },
@@ -335,6 +343,29 @@ function formatarNomeCiclo(ciclo) {
   const [ano,mes]=ciclo.split('-');return meses[parseInt(mes)-1]+'/'+ano;
 }
 
+function normalizarSlugFallback(nome) {
+  let s = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  s = s.replace(/[^a-z0-9\-_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return s.slice(0, 50);
+}
+
+function buildPdfUrl(ultimoCiclo, oscUrl, nome) {
+  if (!ultimoCiclo || !oscUrl) return null;
+  const [ano, mes] = ultimoCiclo.split('-');
+  const mesesPt = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const mesNome = mesesPt[parseInt(mes) - 1];
+  let slug = '';
+  const match = oscUrl.match(/\/oscs\/([^\/]+)\/?$/);
+  if (match) {
+    slug = match[1];
+  } else {
+    slug = normalizarSlugFallback(nome);
+  }
+  const nomeArquivo = `Relatório-etransparente-${mesNome}-de-${ano}-${slug}`;
+  const blobPath = `${ultimoCiclo}/pdf/${encodeURIComponent(nomeArquivo)}.pdf`;
+  return `${SAS_GOLD_BASE}/${blobPath}${SAS_GOLD_PARAMS}`;
+}
+
 function render() {
   renderIdentity();
   renderScoreEvol();
@@ -342,8 +373,24 @@ function render() {
   renderDocs();
   renderContratos();
   renderViews();
+  checarEExibirRelatorio();
   document.getElementById('spinner').classList.add('hidden');
   document.getElementById('app').style.opacity='1';
+}
+
+async function checarEExibirRelatorio() {
+  const ciclos = [...new Set(historico.filter(h=>h.nome===oscNome).map(h=>h.ciclo))].sort();
+  const ultimoCiclo = ciclos.length ? ciclos[ciclos.length-1] : null;
+  if (!ultimoCiclo || !bronzeOsc?.url) return;
+  const pdfUrl = buildPdfUrl(ultimoCiclo, bronzeOsc.url, oscNome);
+  if (!pdfUrl) return;
+  try {
+    const res = await fetch(pdfUrl, { method: 'HEAD' });
+    if (res.ok) {
+      document.getElementById('btnRelatorioMensal').href = pdfUrl;
+      document.getElementById('btnRelatorioWrap').style.display = 'block';
+    }
+  } catch(e) {}
 }
 
 function renderIdentity() {
