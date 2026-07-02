@@ -163,6 +163,13 @@ tr:hover td{background:#f8fafc}
         <button class="periodo-btn" data-period="year" onclick="setPeriodo('year')">Último ano</button>
         <button class="periodo-btn" data-period="all" onclick="setPeriodo('all')">Completo</button>
       </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:8px">
+        <label style="font-size:12px;color:#64748b">De:</label>
+        <input type="date" id="dataInicio" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#1e293b">
+        <label style="font-size:12px;color:#64748b">Até:</label>
+        <input type="date" id="dataFim" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#1e293b">
+        <button onclick="aplicarPeriodoCustom()" style="padding:5px 14px;border:1px solid #1e3a8a;border-radius:6px;background:#1e3a8a;color:#fff;cursor:pointer;font-size:12px">Aplicar</button>
+      </div>
       <div style="position:relative;min-width:260px">
         <input type="text" id="ga4OscInput" placeholder="Buscar OSC..."
           autocomplete="off"
@@ -262,6 +269,7 @@ let ga4AllOscs = [];
 let top10Page = 0;
 let top10Data = [];
 let periodoAtual = 'month';
+let periodoCustomAtivo = null;
 
 // === AUTH ===
 fetch('/.auth/me').then(r=>r.json()).then(d=>{
@@ -296,6 +304,15 @@ async function loadData() {
     }
     render();
     ga4AllOscs = [...new Set(historico.map(h => h.nome))].sort();
+    if(viewsHistorico.length) {
+      const meses = viewsHistorico.map(v=>v.mes).sort();
+      const primeiroMes = meses[0];
+      const ultimoMesDisp = meses[meses.length-1];
+      document.getElementById('dataInicio').min = primeiroMes + '-01';
+      document.getElementById('dataInicio').max = ultimoMesDisp + '-31';
+      document.getElementById('dataFim').min = primeiroMes + '-01';
+      document.getElementById('dataFim').max = ultimoMesDisp + '-31';
+    }
   } catch(e) {
     document.getElementById('spinner').innerHTML = '<div style="color:#dc2626">Erro ao carregar dados. Tente novamente.</div>';
     throw e;
@@ -334,6 +351,35 @@ function formatarMesAno(mesStr) {
 // === FILTER VIEWS BY PERIOD ===
 function getFilteredViews() {
   if(!viewsHistorico.length) return {dailyTotals:[], oscTotals:{}, labels:[], top10:[]};
+
+  if(periodoCustomAtivo) {
+    const {inicio, fim} = periodoCustomAtivo;
+    const diasAcum = {};
+    const oscAcum = {};
+    const oscMap = {};
+    viewsHistorico.forEach(entry => {
+      if(!entry.oscs) return;
+      entry.oscs.forEach(osc => {
+        if(!osc.views) return;
+        const nome = bronzeUrlParaNome[osc.url?.replace(/\/$/,'')] || osc.url;
+        osc.views.forEach((v, i) => {
+          const dayKey = entry.mes + '-' + String(i+1).padStart(2,'0');
+          if(dayKey < inicio || dayKey > fim) return;
+          const val = typeof v==='number' ? v : 0;
+          diasAcum[dayKey] = (diasAcum[dayKey]||0) + val;
+          oscAcum[nome] = (oscAcum[nome]||0) + val;
+          if(!oscMap[nome]) oscMap[nome] = [];
+          oscMap[nome][i] = (oscMap[nome][i]||0) + val;
+        });
+      });
+    });
+    const sortedDays = Object.keys(diasAcum).sort();
+    const dailyTotals = sortedDays.map(d=>diasAcum[d]);
+    const labels = sortedDays.map(d=>{const p=d.split('-');return p[2]+'/'+p[1];});
+    const top10 = Object.entries(oscAcum).sort((a,b)=>b[1]-a[1]);
+    return {dailyTotals, oscTotals:oscAcum, labels, top10, oscMap};
+  }
+
   const diasAcum = {};
   const oscAcum = {};
   const oscMap = {};
@@ -414,8 +460,21 @@ function getFilteredViews() {
 }
 
 function setPeriodo(period) {
+  periodoCustomAtivo = null;
+  document.getElementById('dataInicio').value = '';
+  document.getElementById('dataFim').value = '';
   periodoAtual = period;
   document.querySelectorAll('.periodo-btn').forEach(b=>b.classList.toggle('active', b.dataset.period===period));
+  renderGA4();
+}
+
+function aplicarPeriodoCustom() {
+  const inicio = document.getElementById('dataInicio').value;
+  const fim = document.getElementById('dataFim').value;
+  if(!inicio || !fim) { alert('Selecione as duas datas'); return; }
+  if(inicio > fim) { alert('Data inicial deve ser anterior à data final'); return; }
+  periodoCustomAtivo = {inicio, fim};
+  document.querySelectorAll('.periodo-btn').forEach(b=>b.classList.remove('active'));
   renderGA4();
 }
 
