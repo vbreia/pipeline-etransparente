@@ -378,19 +378,14 @@ function render() {
   document.getElementById('app').style.opacity='1';
 }
 
-async function checarEExibirRelatorio() {
+function checarEExibirRelatorio() {
   const ciclos = [...new Set(historico.filter(h=>h.nome===oscNome).map(h=>h.ciclo))].sort();
   const ultimoCiclo = ciclos.length ? ciclos[ciclos.length-1] : null;
   if (!ultimoCiclo || !bronzeOsc?.url) return;
   const pdfUrl = buildPdfUrl(ultimoCiclo, bronzeOsc.url, oscNome);
   if (!pdfUrl) return;
-  try {
-    const res = await fetch(pdfUrl, { method: 'HEAD' });
-    if (res.ok) {
-      document.getElementById('btnRelatorioMensal').href = pdfUrl;
-      document.getElementById('btnRelatorioWrap').style.display = 'block';
-    }
-  } catch(e) {}
+  document.getElementById('btnRelatorioMensal').href = pdfUrl;
+  document.getElementById('btnRelatorioWrap').style.display = 'block';
 }
 
 function renderIdentity() {
