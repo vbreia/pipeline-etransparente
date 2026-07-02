@@ -499,7 +499,13 @@ function renderViews() {
   document.getElementById('oscViewsWrap').style.display='block';
 
   const mesesOrd=oscViews.map(m=>m.mes).sort();
-  const ultimoMes=mesesOrd.length?mesesOrd[mesesOrd.length-1]:null;
+  let ultimoMes=null;
+  for(let i=mesesOrd.length-1; i>=0; i--) {
+    const entry=oscViews.find(v=>v.mes===mesesOrd[i]);
+    const total=(entry?.views||[]).reduce((s,v)=>s+(typeof v==='number'?v:0),0);
+    if(total>0){ultimoMes=mesesOrd[i];break;}
+  }
+  if(!ultimoMes) ultimoMes=mesesOrd.length?mesesOrd[mesesOrd.length-1]:null;
   let mesesIncluir;
   if(oscPeriodo==='week'||oscPeriodo==='month'){
     mesesIncluir=ultimoMes?[ultimoMes]:[];

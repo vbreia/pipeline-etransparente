@@ -393,7 +393,18 @@ function getFilteredViews() {
   const meses = viewsHistorico.map(m=>m.mes).sort();
   if(!meses.length) return {dailyTotals:[], oscTotals:{}, labels:[], top10:[]};
 
-  const ultimoMes = meses.length ? meses[meses.length - 1] : null;
+  function mesTemDados(mesKey) {
+    const entry = viewsHistorico.find(v=>v.mes===mesKey);
+    if(!entry || !entry.oscs) return false;
+    const total = entry.oscs.reduce((s,o)=>s+(o.views||[]).reduce((s2,v)=>s2+(typeof v==='number'?v:0),0),0);
+    return total > 0;
+  }
+
+  let ultimoMes = null;
+  for(let i=meses.length-1; i>=0; i--) {
+    if(mesTemDados(meses[i])) { ultimoMes = meses[i]; break; }
+  }
+  if(!ultimoMes) ultimoMes = meses[meses.length-1];
   let mesesFiltrados;
   if(periodoAtual==='week' || periodoAtual==='month') {
     mesesFiltrados = ultimoMes ? [ultimoMes] : [];
@@ -627,6 +638,16 @@ async function renderFeedBox(){
 }
 
 // === GA4 ===
+function getUltimoMesComDados() {
+  const meses = viewsHistorico.map(v=>v.mes).sort();
+  for(let i=meses.length-1; i>=0; i--) {
+    const entry = viewsHistorico.find(v=>v.mes===meses[i]);
+    const total = entry?.oscs?.reduce((s,o)=>s+(o.views||[]).reduce((s2,v)=>s2+(typeof v==='number'?v:0),0),0) || 0;
+    if(total > 0) return meses[i];
+  }
+  return meses.length ? meses[meses.length-1] : null;
+}
+
 function renderGA4() {
   if(!viewsHistorico.length) {
     document.getElementById('avisoMesAtual').style.display = 'none';
@@ -640,8 +661,7 @@ function renderGA4() {
   document.getElementById('ga4Chart').style.display='block';
   document.getElementById('ga4TotalBox').style.display='flex';
 
-  const mesesDisponiveis = viewsHistorico.map(v=>v.mes).sort();
-  const ultimoMesDados = mesesDisponiveis.length ? mesesDisponiveis[mesesDisponiveis.length-1] : null;
+  const ultimoMesDados = getUltimoMesComDados();
   if(ultimoMesDados && ultimoMesDados !== mesAtual) {
     const [ano, mes] = ultimoMesDados.split('-');
     const mesesNomes = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
