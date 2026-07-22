@@ -113,6 +113,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .just-accordion-header .ph-caret-down{margin-left:4px;color:#94a3b8;transition:transform .2s}
 .just-accordion-header.open .ph-caret-down{transform:rotate(180deg)}
 .just-accordion-content{display:none;padding:10px 14px;border-top:1px solid #e2e8f0}
+.just-summary{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.07);padding:16px 20px;margin-bottom:20px}
+.just-summary-title{font-size:14px;font-weight:600;color:#1e3a8a;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.just-summary-row{font-size:13px;color:#475569;padding:3px 0}
+.just-summary-formula{margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:14px;font-weight:600;color:#1e3a8a}
 .just-accordion-content .just-item{padding:6px 8px}
 .just-accordion-content .just-item.ok{background:transparent}
 .just-accordion-content .just-item.no{background:transparent}
@@ -493,7 +497,8 @@ function renderJustificativa() {
   ptsItems.forEach(item=>{html+='<div class="just-item '+(item.filled?'ok':'no')+'">'+(item.filled?'✅':'❌')+'<span>'+item.rotulo+'</span><span class="just-pts">'+(item.filled?'1':'0')+' pt</span></div>';});
   html+='</div><div class="just-footer">Subtotal: <strong>'+pts+'/15</strong> pontos</div></div>';
 
-  // Panes de termos
+  // Panes de termos — collect all individual percentages for pooled average
+  const todosPct=[];
   tiposTermos.forEach(t=>{
     const arr=bronzeOsc.termos?.[t]?.termos||[];
     if(!arr.length) return;
@@ -507,19 +512,37 @@ function renderJustificativa() {
         if(filled) filledCount++;
         return{campo:f,filled};
       });
-      const pct=fields.length?Math.round(filledCount/fields.length*100):0;
+      const pct=fields.length?Math.round(filledCount/fields.length*1000)/10:0;
       totalPct+=pct;
+      todosPct.push(pct);
       const titulo=ctr.identificacao_do_instrumento_de_parceria||ctr.titulo||ctr.numero_do_contrato_ou_do_convenio||'Contrato #'+(idx+1);
       accHtml+='<div class="just-accordion"><div class="just-accordion-header" onclick="toggleAccordion(this)"><span>'+titulo+'</span><span class="just-pct-badge">'+pct+'%</span><i class="ph ph-caret-down"></i></div><div class="just-accordion-content">';
       checks.forEach(c=>{accHtml+='<div class="just-item '+(c.filled?'ok':'no')+'">'+(c.filled?'✅':'❌')+'<span>'+(ROTULOS_TERMOS[c.campo]||c.campo)+'</span></div>';});
       accHtml+='</div></div>';
     });
-    const media=arr.length?Math.round(totalPct/arr.length):0;
-    const contrib=(media/100*15).toFixed(1);
-    html+='<div class="just-pane" id="just-pane-'+t+'">'+accHtml+'<div class="just-footer">Média de preenchimento: <strong>'+media+'%</strong> — Contribuição na nota: <strong>'+contrib+'/15</strong> pontos</div></div>';
+    const media=arr.length?Math.round(totalPct/arr.length*10)/10:0;
+    html+='<div class="just-pane" id="just-pane-'+t+'">'+accHtml+'<div class="just-footer">Média de preenchimento: <strong>'+media+'%</strong></div></div>';
   });
 
   html+='</div>';
+
+  // Summary block — always visible below tabs
+  const totalTermos=todosPct.length;
+  const somaPct=todosPct.reduce((a,b)=>a+b,0);
+  const mediaGeralRaw=totalTermos?somaPct/totalTermos:0;
+  const mediaGeral=Math.round(mediaGeralRaw*10)/10;
+  const notaTermos=totalTermos?Math.round(mediaGeralRaw/100*15*100)/100:0;
+  const notaFinal=Math.round((pts+notaTermos)*100)/100;
+  if(totalTermos){
+    html+='<div class="just-summary">';
+    html+='<div class="just-summary-title"><i class="ph ph-chart-bar"></i> Resumo do bloco de termos</div>';
+    html+='<div class="just-summary-row">Total de termos considerados: <strong>'+totalTermos+'</strong></div>';
+    html+='<div class="just-summary-row">Média geral de preenchimento (pooled): <strong>'+mediaGeral+'%</strong></div>';
+    html+='<div class="just-summary-row">Nota de termos: <strong>'+mediaGeral+'% ÷ 100 × 15 = '+notaTermos.toFixed(2)+'</strong></div>';
+    html+='<div class="just-summary-formula">Pontos Gerais (<strong>'+pts+'/15</strong>) + Termos (<strong>'+notaTermos.toFixed(2)+'/15</strong>) = Nota Final (<strong>'+notaFinal.toFixed(2)+'/30</strong>)</div>';
+    html+='</div>';
+  }
+
   box.innerHTML=html;
 }
 
