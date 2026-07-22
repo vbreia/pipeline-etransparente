@@ -252,12 +252,23 @@ const CAMPOS_GERAIS = [
   { campo: 'documentos.balanco_2023', rotulo: 'Balanço 2023' },
 ];
 const CAMPOS_MUNICIPIO_UNIAO = [
-  'identificacao_do_instrumento_de_parceria','objeto_da_parceria','valor_total_do_termo',
-  'valor_de_repasse','contrapartida','data_da_assinatura','vigencia','situacao_do_termo',
-  'resultado_da_prestacao_de_contas','prestacao_de_contas_da_parceria','link_do_termo',
+  'identificacao_do_instrumento_de_parceria','termo_assinado','descricao_do_objeto_da_parceria',
+  'data_da_assinatura','data_final_da_vigencia','valor_total_do_termo','situacao_do_termo',
+  'prestacao_de_contas_da_parceria','data_prevista_para_a_sua_apresentacao_da_prestacao_de_contas',
+  'resultado_da_prestacao_de_contas','valor_total_da_remuneracao_da_equipe_de_trabalho',
 ];
-const CAMPOS_ESTADO = [...CAMPOS_MUNICIPIO_UNIAO, 'orgao_concedente', 'modalidade', 'numero_do_processo'];
-const CAMPOS_EMENDAS = [...CAMPOS_ESTADO, 'parlamentar', 'partido', 'numero_da_emenda', 'valor_da_emenda'];
+const CAMPOS_ESTADO = [
+  'numero_do_contrato_ou_do_convenio','termo_assinado','descricao_do_objeto_da_parceria',
+  'data_de_assinatura_do_termo','data_final_da_vigencia','valor_total_do_termo','situacao_do_termo',
+  'data_prevista_para_apresentacao_da_prestacao_de_contas','resultado_da_prestacao_de_contas',
+  'relatorio_de_execucao_fisico_financeira','demonstrativo_da_execucao_da_receita_e_despesa',
+  'relacao_de_pagamentos','extrato_bancario_completo_da_conta_especifica','relacao_de_bens_adquiridos',
+];
+const CAMPOS_EMENDAS = [
+  'estado','municipio','tipo','num','num_processo','termo_assinado','plano_trabalho',
+  'data_de_liberacao_recurso','data_final','nome_do_parlamentar','area_tematica',
+  'orgao_responsavel_pela_gestao_do_recurso','valor','objeto','prestacao_de_contas',
+];
 
 const CAMPOS_TERMOS = {
   municipio: CAMPOS_MUNICIPIO_UNIAO,
@@ -268,23 +279,38 @@ const CAMPOS_TERMOS = {
 
 const ROTULOS_TERMOS = {
   identificacao_do_instrumento_de_parceria: 'Identificação do instrumento',
-  objeto_da_parceria: 'Objeto da parceria',
-  valor_total_do_termo: 'Valor total',
-  valor_de_repasse: 'Valor de repasse',
-  contrapartida: 'Contrapartida',
+  termo_assinado: 'Termo assinado',
+  descricao_do_objeto_da_parceria: 'Descrição do objeto',
   data_da_assinatura: 'Data da assinatura',
-  vigencia: 'Vigência',
+  data_final_da_vigencia: 'Data final da vigência',
+  valor_total_do_termo: 'Valor total',
   situacao_do_termo: 'Situação',
-  resultado_da_prestacao_de_contas: 'Resultado da prestação de contas',
   prestacao_de_contas_da_parceria: 'Prestação de contas',
-  link_do_termo: 'Link do termo',
-  orgao_concedente: 'Órgão concedente',
-  modalidade: 'Modalidade',
-  numero_do_processo: 'Nº do processo',
-  parlamentar: 'Parlamentar',
-  partido: 'Partido',
-  numero_da_emenda: 'Nº da emenda',
-  valor_da_emenda: 'Valor da emenda',
+  data_prevista_para_a_sua_apresentacao_da_prestacao_de_contas: 'Data prevista prestação de contas',
+  resultado_da_prestacao_de_contas: 'Resultado da prestação de contas',
+  valor_total_da_remuneracao_da_equipe_de_trabalho: 'Remuneração da equipe',
+  numero_do_contrato_ou_do_convenio: 'Nº do contrato/convênio',
+  data_de_assinatura_do_termo: 'Data da assinatura',
+  data_prevista_para_apresentacao_da_prestacao_de_contas: 'Data prevista prestação de contas',
+  relatorio_de_execucao_fisico_financeira: 'Relatório de execução',
+  demonstrativo_da_execucao_da_receita_e_despesa: 'Demonstrativo receita/despesa',
+  relacao_de_pagamentos: 'Relação de pagamentos',
+  extrato_bancario_completo_da_conta_especifica: 'Extrato bancário',
+  relacao_de_bens_adquiridos: 'Relação de bens',
+  estado: 'Estado',
+  municipio: 'Município',
+  tipo: 'Tipo',
+  num: 'Nº',
+  num_processo: 'Nº do processo',
+  plano_trabalho: 'Plano de trabalho',
+  data_de_liberacao_recurso: 'Data de liberação',
+  data_final: 'Data final',
+  nome_do_parlamentar: 'Parlamentar',
+  area_tematica: 'Área temática',
+  orgao_responsavel_pela_gestao_do_recurso: 'Órgão responsável',
+  valor: 'Valor',
+  objeto: 'Objeto',
+  prestacao_de_contas: 'Prestação de contas',
 };
 
 const TERMOS_LABELS = {municipio:'Município',estado:'Estado',uniao:'União',emendas_parlamentares:'Emendas'};
