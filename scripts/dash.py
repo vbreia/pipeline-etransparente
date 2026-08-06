@@ -16,9 +16,9 @@ import html as _html
 import io
 import json
 import os
-import random
 import re
 from datetime import datetime
+from urllib.parse import quote as _url_quote
 
 try:
     from playwright.sync_api import sync_playwright
@@ -157,6 +157,25 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     hash_hex = _gerar_hash(nome, data_emissao, nota_final, max_nota, classificacao)
     url_verificacao = f'https://etransparente.org/verificar/?hash={hash_hex}'
     qr_data_uri = gerar_qr_base64(url_verificacao)
+
+    _meses_pt = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+                 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+    _ano_report = datetime.now().year
+    _mes_nome_report = _meses_pt[datetime.now().month]
+    _assunto_report = _url_quote(
+        f'[Report de divergência] {nome} — ciclo {_mes_nome_report}/{_ano_report}'
+    )
+    _corpo_report = _url_quote(
+        f'OSC: {nome}\n'
+        f'Ciclo do relatório: {_mes_nome_report}/{_ano_report}\n'
+        f'Hash de verificação: {hash_hex}\n'
+        f'Link do relatório: {url_verificacao}\n\n'
+        'Descreva o que parece divergente:\n'
+    )
+    mailto_report = (
+        f'mailto:comunicacao@direitocoletivo.org.br'
+        f'?subject={_assunto_report}&body={_corpo_report}'
+    )
 
     descricao = osc.get('descricao_objeto_social', '') or ''
     descricao_obj = _html.escape(descricao[:400] + '...' if len(descricao) > 400 else descricao) if descricao else ''  # noqa: F841
@@ -349,14 +368,80 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
         for d in range(1, _dias_no_mes + 1)
     ]
     views_list = (views_by_url or {}).get(url)
-    if views_list and len(views_list) == _dias_no_mes:
+    dados_views_disponiveis = bool(views_list and len(views_list) == _dias_no_mes)
+
+    if dados_views_disponiveis:
         _chart_data = views_list
+        total_visualizacoes = sum(_chart_data)
+        media_diaria = round(total_visualizacoes / len(_chart_data))
+        chart_labels_js = json.dumps(_chart_labels)
+        chart_data_js = json.dumps(_chart_data)
     else:
-        _chart_data = [random.randint(50, 800) for _ in range(_dias_no_mes)]
-    chart_labels_js = json.dumps(_chart_labels)
-    chart_data_js = json.dumps(_chart_data)
-    total_visualizacoes = sum(_chart_data)
-    media_diaria = round(total_visualizacoes / len(_chart_data))
+        _chart_data = []
+        total_visualizacoes = None
+        media_diaria = None
+        chart_labels_js = '[]'
+        chart_data_js = '[]'
+
+    if dados_views_disponiveis:
+        _views_body_html = (
+            '<table width="100%" cellpadding="0" cellspacing="0"><tr>'
+            '<td style="width:65%;vertical-align:top;">'
+            '<canvas id="viewsChart" style="height:100px;"></canvas>'
+            '</td>'
+            '<td style="width:35%;vertical-align:top;padding-left:12px;">'
+            '<div class="views-side">'
+            '<div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;margin-bottom:3px;">'
+            '<div class="icon-circle-sm"><i class="ph ph-eye"></i></div>'
+            '<span class="views-label">TOTAL DE VISUALIZAÇÕES</span>'
+            '</div>'
+            f'<div class="views-val">{total_visualizacoes}</div>'
+            '<div class="views-sep"></div>'
+            '<div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;margin-bottom:3px;">'
+            '<div class="icon-circle-sm"><i class="ph ph-chart-bar"></i></div>'
+            '<span class="views-label">MÉDIA DIÁRIA</span>'
+            '</div>'
+            f'<div class="views-val-sm">{media_diaria}</div>'
+            '</div>'
+            '</td>'
+            '</tr></table>'
+            '<div class="chart-note">* Dados de visualização do etransparente.org via Google Analytics</div>'
+        )
+        _views_chart_script = (
+            'const ctx = document.getElementById(\'viewsChart\').getContext(\'2d\');\n'
+            'new Chart(ctx, {\n'
+            '    type: \'line\',\n'
+            '    data: {\n'
+            f'        labels: {chart_labels_js},\n'
+            '        datasets: [{\n'
+            f'            data: {chart_data_js},\n'
+            '            borderColor: \'#1e3a8a\',\n'
+            '            backgroundColor: \'rgba(30,58,138,0.08)\',\n'
+            '            fill: true,\n'
+            '            tension: 0.4,\n'
+            '            pointRadius: 0,\n'
+            '            borderWidth: 2\n'
+            '        }]\n'
+            '    },\n'
+            '    options: {\n'
+            '        responsive: true,\n'
+            '        maintainAspectRatio: false,\n'
+            '        plugins: { legend: { display: false } },\n'
+            '        scales: {\n'
+            '            x: { grid: { display: false }, ticks: { font: { size: 9 }, maxTicksLimit: 5, maxRotation: 0 } },\n'
+            '            y: { grid: { color: \'#f1f5f9\' }, ticks: { font: { size: 9 } } }\n'
+            '        }\n'
+            '    }\n'
+            '});'
+        )
+    else:
+        _views_body_html = (
+            '<div style="padding:20px 0;text-align:center;color:#94a3b8;font-size:11px;">'
+            '<i class="ph ph-chart-line-up" style="font-size:24px;display:block;margin-bottom:6px;opacity:0.5;"></i>'
+            'Dados de visualização indisponíveis para este ciclo'
+            '</div>'
+        )
+        _views_chart_script = ''
 
     _meses_pt = {
         'january': 'janeiro', 'february': 'fevereiro', 'march': 'março', 'april': 'abril',
@@ -794,27 +879,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 <div class="card">
     <div class="card-header"><span class="icon-circle"><i class="ph ph-chart-line-up"></i></span><span class="card-title">VISUALIZAÇÕES DA SUA OSC NA PLATAFORMA — ÚLTIMO MÊS</span></div>
-    <table width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td style="width:65%;vertical-align:top;">
-            <canvas id="viewsChart" style="height:100px;"></canvas>
-        </td>
-        <td style="width:35%;vertical-align:top;padding-left:12px;">
-            <div class="views-side">
-                <div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;margin-bottom:3px;">
-                    <div class="icon-circle-sm"><i class="ph ph-eye"></i></div>
-                    <span class="views-label">TOTAL DE VISUALIZAÇÕES</span>
-                </div>
-                <div class="views-val">{total_visualizacoes}</div>
-                <div class="views-sep"></div>
-                <div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;margin-bottom:3px;">
-                    <div class="icon-circle-sm"><i class="ph ph-chart-bar"></i></div>
-                    <span class="views-label">MÉDIA DIÁRIA</span>
-                </div>
-                <div class="views-val-sm">{media_diaria}</div>
-            </div>
-        </td>
-    </tr></table>
-    <div class="chart-note">* Dados de visualização do etransparente.org via Google Analytics</div>
+    {_views_body_html}
 </div>
 
 <div class="two-col">
@@ -982,6 +1047,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
           <p style="font-size:9px;color:#64748b;line-height:1.6;margin:0 0 10px;">Relatório gerado automaticamente pela plataforma eTransparente.org com base nas informações públicas da organização.</p>
           <div style="font-size:10px;color:#374151;"><strong>Data de emissão:</strong> {data_emissao_formatada}</div>
           {'<div style="font-size:8px;color:#94a3b8;margin-top:6px;">Metodologia v' + metodologia_versao + '</div>' if metodologia_versao else ''}
+          <div style="margin-top:8px;"><a href="{mailto_report}" style="font-size:8px;color:#94a3b8;text-decoration:none;">Notou algo errado? Reporte aqui</a></div>
         </td>
 
         <!-- Coluna 3: etransparente.org + slogan -->
@@ -999,31 +1065,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 </div>
 
 <script>
-const ctx = document.getElementById('viewsChart').getContext('2d');
-new Chart(ctx, {{
-    type: 'line',
-    data: {{
-        labels: {chart_labels_js},
-        datasets: [{{
-            data: {chart_data_js},
-            borderColor: '#1e3a8a',
-            backgroundColor: 'rgba(30,58,138,0.08)',
-            fill: true,
-            tension: 0.4,
-            pointRadius: 0,
-            borderWidth: 2
-        }}]
-    }},
-    options: {{
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {{ legend: {{ display: false }} }},
-        scales: {{
-            x: {{ grid: {{ display: false }}, ticks: {{ font: {{ size: 9 }}, maxTicksLimit: 5, maxRotation: 0 }} }},
-            y: {{ grid: {{ color: '#f1f5f9' }}, ticks: {{ font: {{ size: 9 }} }} }}
-        }}
-    }}
-}});
+{_views_chart_script}
 
 const contratosCanvas = document.getElementById('contratosChart');
 if (contratosCanvas) {{
@@ -1072,6 +1114,9 @@ if (contratosCanvas) {{
             <td style="vertical-align:middle;padding-left:10px;">
                 <div style="font-family:monospace;font-size:7px;color:#64748b;word-break:break-all;">Hash: {hash_hex}</div>
                 {_versao_tag}
+            </td>
+            <td style="vertical-align:middle;text-align:right;">
+                <a href="{mailto_report}" style="font-size:7px;color:#94a3b8;text-decoration:none;">Notou algo errado? Reporte aqui</a>
             </td>
         </tr>
     </table>
@@ -1131,7 +1176,7 @@ def main():
         except Exception as e:
             print(f"Aviso: erro ao carregar GA4 views: {e}")
     else:
-        print(f"Aviso: arquivo GA4 views não encontrado em {views_file}. Usando dados aleatórios como fallback.")
+        print(f"Aviso: arquivo GA4 views não encontrado em {views_file}. Seção de visualizações será exibida como indisponível.")
 
     mes_nome = datetime.now().strftime('%B').lower()
     meses_pt = {

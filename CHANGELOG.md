@@ -13,6 +13,36 @@ cada tipo de mudança. Em resumo:
 
 ---
 
+## [1.3.0] - 2026-08-06
+
+### Adicionado
+
+- **Botão de report de erro nos relatórios.** Cada relatório em PDF, e-mail mensal e o perfil
+  da OSC no painel de gestão agora trazem um link direto para reportar qualquer divergência
+  percebida no documento. O link já vem preenchido com o nome da organização, o ciclo do
+  relatório, o código de verificação (hash) e o link de autenticidade, para agilizar a
+  investigação e a resposta.
+
+### Corrigido
+
+- **Números de visualização inventados quando o dado real não estava disponível.** Quando o
+  sistema não tinha, para o ciclo em questão, dados reais de visualização da OSC na
+  plataforma, o relatório em PDF preenchia o gráfico e os totais com valores aleatórios,
+  apresentados visualmente como se fossem dados reais do Google Analytics — sem qualquer
+  indicação de que eram provisórios. Corrigido: quando não há dado real disponível, o
+  relatório agora exibe uma mensagem clara de indisponibilidade nesse ciclo, em vez de
+  qualquer número.
+
+### Dívida técnica registrada (não bloqueante)
+
+O perfil da OSC no painel de gestão (`dashboard/osc.html`) recalcula, no navegador, o mesmo
+hash de verificação que o sistema já calcula ao gerar o relatório — em vez de reutilizar o
+valor já calculado. As duas implementações produzem o mesmo resultado hoje, mas por serem
+independentes, uma mudança futura no cálculo do hash precisaria ser replicada manualmente nos
+dois lugares. Estamos cientes e vamos unificar isso numa próxima iteração.
+
+---
+
 ## [1.2.1] - 2026-08-06
 
 ### Corrigido

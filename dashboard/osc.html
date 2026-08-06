@@ -158,6 +158,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
       <i class="ph ph-file-pdf"></i> Último relatório mensal disponível
     </a>
   </div>
+  <div id="btnReportWrap" style="display:none;margin-top:6px;text-align:right">
+    <a id="btnReportErro" href="#"
+       style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;color:#64748b;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:400;text-decoration:none;background:#fff">
+      <i class="ph ph-warning-circle"></i> Notou algo errado? Reporte aqui
+    </a>
+  </div>
 
   <div class="page-header">
     <h1 id="oscNome">Carregando...</h1>
@@ -404,6 +410,7 @@ function render() {
   renderContratos();
   renderViews();
   checarEExibirRelatorio();
+  exibirBotaoReport();
   document.getElementById('spinner').classList.add('hidden');
   document.getElementById('app').style.opacity='1';
 }
@@ -416,6 +423,35 @@ function checarEExibirRelatorio() {
   if (!pdfUrl) return;
   document.getElementById('btnRelatorioMensal').href = pdfUrl;
   document.getElementById('btnRelatorioWrap').style.display = 'block';
+}
+
+async function exibirBotaoReport() {
+  const entrada = historico.filter(h=>h.nome===oscNome);
+  if (!entrada.length) return;
+  const ciclos = [...new Set(entrada.map(h=>h.ciclo))].sort();
+  const ultimoCiclo = ciclos[ciclos.length-1];
+  const ult = entrada.filter(h=>h.ciclo===ultimoCiclo)[0];
+  if (!ult) return;
+
+  // Reproduz o algoritmo de hash do dash.py: SHA-256 de "nome|ciclo|nota|max|classif", primeiros 16 hex
+  const conteudo = `${ult.nome}|${ult.ciclo}|${ult.nota_final}|${ult.max_nota}|${ult.classificacao}`;
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(conteudo));
+  const hashHex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+  const urlVerif = `https://etransparente.org/verificar/?hash=${hashHex}`;
+
+  const [ano, mes] = ultimoCiclo.split('-');
+  const mesesPt = ['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const mesNome = mesesPt[parseInt(mes,10)] || ultimoCiclo;
+
+  const assunto = encodeURIComponent(`[Report de divergência] ${oscNome} — ciclo ${mesNome}/${ano}`);
+  const corpo = encodeURIComponent(
+    `OSC: ${oscNome}\nCiclo do relatório: ${mesNome}/${ano}\nHash de verificação: ${hashHex}\nLink do relatório: ${urlVerif}\n\nDescreva o que parece divergente:\n`
+  );
+  const href = `mailto:comunicacao@direitocoletivo.org.br?subject=${assunto}&body=${corpo}`;
+
+  document.getElementById('btnReportErro').href = href;
+  document.getElementById('btnReportWrap').style.display = 'block';
 }
 
 function renderIdentity() {

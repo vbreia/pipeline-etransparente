@@ -18,6 +18,7 @@ import smtplib
 import unicodedata
 import ssl
 from datetime import date, datetime, timezone, timedelta
+from urllib.parse import quote as _url_quote
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -167,7 +168,7 @@ BANNER_BLOCK_RE = re.compile(
     re.DOTALL,
 )
 
-def render_template(template_html, nome_ong, url_ong, cta_url, assunto, p1, p2, p3, p4):
+def render_template(template_html, nome_ong, url_ong, cta_url, assunto, p1, p2, p3, p4, link_report_erro=''):
     banner_html = (
         '<table role="presentation" border="0" cellpadding="0" cellspacing="0" '
         'width="100%"><tr><td align="center" '
@@ -195,6 +196,7 @@ def render_template(template_html, nome_ong, url_ong, cta_url, assunto, p1, p2, 
     html = html.replace('{{titulo_post}}', assunto)
     html = html.replace('{{pagina alternativa}}', '')
     html = html.replace('{{descadastro}}', REMOVIDO)
+    html = html.replace('{{link_report_erro}}', link_report_erro)
     return html
 
 def enviar_email(smtp_config, to_addr, subject, html_body, pdf_path=None):
@@ -221,6 +223,64 @@ def enviar_email(smtp_config, to_addr, subject, html_body, pdf_path=None):
         if smtp_config.get('user') and smtp_config.get('password'):
             server.login(smtp_config['user'], smtp_config['password'])
         server.send_message(msg)
+
+def carregar_verificacoes(mes_ano_str: str) -> dict:
+    """Carrega verificacoes_{ciclo}.json e retorna lookup {nome: {hash, url_verificacao}}.
+
+    Fonte de verdade única: o mesmo arquivo que dash.py grava. Permite incluir
+    hash e link de verificação no mailto do e-mail sem recalcular a lógica de hash.
+    Falha graciosamente: retorna dict vazio se o arquivo não existir ou estiver corrompido.
+    """
+    path = os.path.join(BASE_DIR, 'output', f'verificacoes_{mes_ano_str}.json')
+    if not os.path.exists(path):
+        logger.warning('verificacoes_%s.json não encontrado em %s — mailto será enviado sem hash', mes_ano_str, path)
+        return {}
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        result = {}
+        for entry in data:
+            nome = (entry.get('nome') or '').strip()
+            if nome:
+                h = entry.get('hash', '')
+                result[nome] = {
+                    'hash': h,
+                    'url_verificacao': f'https://etransparente.org/verificar/?hash={h}' if h else '',
+                }
+        return result
+    except Exception as exc:
+        logger.warning('Erro ao carregar verificacoes_%s.json: %s', mes_ano_str, exc)
+        return {}
+
+
+def _build_mailto_report(nome: str, mes_extenso: str, ano: int, hash_hex: str = '', url_verificacao: str = '') -> str:
+    """Monta o link mailto de report de divergência para uma OSC.
+
+    Retorna uma tag <a> pronta para inserção no template de e-mail.
+    O hash e url_verificacao são opcionais — se ausentes, o corpo do e-mail
+    fica sem eles (não interrompe o envio).
+    """
+    corpo_partes = [
+        f'OSC: {nome}',
+        f'Ciclo do relatório: {mes_extenso}/{ano}',
+    ]
+    if hash_hex:
+        corpo_partes.append(f'Hash de verificação: {hash_hex}')
+    if url_verificacao:
+        corpo_partes.append(f'Link do relatório: {url_verificacao}')
+    corpo_partes += ['', 'Descreva o que parece divergente:', '']
+    assunto = f'[Report de divergência] {nome} — ciclo {mes_extenso}/{ano}'
+    href = (
+        f'mailto:comunicacao@direitocoletivo.org.br'
+        f'?subject={_url_quote(assunto)}'
+        f'&body={_url_quote(chr(10).join(corpo_partes))}'
+    )
+    return (
+        f'<a href="{href}" style="color:rgba(255,255,255,0.4);font-size:10px;'
+        f'text-decoration:none;font-family:\'Montserrat\',Arial,sans-serif;">'
+        f'Notou algo errado? Reporte aqui</a>'
+    )
+
 
 def carregar_template():
     with open(TEMPLATE_PATH, 'r', encoding='utf-8') as f:
@@ -357,6 +417,7 @@ def build_relatorio_execucao_html(template_html, stats, ongs_detalhes, mes_exten
     html = html.replace('{{texto_cta}}', '')
     html = html.replace('{{pagina alternativa}}', '')
     html = html.replace('{{descadastro}}', REMOVIDO)
+    html = html.replace('{{link_report_erro}}', '')
     return html
 
 def main():
@@ -394,6 +455,7 @@ def main():
 
     ongs = carregar_ongs(ong_path)
     scores_list = carregar_scores(scores_path)
+    verificacoes_map = carregar_verificacoes(mes_ano_str)
 
     # Mapa de scores por nome
     scores_map = {s['nome']: s for s in scores_list}
@@ -510,7 +572,13 @@ def main():
         else:
             cta_url = url_ong
 
-        html_body = render_template(template_html, nome, url_ong, cta_url, assunto, p1, p2, p3, p4)
+        verif = verificacoes_map.get(nome, {})
+        link_report_erro = _build_mailto_report(
+            nome, mes_extenso, ano,
+            hash_hex=verif.get('hash', ''),
+            url_verificacao=verif.get('url_verificacao', ''),
+        )
+        html_body = render_template(template_html, nome, url_ong, cta_url, assunto, p1, p2, p3, p4, link_report_erro)
 
         if test_mode:
             aviso = (
