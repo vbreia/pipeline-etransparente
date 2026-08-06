@@ -147,6 +147,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     classificacao = s.get('classificacao', _SCORE_DEFAULTS['classificacao'])
     tag = s.get('tag', _SCORE_DEFAULTS['tag'])
     badges = s.get('badges') or _SCORE_DEFAULTS['badges']
+    metodologia_versao = s.get('metodologia_versao', '')
 
     cor_classificacao = _COR_CLASSIFICACAO.get(classificacao, '#6b7280')
     tag_texto = 'Com termos/emendas' if tag == 'com_termos_emendas' else 'Sem termos/emendas'
@@ -980,6 +981,7 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
           <div style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:#1e3a8a;margin-bottom:8px;">DOCUMENTO OFICIAL EMITIDO PELO IDC</div>
           <p style="font-size:9px;color:#64748b;line-height:1.6;margin:0 0 10px;">Relatório gerado automaticamente pela plataforma eTransparente.org com base nas informações públicas da organização.</p>
           <div style="font-size:10px;color:#374151;"><strong>Data de emissão:</strong> {data_emissao_formatada}</div>
+          {'<div style="font-size:8px;color:#94a3b8;margin-top:6px;">Metodologia v' + metodologia_versao + '</div>' if metodologia_versao else ''}
         </td>
 
         <!-- Coluna 3: etransparente.org + slogan -->
@@ -1058,6 +1060,10 @@ if (contratosCanvas) {{
         if qr_data_uri else
         '<div style="width:34px;height:34px;background:#f1f5f9;border-radius:4px;"></div>'
     )
+    _versao_tag = (
+        f'<div style="font-size:7px;color:#94a3b8;margin-top:2px;">Metodologia v{metodologia_versao}</div>'
+        if metodologia_versao else ''
+    )
     mini_footer_template_html = f"""
 <div style="width:100%;font-family:Arial,sans-serif;font-size:8px;color:#64748b;border-top:1px solid #e2e8f0;margin:0 24px;padding:6px 0 0;box-sizing:border-box;">
     <table style="width:100%;border-collapse:collapse;">
@@ -1065,6 +1071,7 @@ if (contratosCanvas) {{
             <td style="width:34px;vertical-align:middle;">{_mini_qr_tag}</td>
             <td style="vertical-align:middle;padding-left:10px;">
                 <div style="font-family:monospace;font-size:7px;color:#64748b;word-break:break-all;">Hash: {hash_hex}</div>
+                {_versao_tag}
             </td>
         </tr>
     </table>

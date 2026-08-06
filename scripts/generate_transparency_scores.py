@@ -24,9 +24,29 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 
+import logging
+
 OUTPUT_DIR = os.path.join(os.getcwd(), "output")
 SCORES_DIR = os.path.join(OUTPUT_DIR, "scores")
 FILENAME_RE = re.compile(r"^oscs_etransparente_(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})\.json$")
+
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _read_version() -> str:
+    """Lê a versão da metodologia do arquivo VERSION na raiz do repositório.
+
+    Robusto a partir de qualquer cwd: usa o caminho absoluto relativo ao
+    próprio script (funciona tanto localmente quanto no container Docker,
+    onde os scripts ficam em /home/airflow/scripts/).
+    """
+    version_path = os.path.join(_REPO_ROOT, "VERSION")
+    try:
+        with open(version_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError:
+        logging.warning("Arquivo VERSION não encontrado em %s — usando 'desconhecida'", version_path)
+        return "desconhecida"
 
 
 # ---------------------------------------------------------------------------
@@ -334,12 +354,16 @@ def analyze_file(filepath: str) -> Dict[str, Any]:
     if not isinstance(data, list):
         raise ValueError("Formato inesperado: o arquivo root deve ser uma lista de OSCs")
 
+    versao = _read_version()
     results = [calcular_score_osc(osc) for osc in data]
+    for r in results:
+        r['metodologia_versao'] = versao
 
     return {
         'arquivo_analisado': os.path.basename(filepath),
         'total_oscs': len(results),
         'gerado_em': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'metodologia_versao': versao,
         'resultados': results,
     }
 
