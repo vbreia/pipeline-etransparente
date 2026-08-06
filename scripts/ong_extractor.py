@@ -392,11 +392,20 @@ class WebScraper:
             if horario_bloco:
                 horario = horario_bloco.get_text(strip=True)
             
-            # Localização
+            # Localização — usar o campo ACF específico (block-field-job_location) como
+            # seletor primário. O cabeçalho global do site tem class="top-header-endereco"
+            # com o endereço fixo do IDC, e aparece antes do bloco da OSC no DOM;
+            # os padrões antigos (r'endereco', r'location') matchavam esse header
+            # em vez do endereço específico de cada OSC.
             localizacao = ''
-            endereco_bloco = self.find_div_by_class(soup, r'endereco') or self.find_div_by_class(soup, r'address') or self.find_div_by_class(soup, r'location')
-            if endereco_bloco:
-                localizacao = endereco_bloco.get_text(strip=True)
+            loc_bloco = (
+                self.find_div_by_class(soup, r'block-field-job_location') or
+                self.find_div_by_class(soup, r'map-block-address')
+            )
+            if loc_bloco:
+                addr_div = loc_bloco.find('div', class_='map-block-address') or loc_bloco
+                p = addr_div.find('p')
+                localizacao = p.get_text(strip=True) if p else addr_div.get_text(strip=True)
 
             # CNPJ
             cnpj = ''

@@ -87,12 +87,14 @@ def read_input_json(path: str) -> List[Dict]:
     return data
 
 
+from path_utils import normalize_path  # noqa: E402
+
+
 def extract_path_from_url(url: str) -> str:
     if not url:
         return ""
     p = urlparse(url)
     path = p.path or ""
-    # Normalize: ensure leading slash
     if not path.startswith("/"):
         path = "/" + path
     return path
@@ -104,14 +106,20 @@ def chunked(iterable, n):
 
 
 def build_or_filter_for_paths(paths: List[str]) -> FilterExpression:
+    """Build GA4 OR filter for a list of page paths.
+
+    Normalizes each path before adding to the filter so the EXACT match
+    comparison is not defeated by case or trailing-slash differences.
+    """
     exps = []
     seen = set()
     for p in paths:
-        if not p or p in seen:
+        p_norm = normalize_path(p)
+        if not p_norm or p_norm in seen:
             continue
-        seen.add(p)
+        seen.add(p_norm)
         exps.append(FilterExpression(filter=Filter(field_name="pagePath",
-                                                   string_filter=Filter.StringFilter(value=p,
+                                                   string_filter=Filter.StringFilter(value=p_norm,
                                                                                     match_type=Filter.StringFilter.MatchType.EXACT))))
     return FilterExpression(or_group=FilterExpressionList(expressions=exps))
 
@@ -137,7 +145,8 @@ def query_batch_daily(client: BetaAnalyticsDataClient, property_id: str, paths: 
     resp = client.run_report(request=request)
     out = []
     for row in resp.rows:
-        page = row.dimension_values[0].value
+        # Normalize the path returned by GA4 so it matches our normalized query keys
+        page = normalize_path(row.dimension_values[0].value)
         day = row.dimension_values[1].value
         views = int(row.metric_values[0].value) if row.metric_values and row.metric_values[0].value.isdigit() else 0
         out.append((page, day, views))
@@ -269,14 +278,9 @@ def main():
     # Build final output array
     output = []
     for entry in prepared:
-        path = entry['path']
-        # Try direct path, else try with/without trailing slash
-        if path in per_path_day:
-            daymap = per_path_day[path]
-        else:
-            alt = path.rstrip('/') if path.endswith('/') else path + '/'
-            daymap = per_path_day.get(alt, {})
-
+        # Normalize before lookup — per_path_day is also keyed by normalized paths
+        path_key = normalize_path(entry['path'])
+        daymap = per_path_day.get(path_key, {})
         views_list = [int(daymap.get(d, 0)) for d in days]
 
         output.append({
