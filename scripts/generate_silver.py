@@ -4,6 +4,7 @@ Gera camada Silver (Parquet histórico) a partir do Bronze no Azure.
 Le JSON bruto + scores do Azure Blob, merge em DataFrame e acumula em
 silver/oscs_historico.parquet.
 """
+import argparse
 import json
 import logging
 import os
@@ -53,8 +54,26 @@ def upload_json(client, blob_path, data):
     logger.info(f'Upload gold: {blob_path}')
 
 def main():
+    parser = argparse.ArgumentParser(description='Gera/atualiza a camada Silver de histórico de scores')
+    parser.add_argument(
+        '--ciclo', default=None,
+        help=(
+            'Rótulo do ciclo a gravar no histórico (ex.: 2026-07). '
+            'Não afeta de onde os dados bronze/scores são lidos (isso continua '
+            'usando o mês atual) — só o rótulo do ciclo gravado no resultado. '
+            'Default: mês atual (comportamento original).'
+        ),
+    )
+    args = parser.parse_args()
+
     month = date.today().strftime('%Y-%m')
-    ciclo = month
+    ciclo = args.ciclo if args.ciclo else month
+    if args.ciclo:
+        logger.warning(
+            'Ciclo sobrescrito manualmente: gravando como "%s" '
+            '(dados lidos de bronze/%s/, mês real atual)',
+            ciclo, month,
+        )
     client = get_client()
 
     bronze_prefix = f'bronze/{month}/oscs_etransparente_'
