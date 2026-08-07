@@ -556,7 +556,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
 
     docs_invalido_items_html = ''.join(
         f'<div class="doc-item doc-item-invalido"><i class="ph ph-warning" style="color:#f97316;"></i> '
-        f'{_html.escape(doc_label(k))}<span class="doc-invalido-nota">Formato inválido — apenas PDF é aceito. Contate o suporte.</span></div>'
+        f'{_html.escape(doc_label(k))}<span class="doc-invalido-nota">Formato inválido — apenas PDF, DOC, DOCX, JPG, JPEG ou PNG são aceitos. Contate o suporte.</span></div>'
         for k in documentos_formato_invalido
     )
 

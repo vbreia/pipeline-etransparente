@@ -573,7 +573,7 @@ function renderFormatoInvalido(bronze) {
     });
   });
   const el=document.getElementById('formatoInvalidoContainer'),list=document.getElementById('formatoInvalidoList');
-  if(rows.length){el.classList.remove('hidden');list.innerHTML=rows.map(r=>`<div class="alert-item"><span class="osc-name"><i class="ph ph-buildings"></i> ${r.nome} - ${r.campo} (${r.ext})</span><a class="btn-contact" href="mailto:?subject=${encodeURIComponent('etransparente.org - Documento em formato invalido: '+r.nome)}&body=${encodeURIComponent('Prezados,\n\nIdentificamos que o documento do campo "'+r.campo+'" da OSC '+r.nome+' foi publicado em formato invalido ('+r.ext+'). Apenas PDF/DOC/DOCX sao aceitos para pontuacao. Solicitamos o reenvio no formato correto.\n\nAtenciosamente,\nEquipe etransparente')}"><i class="ph ph-envelope"></i> Contatar responsavel</a></div>`).join('');}
+  if(rows.length){el.classList.remove('hidden');list.innerHTML=rows.map(r=>`<div class="alert-item"><span class="osc-name"><i class="ph ph-buildings"></i> ${r.nome} - ${r.campo} (${r.ext})</span><a class="btn-contact" href="mailto:?subject=${encodeURIComponent('etransparente.org - Documento em formato invalido: '+r.nome)}&body=${encodeURIComponent('Prezados,\n\nIdentificamos que o documento do campo "'+r.campo+'" da OSC '+r.nome+' foi publicado em formato invalido ('+r.ext+'). Apenas PDF/DOC/DOCX/JPG/JPEG/PNG sao aceitos para pontuacao. Solicitamos o reenvio no formato correto.\n\nAtenciosamente,\nEquipe etransparente')}"><i class="ph ph-envelope"></i> Contatar responsavel</a></div>`).join('');}
   else el.classList.add('hidden');
 }
 

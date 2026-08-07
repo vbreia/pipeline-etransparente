@@ -169,7 +169,7 @@ class WebScraper:
         ('ata-de-eleicao', 'ata_eleicao'),
     ]
 
-    _EXTENSOES_VALIDAS = ('.pdf', '.doc', '.docx')
+    _EXTENSOES_VALIDAS = ('.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png')
 
     def categorizar_documentos_por_bloco(self, soup: BeautifulSoup) -> Tuple[Dict[str, Any], Dict[str, str]]:
         """Categorizar documentos a partir do bloco HTML que os contém.
@@ -182,10 +182,11 @@ class WebScraper:
 
         A categoria do bloco é determinada pelo slug independentemente da
         extensão do link (ex.: um .zip publicado no campo "Plano de Ação"
-        ainda é reconhecido como `plano_acao`). Só PDF/DOC/DOCX conta para
-        pontuação — um link com outra extensão não preenche o campo, mas é
-        registrado em `formato_invalido` para sinalização (não se aplica ao
-        catch-all `outros_documentos`).
+        ainda é reconhecido como `plano_acao`). Só PDF/DOC/DOCX/JPG/JPEG/PNG
+        conta para pontuação (ver `_EXTENSOES_VALIDAS`) — um link com outra
+        extensão não preenche o campo, mas é registrado em
+        `formato_invalido` para sinalização (não se aplica ao catch-all
+        `outros_documentos`).
         """
         categorias = {
             'cneas': '',
