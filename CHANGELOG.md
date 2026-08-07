@@ -13,6 +13,24 @@ cada tipo de mudança. Em resumo:
 
 ---
 
+## [1.4.0] - 2026-08-06
+
+### Adicionado
+
+- **Sinalização de documentos publicados em formato inválido.** Até esta versão, quando uma
+  OSC publicava um documento obrigatório (ex.: Plano de Ação, Estatuto, CNEAS) em um formato
+  diferente de PDF, DOC ou DOCX, o sistema simplesmente tratava o campo como não preenchido,
+  sem indicar o motivo. A partir de agora, esses casos são identificados e sinalizados: a OSC
+  vê, no seu próprio relatório, um aviso indicando que o documento existe mas está em formato
+  não aceito, e a equipe do IDC recebe um resumo consolidado desses casos tanto no relatório
+  mensal de execução quanto no painel de gestão interno. A pontuação não muda — apenas PDF,
+  DOC ou DOCX contam para a nota de transparência, como já era a regra.
+
+Motivado por um caso real identificado nesta mesma versão: o campo "Plano de Ação" do
+Instituto de Direito Coletivo estava publicado como arquivo `.zip`.
+
+---
+
 ## [1.3.0] - 2026-08-06
 
 ### Adicionado
