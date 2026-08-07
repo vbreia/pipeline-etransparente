@@ -522,30 +522,33 @@ def main():
             'documentos_formato_invalido': documentos.get('documentos_formato_invalido', {}) or {},
         })
 
-    # Em modo teste, enviar apenas 2 emails: 1 Bom/Ótimo + 1 Regular
+    # Em modo teste, enviar 3 emails: 1 Bom/Ótimo + 1 Regular + IDC (garantido)
     if test_mode:
-        idc_pdf = encontrar_pdf_idc(pasta_pdf) if pasta_pdf else None
-        bom_ong = regular_ong = None
+        idc_ong = bom_ong = regular_ong = None
         for ong in ongs:
             n = ong.get('nome', '').strip()
             e = ong.get('email', '').strip()
             if not n or not e:
+                continue
+            nome_norm = normalizar(n)
+            if 'instituto' in nome_norm and 'direito' in nome_norm and 'coletivo' in nome_norm:
+                idc_ong = ong
                 continue
             cls = scores_map.get(n, {}).get('classificacao', 'Regular')
             if cls in ('Bom', 'Ótimo') and bom_ong is None:
                 bom_ong = ong
             if cls == 'Regular' and regular_ong is None:
                 regular_ong = ong
-            if bom_ong and regular_ong:
+            if bom_ong and regular_ong and idc_ong:
                 break
-        ongs_a_processar = [o for o in (bom_ong, regular_ong) if o is not None]
+        # IDC sempre incluído, com seu próprio PDF — nunca sobrescreve o anexo das outras amostras
+        ongs_a_processar = [o for o in (idc_ong, bom_ong, regular_ong) if o is not None]
         logger.info(
-            'Modo teste: %d ONG(s) selecionada(s) (1 Bom/Ótimo, 1 Regular)',
+            'Modo teste: %d ONG(s) selecionada(s) (IDC + 1 Bom/Ótimo + 1 Regular)',
             len(ongs_a_processar),
         )
     else:
         ongs_a_processar = ongs
-        idc_pdf = None
 
     stats = {
         'total': len(ongs),
@@ -582,8 +585,6 @@ def main():
         if test_mode:
             destino = test_email
             assunto = f'[TESTE] {assunto}'
-            if idc_pdf:
-                pdf_path = idc_pdf
 
         if pdf_path:
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
