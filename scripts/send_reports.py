@@ -328,6 +328,27 @@ def build_relatorio_execucao_html(template_html, stats, ongs_detalhes, mes_exten
             f'<ul>{zeradas_rows}</ul></div>'
         )
 
+    docs_invalidos = [d for d in ongs_detalhes if d.get('documentos_formato_invalido')]
+    if docs_invalidos:
+        def _fmt_campos_invalidos(formato_invalido):
+            partes = []
+            for campo, link in formato_invalido.items():
+                ext = os.path.splitext(link)[1] or '?'
+                partes.append(f'{campo} ({ext})')
+            return ', '.join(partes)
+
+        docs_invalidos_rows = ''.join(
+            f'<li>{_html.escape(d["nome"])}: '
+            f'{_html.escape(_fmt_campos_invalidos(d["documentos_formato_invalido"]))}</li>'
+            for d in docs_invalidos
+        )
+        alertas += (
+            '<div style="background:#fff7ed;border-left:4px solid #f97316;'
+            'padding:16px;margin-bottom:12px;border-radius:4px;">'
+            f'<strong style="color:#c2410c;">📎 OSCs COM DOCUMENTOS EM FORMATO INVÁLIDO ({len(docs_invalidos)})</strong>'
+            f'<ul>{docs_invalidos_rows}</ul></div>'
+        )
+
     p1 = alertas if alertas else '<p style="color:#888;font-size:13px;">Nenhum alerta nesta execução.</p>'
 
     # ── Seção 2: Resumo geral ──
@@ -489,6 +510,7 @@ def main():
                 sas_url = gerar_sas_url(conn_str, 'etransparente', blob_path)
             except Exception:
                 pass
+        documentos = ong.get('documentos', {}) or {}
         ongs_detalhes.append({
             'nome': nome,
             'nota_final': score.get('nota_final', 0),
@@ -497,6 +519,7 @@ def main():
             'email': email,
             'pdf_sas_url': sas_url,
             'url_etransparente': url_ong,
+            'documentos_formato_invalido': documentos.get('documentos_formato_invalido', {}) or {},
         })
 
     # Em modo teste, enviar apenas 2 emails: 1 Bom/Ótimo + 1 Regular

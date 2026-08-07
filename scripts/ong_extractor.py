@@ -12,7 +12,7 @@ import json
 import re
 import glob
 import html as html_module
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import List, Dict, Optional, Tuple, Any
 from bs4 import BeautifulSoup
 import logging
@@ -53,6 +53,9 @@ class Documentos:
     balanco_2023: str = ""
     balanco_2024: str = ""
     outros_documentos: str = ""
+    # Campo -> URL do primeiro link encontrado com extensão não aceita (ex.: .zip).
+    # Não conta para pontuação (regra da metodologia); só sinalização/suporte.
+    documentos_formato_invalido: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -166,7 +169,9 @@ class WebScraper:
         ('ata-de-eleicao', 'ata_eleicao'),
     ]
 
-    def categorizar_documentos_por_bloco(self, soup: BeautifulSoup) -> Dict[str, Any]:
+    _EXTENSOES_VALIDAS = ('.pdf', '.doc', '.docx')
+
+    def categorizar_documentos_por_bloco(self, soup: BeautifulSoup) -> Tuple[Dict[str, Any], Dict[str, str]]:
         """Categorizar documentos a partir do bloco HTML que os contém.
 
         Cada documento aparece dentro de um <div class="block-type-file
@@ -174,6 +179,13 @@ class WebScraper:
         (ex.: `block-field-cebas`, `block-field-cadastro-nacional-de-...
         -cneas`). Usar esse slug em vez do nome do arquivo evita
         categorizar errado documentos com nomes de arquivo genéricos.
+
+        A categoria do bloco é determinada pelo slug independentemente da
+        extensão do link (ex.: um .zip publicado no campo "Plano de Ação"
+        ainda é reconhecido como `plano_acao`). Só PDF/DOC/DOCX conta para
+        pontuação — um link com outra extensão não preenche o campo, mas é
+        registrado em `formato_invalido` para sinalização (não se aplica ao
+        catch-all `outros_documentos`).
         """
         categorias = {
             'cneas': '',
@@ -190,32 +202,40 @@ class WebScraper:
             'balanco_2024': '',
             'outros_documentos': []
         }
+        formato_invalido: Dict[str, str] = {}
 
         for bloco in soup.find_all('div', class_=re.compile(r'block-type-file')):
             classes = ' '.join(bloco.get('class', [])).lower()
-            links = [a['href'] for a in bloco.find_all('a', href=True)
-                     if a['href'].lower().endswith(('.pdf', '.doc', '.docx'))]
-            if not links:
+            todos_links = [a['href'] for a in bloco.find_all('a', href=True)]
+            if not todos_links:
                 continue
-            doc = links[0]
+            links_validos = [href for href in todos_links
+                              if href.lower().endswith(self._EXTENSOES_VALIDAS)]
 
+            categoria_alvo = None
             if 'balano' in classes or 'balanco' in classes or 'demonstr' in classes:
                 for ano in ('2020', '2021', '2022', '2023', '2024'):
                     if ano in classes:
-                        categorias[f'balanco_{ano}'] = doc
+                        categoria_alvo = f'balanco_{ano}'
                         break
+            else:
+                for slug, categoria in self._BLOCK_FIELD_CATEGORIAS:
+                    if slug in classes:
+                        categoria_alvo = categoria
+                        break
+
+            if links_validos:
+                doc = links_validos[0]
+                if categoria_alvo:
+                    categorias[categoria_alvo] = doc
                 else:
                     categorias['outros_documentos'].append(doc)
-                continue
+            elif categoria_alvo:
+                formato_invalido[categoria_alvo] = todos_links[0]
+            # bloco sem categoria reconhecida e sem link válido: ignorado,
+            # igual ao comportamento anterior para outros_documentos
 
-            for slug, categoria in self._BLOCK_FIELD_CATEGORIAS:
-                if slug in classes:
-                    categorias[categoria] = doc
-                    break
-            else:
-                categorias['outros_documentos'].append(doc)
-
-        return categorias
+        return categorias, formato_invalido
 
     def _baixar_logo(self, logo_url: str, ong_web_url: str) -> str:
         """Baixar logo, converter para JPG e salvar em assets/img/logos-ongs/<slug>.jpg (sobrescreve).
@@ -436,7 +456,7 @@ class WebScraper:
                     logo_local_path = self._baixar_logo(logo_url, url)
 
             # Documentos
-            docs_categorizados = self.categorizar_documentos_por_bloco(soup)
+            docs_categorizados, docs_formato_invalido = self.categorizar_documentos_por_bloco(soup)
 
             # Decodificar entidades HTML em todos os campos de texto
             descricao = html_module.unescape(descricao)
@@ -476,7 +496,8 @@ class WebScraper:
                     'balanco_2022': docs_categorizados['balanco_2022'],
                     'balanco_2023': docs_categorizados['balanco_2023'],
                     'balanco_2024': docs_categorizados['balanco_2024'],
-                    'outros_documentos': ';'.join(docs_categorizados['outros_documentos'])
+                    'outros_documentos': ';'.join(docs_categorizados['outros_documentos']),
+                    'documentos_formato_invalido': docs_formato_invalido
                 },
                 'logo_url': logo_url,
                 'logo_local_path': logo_local_path

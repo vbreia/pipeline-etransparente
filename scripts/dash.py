@@ -195,6 +195,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     outras_redes = redes.get('outras', '') or ''
 
     documentos = osc.get('documentos', {}) or {}
+    documentos_formato_invalido = documentos.get('documentos_formato_invalido', {}) or {}
 
     def doc_label(key):
         if key.startswith('balanco_'):
@@ -210,7 +211,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
         }
         return mapping.get(key, key.replace('_', ' ').title())
 
-    documentos_presentes = [k for k, v in documentos.items() if v]
+    documentos_presentes = [k for k, v in documentos.items() if v and k != 'documentos_formato_invalido']
     documentos_labels = [doc_label(k) for k in documentos_presentes]
 
     info_preenchida = contar_info_preenchida(osc)  # noqa: F841
@@ -553,10 +554,16 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     else:
         social_rows_html = '<div class="none-box">Nenhuma rede social cadastrada</div>'
 
-    if documentos_labels:
+    docs_invalido_items_html = ''.join(
+        f'<div class="doc-item doc-item-invalido"><i class="ph ph-warning" style="color:#f97316;"></i> '
+        f'{_html.escape(doc_label(k))}<span class="doc-invalido-nota">Formato inválido — apenas PDF é aceito. Contate o suporte.</span></div>'
+        for k in documentos_formato_invalido
+    )
+
+    if documentos_labels or docs_invalido_items_html:
         docs_grid_html = '<div class="docs-grid">' + ''.join(
             f'<div class="doc-item"><i class="ph ph-check-circle" style="color:#16a34a;"></i> {_html.escape(lbl)}</div>' for lbl in documentos_labels
-        ) + '</div>'
+        ) + docs_invalido_items_html + '</div>'
     else:
         docs_grid_html = '<div class="none-box">Nenhum documento cadastrado</div>'
 
@@ -704,6 +711,8 @@ html,body {{ margin:0; padding:0; background:#f1f5f9; font-size:13px; color:#1e2
 
 .docs-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; }}
 .doc-item {{ font-size:11px; color:#374151; }}
+.doc-item-invalido {{ grid-column:1 / -1; color:#c2410c; }}
+.doc-invalido-nota {{ display:block; font-size:9.5px; color:#c2410c; margin-left:18px; margin-top:2px; }}
 
 .none-box {{ color:#94a3b8; font-size:12px; text-align:center; padding:16px 0; }}
 
