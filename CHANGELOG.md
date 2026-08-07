@@ -13,6 +13,26 @@ cada tipo de mudança. Em resumo:
 
 ---
 
+## [1.5.0] - 2026-08-07
+
+### Adicionado
+
+- **JPG, JPEG e PNG agora contam como formato válido para os documentos obrigatórios**, além
+  de PDF, DOC e DOCX. Fotos ou digitalizações de documentos são comuns para OSCs menores sem
+  acesso fácil a digitalização em PDF — essa mudança reconhece esses formatos para fins de
+  pontuação, mantendo a sinalização de formato inválido (introduzida na v1.4.0) para os casos
+  que continuam fora da lista aceita (ex.: `.zip`).
+
+### Corrigido
+
+- **Anexo de PDF trocado no envio de teste dos relatórios.** Ao testar o envio mensal em modo
+  de teste, o sistema estava anexando sempre o relatório do Instituto de Direito Coletivo (IDC)
+  a qualquer e-mail de amostra, mesmo quando o assunto e o corpo do e-mail eram de outra OSC.
+  Corrigido: o IDC agora é sempre incluído como um destinatário de teste próprio, sem afetar o
+  anexo das demais amostras.
+
+---
+
 ## [1.4.0] - 2026-08-06
 
 ### Adicionado
