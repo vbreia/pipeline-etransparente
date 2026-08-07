@@ -56,6 +56,8 @@ services:
       - ./assets:/home/airflow/assets
       - ./output:/home/airflow/output
       - ./logs:/home/airflow/logs
+      - ./VERSION:/home/airflow/VERSION:ro
+      - ./CHANGELOG.md:/home/airflow/CHANGELOG.md:ro
       - /etc/google:/etc/google:ro
     restart: always
 
@@ -95,6 +97,8 @@ services:
       - ./assets:/home/airflow/assets
       - ./output:/home/airflow/output
       - ./logs:/home/airflow/logs
+      - ./VERSION:/home/airflow/VERSION:ro
+      - ./CHANGELOG.md:/home/airflow/CHANGELOG.md:ro
       - /etc/google:/etc/google:ro
     ports:
       - "8080:8080"
