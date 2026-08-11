@@ -6,6 +6,7 @@ Arquitetura Medallion (Bronze/Prata/Ouro):
   - silver/         ← histórico acumulado (historico_scores.parquet)
   - gold/YYYY-MM/   ← outputs finais (PDFs, HTMLs)
 """
+import argparse
 import os
 import glob
 import json
@@ -40,7 +41,27 @@ def upload_file(client, container, blob_path, local_path):
     logger.info(f'Upload: {blob_path}')
 
 def main():
-    month = date.today().strftime('%Y-%m')
+    parser = argparse.ArgumentParser(description='Upload mensal de outputs para o Azure Data Lake Gen2')
+    parser.add_argument(
+        '--ciclo', default=None,
+        help=(
+            'Rótulo do ciclo (YYYY-MM) para os caminhos de destino no Azure '
+            '(bronze/{ciclo}/..., gold/{ciclo}/pdf|html/...). Não afeta de onde os '
+            'arquivos de entrada locais são lidos — isso continua usando o mês real '
+            'atual (onde estão os arquivos gerados hoje). '
+            'Default: mês atual (comportamento original).'
+        ),
+    )
+    args = parser.parse_args()
+
+    month_leitura = date.today().strftime('%Y-%m')
+    ciclo_publicacao = args.ciclo if args.ciclo else month_leitura
+    if args.ciclo:
+        logger.warning(
+            'Ciclo de publicação sobrescrito manualmente: publicando em "%s" '
+            '(arquivos de entrada lidos de %s, mês real atual)',
+            ciclo_publicacao, month_leitura,
+        )
     base = '/home/airflow' if os.path.exists('/home/airflow/output') else os.getcwd()
     out = os.path.join(base, 'output')
     container = 'etransparente'
@@ -55,18 +76,18 @@ def main():
         stem = Path(path).stem.lower()
         return 'idc' in stem or 'instituto-de-direito-coletivo' in stem
 
-    # Bronze — JSONs brutos do mês
-    for pattern in [f'oscs_etransparente_*.json', f'oscs_views_{month}.json']:
+    # Bronze — JSONs brutos do mês (entrada: mês real atual)
+    for pattern in [f'oscs_etransparente_*.json', f'oscs_views_{month_leitura}.json']:
         for f in glob.glob(os.path.join(out, pattern)):
             if test_mode and not _idc_match(f):
                 continue
-            upload_file(client, container, f'bronze/{month}/{Path(f).name}', f)
+            upload_file(client, container, f'bronze/{ciclo_publicacao}/{Path(f).name}', f)
     for f in glob.glob(os.path.join(out, 'scores', f'transparency_scores_*.json')):
         if test_mode and not _idc_match(f):
             continue
-        upload_file(client, container, f'bronze/{month}/{Path(f).name}', f)
+        upload_file(client, container, f'bronze/{ciclo_publicacao}/{Path(f).name}', f)
 
-    # Gold — PDFs e HTMLs do mês
+    # Gold — PDFs e HTMLs do ciclo (destino: ciclo de publicação)
     dashboards = sorted(glob.glob(os.path.join(out, 'dashboards', '*')))
     if dashboards:
         latest = dashboards[-1]
@@ -74,10 +95,13 @@ def main():
             for f in glob.glob(os.path.join(latest, folder, '*')):
                 if test_mode and not _idc_match(f):
                     continue
-                upload_file(client, container, f'gold/{month}/{folder}/{Path(f).name}', f)
+                upload_file(client, container, f'gold/{ciclo_publicacao}/{folder}/{Path(f).name}', f)
 
     # Gold — verificacoes_all.json acumulado
-    verificacoes_monthly = glob.glob(os.path.join(out, f'verificacoes_{month}.json'))
+    # verificacoes_{X}.json é gravado por dash.py usando o mesmo rótulo de ciclo
+    # (data_emissao lá segue --ciclo), então a leitura aqui também segue o ciclo
+    # de publicação — não o mês real — para localizar o arquivo correto.
+    verificacoes_monthly = glob.glob(os.path.join(out, f'verificacoes_{ciclo_publicacao}.json'))
     if verificacoes_monthly:
         blob_client = client.get_blob_client(container=container, blob='gold/verificacoes_all.json')
         existing_all = []
@@ -111,7 +135,7 @@ def main():
         upload_file(client, container, 'gold/oscs_atual.json', latest_ongs)
         logger.info('gold/oscs_atual.json atualizado')
 
-    logger.info(f'Upload concluído para {month}')
+    logger.info(f'Upload concluído para {ciclo_publicacao} (dados de entrada lidos de {month_leitura})')
 
 if __name__ == '__main__':
     main()

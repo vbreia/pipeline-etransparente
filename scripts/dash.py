@@ -8,6 +8,7 @@ Usage: run `python scripts/dash.py` from repository root. The script will
 locate the newest `output/oscs_etransparente_*.json` automatically.
 """
 
+import argparse
 import base64
 import calendar
 import glob
@@ -136,7 +137,7 @@ def contar_termos(osc):
                for c in ['municipio', 'estado', 'uniao', 'emendas_parlamentares'])
 
 
-def gerar_dashboard_html(osc, score=None, views_by_url=None):
+def gerar_dashboard_html(osc, score=None, views_by_url=None, ciclo_override=None):
     nome = osc.get('nome', 'Sem nome')
     url = osc.get('url', '#')
 
@@ -152,7 +153,14 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
     cor_classificacao = _COR_CLASSIFICACAO.get(classificacao, '#6b7280')
     tag_texto = 'Com termos/emendas' if tag == 'com_termos_emendas' else 'Sem termos/emendas'
 
-    data_emissao = datetime.now().strftime('%Y-%m')
+    # ciclo_override (YYYY-MM) sobrescreve o mês/ano usado para rotular o relatório
+    # (título, nome do arquivo, hash de verificação) — não afeta a data real de emissão.
+    if ciclo_override:
+        _efetivo = datetime.strptime(ciclo_override, '%Y-%m')
+    else:
+        _efetivo = datetime.now()
+
+    data_emissao = _efetivo.strftime('%Y-%m')
     data_emissao_formatada = datetime.now().strftime('%d/%m/%Y')
     hash_hex = _gerar_hash(nome, data_emissao, nota_final, max_nota, classificacao)
     url_verificacao = f'https://etransparente.org/verificar/?hash={hash_hex}'
@@ -160,8 +168,8 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
 
     _meses_pt = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
                  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
-    _ano_report = datetime.now().year
-    _mes_nome_report = _meses_pt[datetime.now().month]
+    _ano_report = _efetivo.year
+    _mes_nome_report = _meses_pt[_efetivo.month]
     _assunto_report = _url_quote(
         f'[Report de divergência] {nome} — ciclo {_mes_nome_report}/{_ano_report}'
     )
@@ -360,7 +368,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None):
 
     descricao_curta = _html.escape(descricao[:120] + '...' if len(descricao) > 120 else descricao) if descricao else ''
 
-    _hoje = datetime.now()
+    _hoje = _efetivo
     _ano_chart = _hoje.year
     _mes_chart = _hoje.month
     _dias_no_mes = calendar.monthrange(_ano_chart, _mes_chart)[1]
@@ -1135,6 +1143,24 @@ if (contratosCanvas) {{
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Gera dashboards HTML/PDF por ONG')
+    parser.add_argument(
+        '--ciclo', default=None,
+        help=(
+            'Rótulo do ciclo (YYYY-MM) usado para exibição no relatório (título, '
+            'período de referência, nome do arquivo do PDF) e para localizar o '
+            'arquivo oscs_views_{ciclo}.json. Não afeta de onde os dados de entrada '
+            '(oscs_etransparente_*.json, scores) são lidos — isso continua usando o '
+            'arquivo mais recente em output/. Default: mês atual (comportamento original).'
+        ),
+    )
+    args = parser.parse_args()
+    if args.ciclo:
+        try:
+            datetime.strptime(args.ciclo, '%Y-%m')
+        except ValueError:
+            parser.error('--ciclo deve estar no formato YYYY-MM (ex.: 2026-07)')
+
     input_file = find_latest_input()
     with open(input_file, 'r', encoding='utf-8') as f:
         oscs = json.load(f)
@@ -1161,7 +1187,13 @@ def main():
         print("Aviso: nenhum arquivo de scores encontrado. Usando valores padrão.")
 
     ts = datetime.now().strftime('%Y%m%d%H%M%S')
-    data_emissao = datetime.now().strftime('%Y-%m')
+    data_emissao = args.ciclo if args.ciclo else datetime.now().strftime('%Y-%m')
+    if args.ciclo:
+        print(
+            f'Ciclo sobrescrito manualmente: rotulando/publicando relatórios como '
+            f'"{data_emissao}" (dados de entrada lidos do arquivo mais recente em output/, '
+            f'mês real atual: {datetime.now().strftime("%Y-%m")})'
+        )
     # Usar /home/airflow como base se existir (volume Docker), fallback para cwd
     _base = '/home/airflow' if os.path.exists('/home/airflow/output') else os.getcwd()
     base_out = os.path.join(_base, 'output', 'dashboards', ts)
@@ -1187,14 +1219,15 @@ def main():
     else:
         print(f"Aviso: arquivo GA4 views não encontrado em {views_file}. Seção de visualizações será exibida como indisponível.")
 
-    mes_nome = datetime.now().strftime('%B').lower()
+    _data_ciclo = datetime.strptime(data_emissao, '%Y-%m')
+    mes_nome = _data_ciclo.strftime('%B').lower()
     meses_pt = {
         'january': 'janeiro', 'february': 'fevereiro', 'march': 'março', 'april': 'abril',
         'may': 'maio', 'june': 'junho', 'july': 'julho', 'august': 'agosto',
         'september': 'setembro', 'october': 'outubro', 'november': 'novembro', 'december': 'dezembro'
     }
-    mes_nome = meses_pt.get(mes_nome, datetime.now().strftime('%B').lower())
-    ano = datetime.now().strftime('%Y')
+    mes_nome = meses_pt.get(mes_nome, mes_nome)
+    ano = _data_ciclo.strftime('%Y')
     ciclo = f"{mes_nome}-{ano}"
 
     verificacoes = []
@@ -1220,7 +1253,9 @@ def main():
         try:
             mini_footer_template_html = ''
             try:
-                html_content, hash_hex, mini_footer_template_html = gerar_dashboard_html(osc, score, views_by_url)
+                html_content, hash_hex, mini_footer_template_html = gerar_dashboard_html(
+                    osc, score, views_by_url, ciclo_override=data_emissao
+                )
                 s = score or {}
                 verificacoes.append({
                     'hash': hash_hex,

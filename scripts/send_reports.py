@@ -8,6 +8,7 @@ Para cada ONG com e-mail cadastrado:
 Para o IDC (comunicacao@direitocoletivo.org.br):
   - Relatório consolidado da execução
 """
+import argparse
 import glob
 import html as _html
 import json
@@ -106,9 +107,20 @@ def gerar_sas_url(connection_string, container, blob_path, dias=30):
     )
     return f'https://{account_name}.blob.core.windows.net/{container}/{blob_path}?{sas_token}'
 
-def mes_ano():
-    hoje = date.today()
-    return hoje.month, hoje.year, MESES[hoje.month], hoje.strftime('%Y-%m')
+def mes_ano(ciclo_override=None):
+    """Resolve mês/ano do ciclo a rotular/publicar.
+
+    ciclo_override (YYYY-MM), quando fornecido, sobrescreve apenas o rótulo/mês
+    usado para exibição e caminho de publicação — não afeta de onde os dados de
+    entrada (JSON de ONGs, scores, PDFs) são lidos, que continuam vindo do
+    arquivo/pasta mais recente em output/.
+    """
+    if ciclo_override:
+        ano, mes = (int(x) for x in ciclo_override.split('-'))
+        referencia = date(ano, mes, 1)
+    else:
+        referencia = date.today()
+    return referencia.month, referencia.year, MESES[referencia.month], referencia.strftime('%Y-%m')
 
 def build_paragraphs(entry, mes, ano, mes_extenso):
     classificacao = entry.get('classificacao', 'Regular')
@@ -442,6 +454,19 @@ def build_relatorio_execucao_html(template_html, stats, ongs_detalhes, mes_exten
     return html
 
 def main():
+    parser = argparse.ArgumentParser(description='Envio mensal de relatórios de transparência por e-mail')
+    parser.add_argument(
+        '--ciclo', default=None,
+        help=(
+            'Rótulo do ciclo (YYYY-MM) usado no assunto/corpo do e-mail e nos '
+            'caminhos gold/{ciclo}/pdf/... dos links e anexos. Não afeta de onde '
+            'os dados de entrada (JSON de ONGs, scores, PDFs) são lidos — isso '
+            'continua usando o arquivo/pasta mais recente em output/. '
+            'Default: mês atual (comportamento original).'
+        ),
+    )
+    args = parser.parse_args()
+
     # Proteção contra disparo acidental
     if os.environ.get('SEND_REPORTS_ENABLED', '').lower() != 'true':
         logger.warning(
@@ -462,7 +487,13 @@ def main():
         'starttls': os.environ.get('AIRFLOW__SMTP__SMTP_STARTTLS', 'True').lower() == 'true',
     }
 
-    mes, ano, mes_extenso, mes_ano_str = mes_ano()
+    mes, ano, mes_extenso, mes_ano_str = mes_ano(args.ciclo)
+    if args.ciclo:
+        logger.warning(
+            'Ciclo sobrescrito manualmente: rotulando/publicando como "%s" '
+            '(dados de entrada continuam vindo do arquivo/pasta mais recente em output/)',
+            mes_ano_str,
+        )
 
     # Carregar dados
     ong_path = find_latest('oscs_etransparente_*.json')
