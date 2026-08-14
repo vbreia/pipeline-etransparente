@@ -482,7 +482,7 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None, ciclo_override=None
     if badges.get('cebas'):
         _badges_parts.append(f'<span class="pill" style="{badge_pill_style}">CEBAS</span>')
     if badges.get('utilidade_publica'):
-        _badges_parts.append(f'<span class="pill" style="{badge_pill_style}">Utilidade Pública Federal</span>')
+        _badges_parts.append(f'<span class="pill" style="{badge_pill_style}">Utilidade Pública</span>')
     certificacoes_html = ''
     if _badges_parts:
         certificacoes_html = (
