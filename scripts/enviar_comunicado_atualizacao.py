@@ -42,13 +42,14 @@ TEMPLATE_PATH = os.path.join(BASE_DIR, 'assets', 'email_template_idc_v3.html')
 ASSUNTO = "Atualização da plataforma etransparente.org"
 
 # Conteúdo aprovado pela presidência do IDC em 24/08/2026, condensado nos 4
-# parágrafos que o template padrão suporta.
+# parágrafos que o template padrão suporta (sem reescrever nenhuma frase — só
+# agrupando blocos aprovados dentro do mesmo <p> onde necessário).
 PARAGRAFO_1 = (
     "O Instituto de Direito Coletivo (IDC) atualizou a plataforma etransparente.org "
     "com novos recursos de transparência e controle de qualidade dos dados. Cada "
-    "relatório mensal agora exibe a versão da metodologia que o gerou, e notas de "
-    "ciclos com versões diferentes deixam de ser diretamente comparáveis entre si "
-    "quando isso acontecer."
+    "relatório mensal agora exibe a versão da metodologia que o gerou. Se por algum "
+    "motivo precisarmos mudar a forma de calcular a pontuação no futuro por mudança "
+    "normativa, por exemplo, a alteração fica registrada e visível em cada relatório."
 )
 PARAGRAFO_2 = (
     "Adicionamos um canal direto para reportar qualquer divergência percebida nos "
@@ -62,9 +63,17 @@ PARAGRAFO_3 = (
     "disponível, não um PDF."
 )
 PARAGRAFO_4 = (
-    "Essas mudanças fazem parte do nosso compromisso contínuo com a precisão e a "
-    "transparência dos dados que a plataforma apresenta. Qualquer dúvida, escreva "
-    "para comunicacao@direitocoletivo.org.br."
+    'Presando sempre pela transparência, mantemos um '
+    '<a href="https://medium.com/@fastencoding/o-que-%C3%A9-um-changelog-5e20973324cd" '
+    'style="color:#1a3a5c;text-decoration:underline;">changelog</a> público das '
+    'mudanças na plataforma, disponível '
+    '<a href="https://github.com/vbreia/pipeline-etransparente/blob/main/CHANGELOG.md" '
+    'style="color:#1a3a5c;text-decoration:underline;">nesse link</a>. Publicamos ali '
+    "cada correção e cada novo recurso, com data e descrição. Essas mudanças fazem "
+    "parte do nosso compromisso contínuo com a precisão e a transparência dos dados "
+    "que a plataforma apresenta. Qualquer dúvida, escreva para "
+    '<a href="mailto:comunicacao@direitocoletivo.org.br" '
+    'style="color:#1a3a5c;text-decoration:underline;">comunicacao@direitocoletivo.org.br</a>.'
 )
 
 
