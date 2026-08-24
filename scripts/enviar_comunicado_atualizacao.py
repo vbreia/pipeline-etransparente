@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
 Envia o comunicado institucional de atualização da plataforma para todas as
-OSCs cadastradas com e-mail. Reaproveita a função enviar_email() já existente
-em send_reports.py — não duplica lógica de SMTP.
+OSCs cadastradas com e-mail. Reaproveita o template padrão de e-mail do IDC
+(assets/email_template_idc_v3.html) e a função enviar_email() já existente em
+send_reports.py — não duplica lógica de SMTP nem de layout.
 
 Diferente do send_reports.py (relatório mensal, um por OSC com PDF anexado),
-este script manda o MESMO texto para todas as OSCs, sem anexo.
+este script manda o MESMO conteúdo para todas as OSCs, sem anexo — só muda a
+saudação personalizada, igual ao padrão já usado no relatório mensal.
 
 Proteções (mesmo padrão de send_reports.py):
   - COMUNICADO_ENABLED=true é obrigatório para enviar de verdade.
@@ -23,7 +25,6 @@ Uso:
         airflow-scheduler bash -c "cd /home/airflow && python3 scripts/enviar_comunicado_atualizacao.py"
 """
 import glob
-import html as _html
 import json
 import logging
 import os
@@ -31,51 +32,74 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Reaproveita a função de envio já validada em send_reports.py — não duplica lógica de SMTP.
-from send_reports import enviar_email  # noqa: E402
+# Reaproveita a função de envio e a constante de descadastro já validadas em
+# send_reports.py — não duplica lógica de SMTP nem de layout.
+from send_reports import enviar_email, REMOVIDO, BANNER_IMG_RE  # noqa: E402
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEMPLATE_PATH = os.path.join(BASE_DIR, 'assets', 'email_template_idc_v3.html')
 
 ASSUNTO = "Atualização da plataforma etransparente.org"
 
-# Conteúdo aprovado pela presidência do IDC em 24/08/2026.
-CORPO_TEXTO = """Prezados(as),
-
-O Instituto de Direito Coletivo (IDC) atualizou a plataforma etransparente.org com novos
-recursos de transparência e controle de qualidade dos dados.
-
-Cada relatório mensal agora exibe a versão da metodologia que o gerou. Se mudarmos a forma de
-calcular a pontuação no futuro, essa mudança fica registrada e visível em cada relatório.
-Notas de ciclos com versões diferentes deixam de ser diretamente comparáveis entre si, e o
-relatório vai sinalizar isso quando acontecer.
-
-Adicionamos um canal direto para reportar qualquer divergência percebida nos dados. O botão
-"Notou algo errado? Reporte aqui" aparece no PDF do relatório, no e-mail mensal e no painel de
-acompanhamento, já preenchido com os dados do relatório específico para agilizar nossa
-resposta.
-
-Passamos também a aceitar documentos nos formatos JPG e PNG, além de PDF, DOC e DOCX. Muitas
-organizações só têm foto ou digitalização do documento disponível, não um PDF.
-
-Essas mudanças fazem parte do nosso compromisso contínuo com a precisão e a transparência dos
-dados que a plataforma apresenta.
-
-Qualquer dúvida, escreva para comunicacao@direitocoletivo.org.br.
-
-Atenciosamente,
-Equipe etransparente.org
-Instituto de Direito Coletivo"""
+# Conteúdo aprovado pela presidência do IDC em 24/08/2026, condensado nos 4
+# parágrafos que o template padrão suporta.
+PARAGRAFO_1 = (
+    "O Instituto de Direito Coletivo (IDC) atualizou a plataforma etransparente.org "
+    "com novos recursos de transparência e controle de qualidade dos dados. Cada "
+    "relatório mensal agora exibe a versão da metodologia que o gerou, e notas de "
+    "ciclos com versões diferentes deixam de ser diretamente comparáveis entre si "
+    "quando isso acontecer."
+)
+PARAGRAFO_2 = (
+    "Adicionamos um canal direto para reportar qualquer divergência percebida nos "
+    'dados. O botão "Notou algo errado? Reporte aqui" aparece no PDF do relatório, '
+    "no e-mail mensal e no painel de acompanhamento, já preenchido com os dados do "
+    "relatório específico para agilizar nossa resposta."
+)
+PARAGRAFO_3 = (
+    "Passamos também a aceitar documentos nos formatos JPG e PNG, além de PDF, DOC "
+    "e DOCX. Muitas organizações só têm foto ou digitalização do documento "
+    "disponível, não um PDF."
+)
+PARAGRAFO_4 = (
+    "Essas mudanças fazem parte do nosso compromisso contínuo com a precisão e a "
+    "transparência dos dados que a plataforma apresenta. Qualquer dúvida, escreva "
+    "para comunicacao@direitocoletivo.org.br."
+)
 
 
-def montar_html(corpo_texto: str) -> str:
-    """Converte o texto plano em HTML simples, um <p> por parágrafo."""
-    paragrafos = corpo_texto.strip().split('\n\n')
-    corpo_html = ''.join(
-        f'<p style="margin:0 0 16px;font-family:Arial,sans-serif;font-size:14px;'
-        f'line-height:1.6;color:#1e2a3a;">{_html.escape(p).replace(chr(10), "<br>")}</p>'
-        for p in paragrafos
+def render_comunicado(template_html: str, nome_ong: str, url_ong: str) -> str:
+    """Monta o e-mail de comunicado usando o mesmo template/estilo do relatório
+    mensal, com banner de título próprio e saudação personalizada por OSC."""
+    banner_html = (
+        '<table role="presentation" border="0" cellpadding="0" cellspacing="0" '
+        'width="100%"><tr><td align="center" '
+        'style="background-color:#1a3a5c;padding:32px 24px;">'
+        '<h1 style="color:#ffffff;font-size:20px;margin:0;font-weight:700;'
+        'font-family:\'Montserrat\',Arial,sans-serif;letter-spacing:1px;">'
+        'ATUALIZAÇÃO DA PLATAFORMA</h1>'
+        '</td></tr></table>'
     )
-    return f'<div style="max-width:600px;margin:0 auto;padding:24px;">{corpo_html}</div>'
+    saudacao = (
+        f'pessoa responsável pela instituição '
+        f'<a href="{url_ong}" style="color:#1a3a5c;font-weight:700;text-decoration:none;">'
+        f'{nome_ong.title()}</a> '
+        f'na plataforma etransparente.org'
+    )
+    html = template_html
+    html = BANNER_IMG_RE.sub(banner_html, html)
+    html = html.replace('{{name}}', saudacao)
+    html = html.replace('{{paragrafo_1}}', PARAGRAFO_1)
+    html = html.replace('{{paragrafo_2}}', PARAGRAFO_2)
+    html = html.replace('{{paragrafo_3}}', PARAGRAFO_3)
+    html = html.replace('{{paragrafo_4}}', PARAGRAFO_4)
+    html = html.replace('{{link_cta}}', 'https://etransparente.org')
+    html = html.replace('{{texto_cta}}', 'Conheça a plataforma etransparente.org')
+    html = html.replace('{{titulo_post}}', ASSUNTO)
+    html = html.replace('{{pagina alternativa}}', '')
+    html = html.replace('{{descadastro}}', REMOVIDO)
+    html = html.replace('{{link_report_erro}}', '')
+    return html
 
 
 def find_latest(pattern: str) -> str | None:
@@ -111,19 +135,23 @@ def main():
         'starttls': os.environ.get('AIRFLOW__SMTP__SMTP_STARTTLS', 'True').lower() == 'true',
     }
 
+    with open(TEMPLATE_PATH, 'r', encoding='utf-8') as f:
+        template_html = f.read()
+
     ong_path = find_latest('oscs_etransparente_*.json')
     if not ong_path:
         logger.error('Nenhum arquivo oscs_etransparente_*.json encontrado em output/.')
         return
 
     ongs = carregar_ongs(ong_path)
-    html_body = montar_html(CORPO_TEXTO)
 
     if test_mode:
+        amostra = ongs[0] if ongs else {'nome': 'OSC de teste', 'url': 'https://etransparente.org'}
+        html_body = render_comunicado(template_html, amostra.get('nome', ''), amostra.get('url', ''))
         logger.warning(
-            'COMUNICADO_TEST_MODE ativo: enviando 1 e-mail de amostra para %s, '
+            'COMUNICADO_TEST_MODE ativo: enviando 1 e-mail de amostra (%s) para %s, '
             'em vez de %d e-mails reais.',
-            test_email, len(ongs),
+            amostra.get('nome', ''), test_email, len(ongs),
         )
         enviar_email(smtp_config, test_email, f'[TESTE] {ASSUNTO}', html_body)
         logger.info('E-mail de teste enviado para %s', test_email)
@@ -136,11 +164,13 @@ def main():
     for ong in ongs:
         nome = ong.get('nome', '').strip()
         email = ong.get('email', '').strip()
+        url_ong = ong.get('url', 'https://etransparente.org')
         if not email:
             sem_email += 1
             logger.warning('Sem e-mail cadastrado: %s', nome)
             continue
         try:
+            html_body = render_comunicado(template_html, nome, url_ong)
             enviar_email(smtp_config, email, ASSUNTO, html_body)
             enviados += 1
             logger.info('Comunicado enviado: %s (%s)', nome, email)
