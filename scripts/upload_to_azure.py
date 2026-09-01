@@ -11,7 +11,7 @@ import os
 import glob
 import json
 import logging
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from azure.storage.blob import BlobServiceClient, CorsRule
 
@@ -54,7 +54,22 @@ def main():
     )
     args = parser.parse_args()
 
-    month_leitura = date.today().strftime('%Y-%m')
+    def _mes_anterior_ao_atual() -> str:
+        """Mês/ano civil imediatamente anterior ao atual (YYYY-MM). Um ciclo
+        mensal, por padrão, resume o mês que acabou de fechar — não o mês que
+        está começando (ver incidente de 01/09/2026, mesmo ajuste feito em
+        dash.py/generate_silver.py). Só se aplica quando --ciclo não é
+        passado explicitamente."""
+        primeiro_dia_mes_atual = date.today().replace(day=1)
+        ultimo_dia_mes_anterior = primeiro_dia_mes_atual - timedelta(days=1)
+        return ultimo_dia_mes_anterior.strftime('%Y-%m')
+
+    # Quando --ciclo é passado explicitamente (ex.: reenvio de errata), os
+    # dados de entrada locais continuam vindo do mês REAL atual (onde a
+    # correção foi de fato gerada hoje). Sem --ciclo, o padrão passa a ser o
+    # mês anterior — inclui o nome do arquivo oscs_views_{X}.json esperado,
+    # que corresponde ao que dash.py já usa por padrão nesse mesmo cenário.
+    month_leitura = date.today().strftime('%Y-%m') if args.ciclo else _mes_anterior_ao_atual()
     ciclo_publicacao = args.ciclo if args.ciclo else month_leitura
     if args.ciclo:
         logger.warning(

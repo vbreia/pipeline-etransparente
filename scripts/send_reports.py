@@ -114,12 +114,18 @@ def mes_ano(ciclo_override=None):
     usado para exibição e caminho de publicação — não afeta de onde os dados de
     entrada (JSON de ONGs, scores, PDFs) são lidos, que continuam vindo do
     arquivo/pasta mais recente em output/.
+
+    Sem ciclo_override, o padrão é o mês anterior ao atual — um relatório
+    mensal resume o mês que acabou de fechar, não o mês que está começando
+    (ver incidente de 01/09/2026: envio automático no dia 1º com views
+    zeradas porque usava o mês corrente, ainda sem dado acumulado).
     """
     if ciclo_override:
         ano, mes = (int(x) for x in ciclo_override.split('-'))
         referencia = date(ano, mes, 1)
     else:
-        referencia = date.today()
+        primeiro_dia_mes_atual = date.today().replace(day=1)
+        referencia = primeiro_dia_mes_atual - timedelta(days=1)
     return referencia.month, referencia.year, MESES[referencia.month], referencia.strftime('%Y-%m')
 
 def build_paragraphs(entry, mes, ano, mes_extenso):

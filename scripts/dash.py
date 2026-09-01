@@ -18,7 +18,7 @@ import io
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import quote as _url_quote
 
 try:
@@ -1187,12 +1187,30 @@ def main():
         print("Aviso: nenhum arquivo de scores encontrado. Usando valores padrão.")
 
     ts = datetime.now().strftime('%Y%m%d%H%M%S')
-    data_emissao = args.ciclo if args.ciclo else datetime.now().strftime('%Y-%m')
+
+    def _mes_anterior_ao_atual() -> str:
+        """Retorna o mês/ano civil imediatamente anterior ao atual, no formato
+        YYYY-MM. Usado como ciclo padrão: um relatório mensal, por definição,
+        resume o mês que acabou de fechar — não o mês que está começando.
+        Sem isso, um relatório gerado no dia 1º de qualquer mês sempre
+        aparece com visualizações zeradas, mesmo quando o mês anterior teve
+        tráfego real (ver incidente de 01/09/2026)."""
+        primeiro_dia_mes_atual = datetime.now().replace(day=1)
+        ultimo_dia_mes_anterior = primeiro_dia_mes_atual - timedelta(days=1)
+        return ultimo_dia_mes_anterior.strftime('%Y-%m')
+
+    data_emissao = args.ciclo if args.ciclo else _mes_anterior_ao_atual()
     if args.ciclo:
         print(
             f'Ciclo sobrescrito manualmente: rotulando/publicando relatórios como '
             f'"{data_emissao}" (dados de entrada lidos do arquivo mais recente em output/, '
             f'mês real atual: {datetime.now().strftime("%Y-%m")})'
+        )
+    else:
+        print(
+            f'Ciclo padrão (sem --ciclo): usando o mês anterior ao atual — '
+            f'"{data_emissao}" (mês real atual: {datetime.now().strftime("%Y-%m")}). '
+            f'Um relatório mensal resume o mês que acabou de fechar.'
         )
     # Usar /home/airflow como base se existir (volume Docker), fallback para cwd
     _base = '/home/airflow' if os.path.exists('/home/airflow/output') else os.getcwd()
