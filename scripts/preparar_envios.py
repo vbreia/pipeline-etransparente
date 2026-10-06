@@ -115,6 +115,21 @@ def conferir_validacao(validacao: dict, ciclo: str, sha_relatorios: str, sha_vie
     return motivos
 
 
+def motivo_para_nao_repreparar(manifesto_atual: dict | None, estados: list[str | None]) -> str | None:
+    """None se pode preparar de novo; senão, o motivo.
+
+    Recusa se a preparação atual é REAL e algum e-mail já saiu ou está saindo.
+    Se a preparação atual é ensaio, tudo foi para o endereço de teste: pode refazer.
+    """
+    saiu = any(e in ('enviado', 'enviando') for e in estados)
+    if not saiu:
+        return None
+    if manifesto_atual and manifesto_atual.get('modo_teste'):
+        return None
+    return ('o ciclo já teve e-mails REAIS enviados — refazer duplicaria envios às OSCs. '
+            'Tratamento manual necessário (ver doc/ENVIO_COM_APROVACAO.md).')
+
+
 def avisar_ciclo_pronto(manifesto: dict, amostra: list[dict], validacao: dict) -> None:
     """E-mail interno para presidência, transparência e comunicação (usa o SMTP da VM)."""
     import html as _h
@@ -198,14 +213,19 @@ def main():
     cont = cliente.get_container_client(CONTAINER)
     prefixo = f'envios/{ciclo}/'
 
-    # 2. Nunca preparar de novo um ciclo em que algum e-mail JÁ SAIU (evita duplicidade).
-    #    Se o envio foi interrompido por bloqueio sem nenhum e-mail enviado, a
-    #    nova preparação arquiva os status antigos e recomeça.
+    # 2. Nunca preparar de novo um ciclo em que algum e-mail REAL já saiu (evita duplicidade).
+    #    Envios de ENSAIO (foram todos para o endereço de teste) não contam: depois de um
+    #    ensaio o ciclo pode ser preparado de verdade. Os status antigos são arquivados.
+    manifesto_atual = None
+    b_man = cont.get_blob_client(prefixo + 'manifesto.json')
+    if b_man.exists():
+        manifesto_atual = json.loads(b_man.download_blob().readall())
     status_antigos = list(cont.list_blobs(name_starts_with=prefixo + 'status/'))
-    for b in status_antigos:
-        if json.loads(cont.get_blob_client(b.name).download_blob().readall()).get('estado') in ('enviado', 'enviando'):
-            raise SystemExit(f'O ciclo {ciclo} já teve e-mails enviados — preparação recusada para evitar '
-                             f'duplicidade. Tratamento manual necessário (ver doc/CICLO_E_VALIDACAO.md).')
+    estados = [json.loads(cont.get_blob_client(b.name).download_blob().readall()).get('estado')
+               for b in status_antigos]
+    motivo = motivo_para_nao_repreparar(manifesto_atual, estados)
+    if motivo:
+        raise SystemExit(f'Preparação de {ciclo} recusada: {motivo}')
 
     # 3. Montar os e-mails
     ano, mes = (int(x) for x in ciclo.split('-'))

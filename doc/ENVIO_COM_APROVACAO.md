@@ -74,7 +74,7 @@ unset SWA_CLI_DEPLOYMENT_TOKEN
 ```bash
 npm i -g azure-functions-core-tools@4      # uma vez
 az login                                   # uma vez
-cd functions && func azure functionapp publish etransparente-envio
+cd functions && func azure functionapp publish etransparente-envio --python   # --python é obrigatório (sem local.settings.json o func não detecta a linguagem)
 ```
 
 ## Operação
@@ -97,3 +97,7 @@ docker exec -w /home/airflow airflow-scheduler python scripts/preparar_envios.py
   --ciclo 2026-09 --destino-teste comunicacao@direitocoletivo.org.br
 ```
 A página mostra a faixa "ENSAIO". Confirmar por ela envia tudo só para o endereço de teste.
+
+Depois do ensaio, o **mesmo ciclo** pode ser preparado de verdade (sem `--destino-teste`): envios de
+ensaio não contam como envio real, e os registros do ensaio são arquivados em `historico/`.
+Já um ciclo com e-mail **real** enviado nunca é preparado de novo (evita duplicidade).

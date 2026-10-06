@@ -5,6 +5,7 @@ import pytest
 
 from preparar_envios import (
     calcular_codigo, conferir_validacao, e_idc, elegivel, escolher_amostra, media_diaria,
+    motivo_para_nao_repreparar,
 )
 
 
@@ -125,3 +126,15 @@ def test_arquivos_alterados_depois_da_validacao_recusa():
 
 def test_validacao_de_outro_ciclo_recusa():
     assert conferir_validacao(VALIDACAO_OK, '2026-11', 'rel', 'views')
+
+
+@pytest.mark.parametrize('manifesto,estados,pode', [
+    (None, [], True),                                              # nunca preparado
+    ({'modo_teste': False}, ['pendente', 'falhou_definitivo'], True),  # nada saiu
+    ({'modo_teste': False}, ['enviado', 'pendente'], False),       # real já saiu: NUNCA refazer
+    ({'modo_teste': False}, ['enviando'], False),                  # real saindo agora
+    ({}, ['enviado'], False),                                      # manifesto antigo sem a marca = real
+    ({'modo_teste': True}, ['enviado', 'enviado'], True),          # ensaio concluído: pode preparar o real
+])
+def test_repreparar_so_depois_de_ensaio_ou_sem_envios(manifesto, estados, pode):
+    assert (motivo_para_nao_repreparar(manifesto, estados) is None) is pode
