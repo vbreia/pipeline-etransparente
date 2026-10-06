@@ -346,3 +346,14 @@ def test_copias_do_comum_identicas():
     for copia in (RAIZ / 'api' / 'shared_code' / 'comum.py', RAIZ / 'functions' / 'comum.py'):
         texto = copia.read_text(encoding='utf-8')
         assert texto.split('\n', 1)[1] == canon, f'{copia} desatualizada — rode envio/sincronizar_copias.py'
+
+
+def test_erro_interno_mostra_tipo_sem_vazar_chave(mundo, monkeypatch):
+    from shared_code import comum as c_api
+
+    def quebra():
+        raise ValueError('Connection string inválida: AccountName=x;AccountKey=SEGREDO123;EndpointSuffix=y')
+    monkeypatch.setattr(c_api, 'container', quebra)
+    st, b = chamar('status', req('status'))
+    assert st == 500 and b['detalhe'].startswith('ValueError: Connection string inválida')
+    assert 'SEGREDO123' not in json.dumps(b) and 'AccountKey=***' in b['detalhe']

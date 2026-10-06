@@ -4,8 +4,6 @@ da amostra e devolve um link de leitura válido por 15 minutos.
 A conferência só é aceita na aprovação se o PDF tiver sido aberto por AQUI —
 o registro fica no servidor, não depende do navegador.
 """
-import logging
-
 import azure.functions as func
 
 from shared_code import api_util as u
@@ -35,6 +33,5 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             'ip': comum.ip_cliente(req.headers),
         })
         return u.resposta({'ok': True, 'url': comum.url_leitura_temporaria(item['pdf_blob'])})
-    except Exception:
-        logging.exception('Erro em /api/abrir-pdf')
-        return u.erro('Não foi possível abrir o PDF.', 500)
+    except Exception as e:
+        return u.falha('/api/abrir-pdf', 'Não foi possível abrir o PDF.', e)

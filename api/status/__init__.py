@@ -2,8 +2,6 @@
 
 Não devolve endereços de e-mail das OSCs nem o HTML dos e-mails.
 """
-import logging
-
 import azure.functions as func
 
 from shared_code import api_util as u
@@ -76,9 +74,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             'pode_aprovar_motivos': comum.motivos_para_nao_aprovar(estado, codigo) if codigo else [],
             'oscs': nomes,
         })
-    except Exception:
-        logging.exception('Erro em /api/status')
-        return u.erro('Erro ao carregar o estado do envio.', 500)
+    except Exception as e:
+        return u.falha('/api/status', 'Erro ao carregar o estado do envio.', e)
 
 
 def _usuario(p):

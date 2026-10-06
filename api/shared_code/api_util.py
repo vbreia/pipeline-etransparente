@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 
 import azure.functions as func
@@ -17,6 +18,21 @@ def resposta(dados, status: int = 200) -> func.HttpResponse:
 
 def erro(mensagem: str, status: int, **extra) -> func.HttpResponse:
     return resposta({'ok': False, 'erro': mensagem, **extra}, status)
+
+
+_SEGREDOS = re.compile(r'(AccountKey|SharedAccessSignature|sig|password|senha)=[^;&\s]+', re.I)
+
+
+def detalhe_tecnico(exc: BaseException) -> str:
+    """Tipo e mensagem curta da exceção, sem chaves/assinaturas — para diagnosticar sem abrir logs."""
+    msg = _SEGREDOS.sub(r'\1=***', str(exc)).strip().splitlines()
+    return f'{type(exc).__name__}: {msg[0][:200] if msg else ""}'.rstrip(': ')
+
+
+def falha(contexto: str, mensagem: str, exc: BaseException) -> func.HttpResponse:
+    """Erro interno: registra no log e devolve a mensagem + detalhe técnico sem segredos."""
+    logging.exception('Erro em %s', contexto)
+    return erro(mensagem, 500, detalhe=detalhe_tecnico(exc))
 
 
 def corpo(req: func.HttpRequest) -> dict:

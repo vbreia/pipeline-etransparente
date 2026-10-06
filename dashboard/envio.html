@@ -161,7 +161,7 @@ async function api(caminho, corpo) {
   const r = await fetch(caminho, corpo ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(corpo)} : {});
   let dados = {};
   try { dados = await r.json(); } catch (e) {}
-  if (!r.ok) { const e = new Error(dados.erro || ('Erro ' + r.status)); e.motivos = dados.motivos || []; throw e; }
+  if (!r.ok) { const e = new Error((dados.erro || ('Erro ' + r.status)) + (dados.detalhe ? ' [' + dados.detalhe + ']' : '')); e.motivos = dados.motivos || []; throw e; }
   return dados;
 }
 

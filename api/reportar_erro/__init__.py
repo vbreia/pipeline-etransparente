@@ -6,8 +6,6 @@ conferência) ou `scripts/desbloquear_envio.py` com justificativa registrada.
 
 Se o envio já tiver começado, a Function para de enviar os e-mails restantes.
 """
-import logging
-
 import azure.functions as func
 
 from shared_code import api_util as u
@@ -55,9 +53,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 rodape='Nenhum novo e-mail será enviado até a equipe técnica analisar. '
                        'A equipe técnica foi notificada.', cor='#b45309'))
         return u.resposta({'ok': True})
-    except Exception:
-        logging.exception('Erro em /api/reportar-erro')
-        return u.erro('Não foi possível registrar o erro. Avise a equipe técnica diretamente.', 500)
+    except Exception as e:
+        return u.falha('/api/reportar-erro', 'Não foi possível registrar o erro. Avise a equipe técnica diretamente.', e)
 
 
 def _notificar_tecnico(cont, ciclo, rotulo, r, estado, ja_enviados):

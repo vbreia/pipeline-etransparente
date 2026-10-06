@@ -14,8 +14,6 @@ Grava aprovacao.json (uma única vez — gravação concorrente perde), enfileir
 um e-mail por OSC e avisa presidência, transparência e comunicação.
 """
 import json
-import logging
-
 import azure.functions as func
 
 from shared_code import api_util as u
@@ -84,9 +82,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         _notificar(ciclo, estado['manifesto'], aprovacao, n)
         return u.resposta({'ok': True, 'enfileirados': n})
-    except Exception:
-        logging.exception('Erro em /api/aprovar')
-        return u.erro('Erro ao confirmar o envio. Nada foi enviado se a confirmação não aparecer na página.', 500)
+    except Exception as e:
+        return u.falha('/api/aprovar', 'Erro ao confirmar o envio. Nada foi enviado se a confirmação não aparecer na página.', e)
 
 
 def _notificar(ciclo, manifesto, a, n):
