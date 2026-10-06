@@ -20,7 +20,11 @@ Mantido por Victor Breia com equipe de voluntários.
 etransparente.org → ong_extractor.py → generate_transparency_scores.py → dash.py → output/
 ```
 
-Orquestrado pelo **Airflow** (DAG `ong_pipeline`, diário às 02:00 UTC) dentro de **Docker Compose**.
+Orquestrado pelo **Airflow** (DAG `ong_pipeline`, mensal, **dia 3 às 11:30 UTC**) dentro de **Docker Compose**.
+
+> **Regra do ciclo:** o mês do relatório (`--ciclo YYYY-MM`) é decidido só pela DAG e repassado
+> a todos os scripts. Nenhum script calcula ciclo pela data do sistema. Ver `doc/CICLO_E_VALIDACAO.md`
+> e `tests/test_contrato_ciclo.py`.
 
 ---
 
@@ -53,17 +57,16 @@ pipeline-etransparente/
 
 ## DAG: ong_pipeline
 
-Três tarefas sequenciais com retry (2x, intervalo 5min):
+Gera, valida e **prepara** o envio — não envia. Retry 2x (5 min), exceto validações:
 
 ```
-extract_ong_data → generate_transparency_scores → generate_dashboards
+validar_data → extract_ong_data → generate_transparency_scores → fetch_ga4_views
+→ generate_dashboards → upload_to_azure → generate_silver → detect_doc_changes
+→ validar_ciclo → preparar_envios
 ```
 
-| Tarefa | Script | Duração típica |
-|--------|--------|----------------|
-| Extração | `ong_extractor.py` | ~2 min |
-| Scoring | `generate_transparency_scores.py` | < 1 seg |
-| Dashboards | `dash.py` | < 1 seg |
+O envio às OSCs ocorre fora da DAG, após conferência por amostra e confirmação da presidência
+(`dashboard.etransparente.org/envio`). Detalhes: `doc/CICLO_E_VALIDACAO.md`.
 
 ---
 
@@ -170,11 +173,14 @@ docker logs airflow-scheduler --tail 50
 # Verificar instalação do Playwright/Chromium
 docker exec airflow-scheduler python -c "from playwright.sync_api import sync_playwright; print('OK')"
 
-# Status dos containers
-docker-compose ps
+# Status dos containers (sempre Compose V2 — `docker compose`, sem hífen)
+docker compose ps
 
 # Parar tudo
-docker-compose down
+docker compose down
+
+# Testes
+python -m pytest tests
 ```
 
 ---
@@ -221,4 +227,4 @@ Ao sugerir mudanças, considerar:
 
 ---
 
-*Atualizado em: 2026-06-16 | Versão: 1.1*
+*Atualizado em: 2026-10-06 | Versão: 1.2*

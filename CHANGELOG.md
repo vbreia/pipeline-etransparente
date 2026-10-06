@@ -13,6 +13,42 @@ cada tipo de mudança. Em resumo:
 
 ---
 
+## [1.6.0] - 2026-10-06
+
+### Corrigido
+
+- **Visualizações zeradas nos relatórios de setembro e outubro/2026.** Os relatórios enviados
+  em 01/09 e 01/10/2026 mostraram 0 visualizações para quase todas as OSCs, embora o painel
+  interno mostrasse os números corretos. Causa: cada etapa do sistema calculava sozinha "qual
+  é o mês do relatório". Em 01/09, a etapa de visualizações usava o mês que estava começando
+  (sem dados ainda). A correção aplicada naquele dia ajustou quatro etapas e deixou a de
+  visualizações de fora; em 01/10 os PDFs foram montados com um arquivo gerado em 01/09, com
+  poucas horas de dados. Agora o mês é decidido em um único lugar e repassado a todas as etapas.
+  Os relatórios de setembro foram regerados e conferidos contra o Google Analytics (IDC: 12;
+  Pestalozzi de Magé: 33; Lar de Daniel Cristovão: 29; Santa Cecília: 24; Vicente Moretti: 23
+  — idênticos nas três fontes).
+- **"Média diária: 0" com visualizações reais.** A média era arredondada para inteiro; com
+  menos de 15 visualizações no mês aparecia 0. Agora usa uma casa decimal (ex.: 0,4).
+- **Feed de alterações de documentos** comparava o mês corrente em vez do mês do relatório.
+
+### Adicionado
+
+- **Validação automática antes de qualquer envio.** Cada ciclo passa por 12 verificações — entre
+  elas: conferência das visualizações com uma segunda consulta independente ao Google Analytics,
+  igualdade entre o número impresso no PDF, o painel e o dado de origem, mesma quantidade de OSCs
+  em todas as etapas e PDF presente para toda OSC que recebe e-mail. Qualquer falha bloqueia o
+  envio daquele mês.
+- **Envio só após conferência humana.** Os relatórios passam a ser preparados, não enviados,
+  pelo processamento automático. O envio depende de conferência por amostra e confirmação da
+  presidência do IDC.
+- **Testes automáticos** a cada alteração no código, incluindo um teste que impede qualquer
+  etapa de voltar a calcular o mês do relatório por conta própria.
+
+### Alterado
+
+- **Data de processamento: dia 3 de cada mês** (antes, dia 1). O Google Analytics leva até 48h
+  para consolidar os acessos do último dia do mês.
+
 ## [1.5.0] - 2026-08-07
 
 ### Adicionado
