@@ -160,7 +160,7 @@ def avisar_ciclo_pronto(manifesto: dict, amostra: list[dict], validacao: dict) -
         + f'<p><b>Amostra para conferência:</b></p><ul>{amostra_html}</ul>'
         '<p>Para conferir e autorizar o envio: '
         '<a href="https://dashboard.etransparente.org/envio">dashboard.etransparente.org/envio</a> '
-        '(acesso da presidência).</p>'
+        '(acesso de quem está autorizado a aprovar).</p>'
         '<p style="font-size:12px;color:#64748b">Mensagem automática do pipeline etransparente.</p></div>'
     )
     msg = MIMEText(corpo, 'html', 'utf-8')

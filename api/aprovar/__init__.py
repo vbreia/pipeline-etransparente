@@ -1,4 +1,4 @@
-"""POST /api/aprovar — a presidência confirma o envio do ciclo.
+"""POST /api/aprovar — uma pessoa autorizada (APROVADORES) confirma o envio do ciclo.
 
 Corpo: {ciclo, codigo, nome_declarado, conferencia: {slug: true, ...}}
 

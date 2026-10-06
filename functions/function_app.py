@@ -2,7 +2,7 @@
 Function de envio (Azure Functions, Python, modelo v2) — `etransparente-envio`.
 
 Roda FORA da VM. Envia exatamente os e-mails que a DAG preparou e a
-presidência confirmou. Não gera nem recalcula nada.
+aprovação confirmou. Não gera nem recalcula nada.
 
 Gatilhos:
   envios         uma mensagem = um e-mail {ciclo, slug, codigo}

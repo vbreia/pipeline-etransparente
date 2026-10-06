@@ -215,7 +215,7 @@ function render() {
     b += banner('erro', 'ph-x-circle', 'Validação automática não aprovada', 'Este ciclo não pode ser enviado. A equipe técnica foi avisada pelo pipeline.');
   } else {
     b += banner('info', 'ph-hourglass', 'Aguardando conferência e confirmação',
-      aprovador ? 'Confira os 3 relatórios abaixo e confirme no final da página.' : 'Somente a presidência pode confirmar o envio. Você pode reportar erros.');
+      aprovador ? 'Confira os 3 relatórios abaixo e confirme no final da página.' : 'Somente as pessoas autorizadas pela gestão podem confirmar o envio. Você pode reportar erros.');
   }
   $('banner').innerHTML = b;
 
@@ -266,7 +266,7 @@ function renderConfirmacao() {
     return;
   }
   if (!aprovador) {
-    $('confirmacao').innerHTML = '<p style="font-size:14px;color:#475569">Somente a presidência pode confirmar o envio deste ciclo.</p>';
+    $('confirmacao').innerHTML = '<p style="font-size:14px;color:#475569">Somente as pessoas autorizadas pela gestão podem confirmar o envio deste ciclo.</p>';
     return;
   }
   const bloqueios = e.pode_aprovar_motivos || [];

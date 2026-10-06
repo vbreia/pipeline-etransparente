@@ -1,7 +1,7 @@
 # Envio com aprovação — operação e implantação
 
 > O envio dos relatórios às OSCs não acontece mais na VM. A DAG prepara; a
-> presidência confere uma amostra e confirma em `dashboard.etransparente.org/envio`;
+> pessoa autorizada (Tatiana, Cinthia ou Victor) confere uma amostra e confirma em `dashboard.etransparente.org/envio`;
 > uma Azure Function envia exatamente o que foi preparado.
 
 ## Peças
@@ -58,9 +58,10 @@ Só no **Static Web App**, mais uma:
 
 | Nome | Valor |
 |---|---|
-| `APROVADORES` | `presidencia@direitocoletivo.org.br` — quem pode conferir e confirmar (vírgula separa mais de um). Vazio = ninguém. |
+| `APROVADORES` | e-mails de login de quem pode conferir e confirmar, separados por vírgula. Vazio = ninguém. |
 
-Para um ensaio conduzido pela equipe técnica, inclua temporariamente o e-mail técnico e **retire ao terminar**.
+Decisão da gestão (06/10/2026): podem aprovar **Tatiana, Cinthia e Victor**. Quem confirma fica registrado
+(nome declarado, conta, IP, horário) e todos recebem o e-mail de confirmação.
 
 ### 2. Publicar o dashboard + API
 
@@ -90,7 +91,7 @@ cd functions && func azure functionapp publish etransparente-envio --python   # 
 ## Operação
 
 - **Dia 3:** a DAG roda; se a validação aprovar, chega o e-mail "Ciclo pronto para conferência".
-- **Presidência:** abre `/envio`, abre os 3 PDFs, marca "Sim", digita o nome, confirma.
+- **Quem aprova** (uma das contas em `APROVADORES`): abre `/envio`, abre os 3 PDFs, marca "Sim", digita o nome, confirma.
 - **Acompanhamento:** a página atualiza sozinha durante o envio; ao fim chega "envio concluído".
 - **Erro reportado:** chega e-mail técnico para comunicacao@. Duas saídas:
   - erro real → corrigir e rodar a DAG de novo (nova preparação = novo código, nova amostra,
