@@ -382,7 +382,10 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None, ciclo_override=None
     if dados_views_disponiveis:
         _chart_data = views_list
         total_visualizacoes = sum(_chart_data)
-        media_diaria = round(total_visualizacoes / len(_chart_data))
+        # Uma casa decimal, vírgula como separador: com tráfego baixo, o
+        # arredondamento inteiro exibia 'Média diária 0' para OSCs com views
+        # reais (ex.: 12 views em 30 dias -> 0,4), lido como dado zerado.
+        media_diaria = f'{total_visualizacoes / len(_chart_data):.1f}'.replace('.', ',')
         chart_labels_js = json.dumps(_chart_labels)
         chart_data_js = json.dumps(_chart_data)
     else:
