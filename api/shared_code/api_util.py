@@ -50,8 +50,20 @@ def usuario(req: func.HttpRequest) -> dict | None:
         return None
 
 
+def aprovadores() -> set[str]:
+    """Contas que podem conferir e confirmar envios: configuração APROVADORES do Static Web App.
+
+    Lista de e-mails separados por vírgula. Vazia/ausente = ninguém aprova (falha fechada).
+    Não usamos o papel do SWA para isso: na prática os papéis personalizados chegavam à API
+    de forma intermitente (06/10/2026) — a mesma sessão ora era aprovadora, ora não.
+    O e-mail da conta vem do cabeçalho de identidade, que é estável.
+    """
+    import os
+    return {e.strip().lower() for e in os.environ.get('APROVADORES', '').split(',') if e.strip()}
+
+
 def e_aprovador(u: dict | None) -> bool:
-    return bool(u) and comum.PAPEL_APROVADOR in u.get('papeis', [])
+    return bool(u) and bool(u.get('email')) and u['email'].lower() in aprovadores()
 
 
 def negar_e_alertar(req: func.HttpRequest, u: dict | None, acao: str) -> func.HttpResponse:

@@ -3,7 +3,7 @@
 Corpo: {ciclo, codigo, nome_declarado, conferencia: {slug: true, ...}}
 
 Só aceita se:
-  - a conta tem o papel aprovador_envio (senão: 403 + alerta à gestão);
+  - a conta está na configuração APROVADORES (senão: 403 + alerta à gestão);
   - o código é o do envio preparado AGORA, a validação está aprovada, não há
     bloqueio e o ciclo ainda não foi confirmado nem começou a ser enviado;
   - TODOS os PDFs da amostra foram abertos por esta conta (registro no servidor)

@@ -21,7 +21,9 @@ e-mails de OSCs e dados de acesso. Fila: `envios` (e `envios-poison`, criada pel
 
 ## Regras garantidas pelo código (e testadas em `tests/test_envio.py`)
 
-- Só contas com o papel `aprovador_envio` confirmam. Outra conta logada que tentar: 403 +
+- Só as contas listadas na configuração `APROVADORES` (Static Web App) conferem e confirmam.
+  O papel `aprovador_envio` do SWA **não** é usado para isso: os papéis personalizados chegavam à API
+  de forma intermitente (06/10/2026). Outra conta logada que tentar: 403 +
   e-mail de alerta (no máximo 1 por conta por hora) para presidência, transparência e comunicação.
 - A confirmação exige que **a própria conta** tenha aberto os 3 PDFs da amostra pela página
   (registro no servidor) e marcado "confere" em todos, mais um nome declarado.
@@ -51,6 +53,14 @@ e-mails de OSCs e dados de acesso. Fila: `envios` (e `envios-poison`, criada pel
 | `EMAIL_TECNICO` | `comunicacao@direitocoletivo.org.br` |
 
 As mesmas 8 configurações vão na **Function App** `etransparente-envio` (Configurações → Variáveis de ambiente).
+
+Só no **Static Web App**, mais uma:
+
+| Nome | Valor |
+|---|---|
+| `APROVADORES` | `presidencia@direitocoletivo.org.br` — quem pode conferir e confirmar (vírgula separa mais de um). Vazio = ninguém. |
+
+Para um ensaio conduzido pela equipe técnica, inclua temporariamente o e-mail técnico e **retire ao terminar**.
 
 ### 2. Publicar o dashboard + API
 

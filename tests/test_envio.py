@@ -113,6 +113,7 @@ def mundo(monkeypatch):
     def enviar_email(para, assunto, corpo, anexo=None, nome_anexo=''):
         emails.append({'para': para, 'assunto': assunto, 'corpo': corpo, 'anexo': anexo})
 
+    monkeypatch.setenv('APROVADORES', 'Presidencia@direitocoletivo.org.br')
     modulos = []
     for nome in ('shared_code.comum', 'comum'):
         m = importlib.import_module(nome)
@@ -162,10 +163,23 @@ def aprovar(nome='Maria da Silva', papeis=APROVADORA, codigo=CODIGO, conferencia
 # ── API: quem pode o quê ────────────────────────────────────────────────────
 
 def test_status_nao_vaza_emails_das_oscs(mundo):
-    st, b = chamar('status', req('status'))
+    st, b = chamar('status', req('status', email='voluntario@direitocoletivo.org.br'))
     assert st == 200 and b['ciclo'] == CICLO and b['envio']['total_emails'] == 4
     assert '@osc.org' not in json.dumps(b)
     assert b['usuario']['aprovador'] is False
+    assert chamar('status', req('status'))[1]['usuario']['aprovador'] is True
+
+
+def test_aprovadora_e_definida_pela_configuracao_nao_pelo_papel(mundo, monkeypatch):
+    # papel aprovador_envio sem estar na lista APROVADORES: recusado
+    st, _ = aprovar(papeis=APROVADORA, email='outra@direitocoletivo.org.br')
+    assert st == 403
+    # na lista, mesmo sem o papel: pode (aqui para no 409 porque os PDFs não foram abertos)
+    st, _ = aprovar(papeis=('etransparente_acesso',))
+    assert st == 409
+    # configuração ausente: ninguém aprova
+    monkeypatch.delenv('APROVADORES')
+    assert aprovar()[0] == 403
 
 
 def test_conta_sem_papel_nao_aprova_e_gestao_e_avisada_uma_vez_por_hora(mundo):
