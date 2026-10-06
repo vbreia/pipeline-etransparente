@@ -63,6 +63,9 @@ Só no **Static Web App**, mais uma:
 Decisão da gestão (06/10/2026): podem aprovar **Tatiana, Cinthia e Victor**. Quem confirma fica registrado
 (nome declarado, conta, IP, horário) e todos recebem o e-mail de confirmação.
 
+Acesso ao dashboard (inclusive para quem aprova): papel `etransparente_acesso`, por convite em
+`etransparente-dashboard` → Gerenciamento de funções. O papel `aprovador_envio` não é mais usado.
+
 ### 2. Publicar o dashboard + API
 
 ```bash
@@ -107,8 +110,25 @@ cd functions && func azure functionapp publish etransparente-envio --python   # 
 docker exec -w /home/airflow airflow-scheduler python scripts/preparar_envios.py \
   --ciclo 2026-09 --destino-teste comunicacao@direitocoletivo.org.br
 ```
+Para o aviso "ciclo pronto" do ensaio ir só para a equipe técnica, acrescente
+`-e NOTIFICAR_GESTAO=comunicacao@direitocoletivo.org.br` ao `docker exec`. Os avisos de
+"confirmado"/"concluído" saem do Azure e seguem a `NOTIFICAR_GESTAO` do SWA e da Function.
+
 A página mostra a faixa "ENSAIO". Confirmar por ela envia tudo só para o endereço de teste.
 
 Depois do ensaio, o **mesmo ciclo** pode ser preparado de verdade (sem `--destino-teste`): envios de
 ensaio não contam como envio real, e os registros do ensaio são arquivados em `historico/`.
 Já um ciclo com e-mail **real** enviado nunca é preparado de novo (evita duplicidade).
+
+## Problemas já vistos (06/10/2026)
+
+| Sintoma | Causa | Solução |
+|---|---|---|
+| `/envio`: "Erro ao carregar… [ModuleNotFoundError: azure.storage]" | `swa deploy` não instala os pacotes da API | publicar com `./envio/publicar_dashboard.sh` |
+| `func publish`: "Can't determine project language" | não há `local.settings.json` no repositório | usar `--python` |
+| Abre PDF, mas "Confirmar" diz "sem permissão" (ou o contrário) | papéis personalizados do SWA chegavam à API de forma intermitente | aprovação passou a usar `APROVADORES` (e-mail) |
+| Página mostra estado antigo | resposta guardada pelo navegador | corrigido (`cache: no-store`); se acontecer, Ctrl+F5 |
+| Colar vários comandos com `read -s` no meio | o `read` consome a linha seguinte como token | rodar o `read -s` sozinho e colar o token depois |
+
+Histórico: o ensaio de 06/10/2026 enviou os 54 relatórios de setembro para comunicacao@ com o PDF
+correto em cada e-mail; em seguida setembro foi preparado de verdade para o reenvio às OSCs.

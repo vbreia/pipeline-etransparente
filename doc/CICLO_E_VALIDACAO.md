@@ -29,8 +29,8 @@
 | `validar_ciclo` | `validar_ciclo.py` | 12 verificações; qualquer bloqueante falhando para a DAG |
 | `preparar_envios` | `preparar_envios.py` | e-mails prontos + amostra + código de validação. **Não envia.** |
 
-O envio às OSCs não está na DAG: acontece depois da conferência e confirmação da
-presidência em `dashboard.etransparente.org/envio` (ver `doc/ENVIO_COM_APROVACAO.md`).
+O envio às OSCs não está na DAG: acontece depois da conferência e confirmação de uma pessoa
+autorizada (configuração `APROVADORES`: Tatiana, Cinthia ou Victor) em `dashboard.etransparente.org/envio` (ver `doc/ENVIO_COM_APROVACAO.md`).
 
 ## As 12 verificações (`validar_ciclo.py`)
 
@@ -72,4 +72,4 @@ python -m pytest tests
 
 `send_reports.py` continua existindo só para emergência: exige `--ciclo` e
 `--confirmo-envio-emergencial`, e recusa enviar se a pasta de PDFs for de outro ciclo.
-Use apenas com aprovação por escrito da presidência.
+Use apenas com aprovação por escrito da gestão, e só se o fluxo de `doc/ENVIO_COM_APROVACAO.md` estiver indisponível.

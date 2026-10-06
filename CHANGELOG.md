@@ -13,6 +13,44 @@ cada tipo de mudança. Em resumo:
 
 ---
 
+## [1.7.0] - 2026-10-06
+
+### Adicionado
+
+- **Envio dos relatórios com conferência e confirmação humana.** O envio mensal às OSCs deixou de
+  ser automático. Depois que o processamento do dia 3 é validado, as pessoas autorizadas pela
+  gestão do IDC recebem um aviso e, na página de envio do painel interno, conferem uma amostra de
+  três relatórios (o do IDC e dois sorteados): abrem cada PDF e comparam visualizações, média
+  diária, nota e classificação com os números do sistema. Só depois de conferir os três e
+  declarar o próprio nome é possível confirmar o envio. Pela decisão da gestão, podem confirmar
+  Tatiana, Cinthia e Victor.
+- **Registro de quem confirmou.** Cada confirmação gera um e-mail para a gestão com o nome
+  declarado, a conta usada, data e hora, IP, localização aproximada, provedor e navegador, além
+  do horário em que cada PDF da amostra foi aberto.
+- **Botão "Reportar erro".** Qualquer pessoa com acesso ao painel pode apontar um número
+  divergente. O envio daquele mês fica bloqueado na hora (inclusive se já tiver começado) e a
+  equipe técnica é avisada.
+- **Alerta de tentativa indevida.** Uma conta sem autorização que tente abrir a conferência ou
+  confirmar um envio é recusada, e a gestão recebe um alerta com os dados do acesso.
+- **Ensaio antes do envio real.** Um mês pode ser preparado em modo de ensaio, com todos os
+  e-mails indo para um endereço interno, para testar o caminho completo sem que nenhuma OSC
+  receba nada.
+
+### Alterado
+
+- **O envio acontece fora do servidor de processamento**, por um serviço na nuvem que envia
+  exatamente o que foi preparado e conferido: antes de cada e-mail, ele verifica se o relatório
+  e a mensagem continuam idênticos ao que foi aprovado e se o mês não foi bloqueado. Um e-mail
+  já enviado nunca é reenviado.
+
+### Corrigido
+
+- **Relatórios de setembro/2026 preparados para reenvio** às OSCs, com as visualizações
+  corretas, pelo novo fluxo — depois de um ensaio completo com os 54 relatórios. O envio
+  acontece quando uma das pessoas autorizadas conferir e confirmar.
+
+---
+
 ## [1.6.0] - 2026-10-06
 
 ### Corrigido
