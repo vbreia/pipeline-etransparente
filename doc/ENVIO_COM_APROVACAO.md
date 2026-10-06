@@ -55,10 +55,19 @@ As mesmas 8 configurações vão na **Function App** `etransparente-envio` (Conf
 ### 2. Publicar o dashboard + API
 
 ```bash
-# token novo: portal → etransparente-dashboard → Gerenciar token de implantação → Redefinir
-swa deploy ./dashboard --api-location ./api --api-language python --api-version 3.11 \
-  --deployment-token "<token>" --env production
+# token: portal → etransparente-dashboard → Gerenciar token de implantação (Redefinir se vazou)
+read -s SWA_CLI_DEPLOYMENT_TOKEN      # cole o token + Enter (não aparece na tela)
+export SWA_CLI_DEPLOYMENT_TOKEN
+./envio/publicar_dashboard.sh
+unset SWA_CLI_DEPLOYMENT_TOKEN
 ```
+
+> Use sempre o script, não `swa deploy` direto: o `swa deploy` **não instala** `api/requirements.txt`
+> e a API quebra com `ModuleNotFoundError: No module named 'azure.storage'` (aconteceu em 06/10/2026).
+> O script instala os pacotes para Linux/Python 3.11 em `api/.python_packages/` (ignorado pelo git).
+>
+> Se a página `/envio` mostrar erro, o texto entre `[...]` no banner é o tipo da falha
+> (chaves e senhas mascaradas) — a API do SWA não tem log visível sem Application Insights.
 
 ### 3. Publicar a Function
 

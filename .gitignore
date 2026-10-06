@@ -181,3 +181,5 @@ docker/*.deb
 scripts/tests
 */__pycache__
 /logs/
+# Pacotes da API instalados pelo envio/publicar_dashboard.sh (não versionar)
+api/.python_packages/
