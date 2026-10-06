@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U airflow"]
@@ -101,7 +101,7 @@ services:
       - ./CHANGELOG.md:/home/airflow/CHANGELOG.md:ro
       - /etc/google:/etc/google:ro
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     restart: always
 
 volumes:
