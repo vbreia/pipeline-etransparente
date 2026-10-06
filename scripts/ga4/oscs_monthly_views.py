@@ -76,9 +76,18 @@ def month_range_from_string(month_str: str) -> Tuple[str, str, List[str]]:
     return start.isoformat(), end.isoformat(), days
 
 
-def default_current_month() -> str:
-    today = date.today()
-    return today.strftime("%Y-%m")
+def default_previous_month() -> str:
+    """Mês civil anterior ao atual (YYYY-MM).
+
+    Precisa bater com o ciclo padrão de dash.py / upload_to_azure.py /
+    send_reports.py / generate_silver.py (corrigidos em aabdf79). Este script
+    ficou de fora daquela correção e continuou buscando o mês corrente: no dia
+    1º isso gera um arquivo do mês novo (vazio), enquanto dash.py procura o
+    arquivo do mês anterior — que só existia na versão gerada no dia 1º do mês
+    anterior, com poucas horas de dados (incidente 01/10/2026).
+    """
+    first_of_this_month = date.today().replace(day=1)
+    return (first_of_this_month - timedelta(days=1)).strftime("%Y-%m")
 
 
 def read_input_json(path: str) -> List[Dict]:
@@ -205,7 +214,7 @@ def main():
     parser.add_argument("--output", help="Output JSON file path")
     args = parser.parse_args()
 
-    month = args.month or default_current_month()
+    month = args.month or default_previous_month()
     start_date, end_date, days = month_range_from_string(month)
 
     input_path = args.input

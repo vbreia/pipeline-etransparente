@@ -1142,6 +1142,50 @@ if (contratosCanvas) {{
     return html, hash_hex, mini_footer_template_html
 
 
+def _validar_views_do_ciclo(views_file, views_by_url, ciclo, permitir=False):
+    """Trava de sanidade: impede gerar (e portanto enviar) relatórios com
+    visualizações GA4 que não representam o ciclo inteiro.
+
+    Falha (exit 1 -> task falha -> send_reports não roda) quando:
+      1. o arquivo oscs_views_{ciclo}.json não existe;
+      2. o arquivo foi gerado ANTES do ciclo terminar (dado parcial/obsoleto —
+         causa do incidente de 01/10/2026, que leu o arquivo de setembro
+         gerado em 01/09);
+      3. a soma de views de TODAS as OSCs é zero (implausível para ~55 OSCs).
+
+    Em PIPELINE_TEST_MODE (só IDC) os problemas viram aviso, sem falhar.
+    """
+    problemas = []
+    if not os.path.exists(views_file):
+        problemas.append(f'arquivo {views_file} não existe')
+    else:
+        inicio_ciclo = datetime.strptime(ciclo, '%Y-%m')
+        fim_ciclo = (inicio_ciclo.replace(day=28) + timedelta(days=4)).replace(day=1)
+        gerado_em = datetime.fromtimestamp(os.path.getmtime(views_file))
+        if gerado_em < fim_ciclo:
+            problemas.append(
+                f'arquivo gerado em {gerado_em:%Y-%m-%d %H:%M}, antes do fim do ciclo '
+                f'{ciclo} ({fim_ciclo:%Y-%m-%d}) — dados parciais'
+            )
+        total = sum(sum(v) for v in views_by_url.values() if v)
+        if total == 0:
+            problemas.append(f'total de visualizações = 0 em {len(views_by_url)} OSCs')
+
+    if not problemas:
+        print(f'Trava GA4 OK: {views_file} cobre o ciclo {ciclo} inteiro.')
+        return
+
+    msg = 'Trava GA4 — visualizações do ciclo %s suspeitas:\n  - %s' % (ciclo, '\n  - '.join(problemas))
+    test_mode = os.environ.get('PIPELINE_TEST_MODE', '').lower() == 'true'
+    if permitir or test_mode:
+        print(f'AVISO (trava ignorada): {msg}')
+        return
+    print(msg)
+    print('Relatórios NÃO gerados. Corrija rodando: '
+          f'python scripts/ga4/oscs_monthly_views.py --month {ciclo}')
+    raise SystemExit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description='Gera dashboards HTML/PDF por ONG')
     parser.add_argument(
@@ -1151,7 +1195,15 @@ def main():
             'período de referência, nome do arquivo do PDF) e para localizar o '
             'arquivo oscs_views_{ciclo}.json. Não afeta de onde os dados de entrada '
             '(oscs_etransparente_*.json, scores) são lidos — isso continua usando o '
-            'arquivo mais recente em output/. Default: mês atual (comportamento original).'
+            'arquivo mais recente em output/. Default: mês anterior ao atual.'
+        ),
+    )
+    parser.add_argument(
+        '--permitir-views-suspeitas', action='store_true',
+        help=(
+            'Desliga a trava de sanidade das visualizações GA4 (arquivo ausente, '
+            'gerado antes do fim do ciclo, ou com total zerado em todas as OSCs). '
+            'Use só conscientemente, ex.: teste local sem credencial GA4.'
         ),
     )
     args = parser.parse_args()
@@ -1236,6 +1288,8 @@ def main():
             print(f"Aviso: erro ao carregar GA4 views: {e}")
     else:
         print(f"Aviso: arquivo GA4 views não encontrado em {views_file}. Seção de visualizações será exibida como indisponível.")
+
+    _validar_views_do_ciclo(views_file, views_by_url, data_emissao, args.permitir_views_suspeitas)
 
     _data_ciclo = datetime.strptime(data_emissao, '%Y-%m')
     mes_nome = _data_ciclo.strftime('%B').lower()
