@@ -9,10 +9,13 @@ import json
 import logging
 import os
 import re
-from datetime import date, timedelta
+import sys
 from io import BytesIO
 from azure.storage.blob import BlobServiceClient
 import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ciclo import adicionar_argumento_ciclo  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -55,39 +58,11 @@ def upload_json(client, blob_path, data):
 
 def main():
     parser = argparse.ArgumentParser(description='Gera/atualiza a camada Silver de histórico de scores')
-    parser.add_argument(
-        '--ciclo', default=None,
-        help=(
-            'Rótulo do ciclo a gravar no histórico (ex.: 2026-07). '
-            'Não afeta de onde os dados bronze/scores são lidos (isso continua '
-            'usando o mês atual) — só o rótulo do ciclo gravado no resultado. '
-            'Default: mês atual (comportamento original).'
-        ),
-    )
+    adicionar_argumento_ciclo(parser)
     args = parser.parse_args()
-
-    def _mes_anterior_ao_atual() -> str:
-        """Mês/ano civil imediatamente anterior ao atual (YYYY-MM). Um ciclo
-        mensal, por padrão, resume o mês que acabou de fechar — não o mês que
-        está começando (ver incidente de 01/09/2026, mesmo ajuste feito em
-        dash.py). Só se aplica quando --ciclo não é passado explicitamente."""
-        primeiro_dia_mes_atual = date.today().replace(day=1)
-        ultimo_dia_mes_anterior = primeiro_dia_mes_atual - timedelta(days=1)
-        return ultimo_dia_mes_anterior.strftime('%Y-%m')
-
-    # Quando --ciclo é passado explicitamente (ex.: reenvio de errata), os
-    # dados de entrada continuam vindo do mês REAL atual (onde a correção foi
-    # de fato gerada hoje). Sem --ciclo, o padrão passa a ser o mês anterior,
-    # tanto para leitura quanto para o rótulo do ciclo — este é o
-    # comportamento automático normal do pipeline.
-    month = date.today().strftime('%Y-%m') if args.ciclo else _mes_anterior_ao_atual()
-    ciclo = args.ciclo if args.ciclo else month
-    if args.ciclo:
-        logger.warning(
-            'Ciclo sobrescrito manualmente: gravando como "%s" '
-            '(dados lidos de bronze/%s/, mês real atual)',
-            ciclo, month,
-        )
+    # Ciclo vem da DAG. Lê bronze/{ciclo}/ (gravado por upload_to_azure.py
+    # com exatamente os arquivos que geraram os relatórios) e grava o mesmo rótulo.
+    ciclo = month = args.ciclo
     client = get_client()
 
     bronze_prefix = f'bronze/{month}/oscs_etransparente_'

@@ -1,0 +1,21 @@
+name: Testes
+
+# Roda a cada push e pull request. Protege principalmente contra a classe de
+# erro dos incidentes de set/out/2026: script calculando ciclo pela data do
+# sistema ou correção aplicada só em parte dos scripts.
+on:
+  push:
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'   # mesma versão da imagem apache/airflow:2.8.3-python3.11
+      - name: Instalar dependências de teste
+        run: pip install pytest
+      - name: Rodar testes
+        run: python -m pytest -v tests

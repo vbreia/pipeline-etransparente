@@ -2,18 +2,24 @@
 """
 Upload mensal de outputs para o Azure Data Lake Gen2.
 Arquitetura Medallion (Bronze/Prata/Ouro):
-  - bronze/YYYY-MM/ ← JSONs brutos (oscs_etransparente_*.json, transparency_scores_*.json, oscs_views_*.json)
+  - bronze/YYYY-MM/ ← JSONs brutos que geraram os relatórios do ciclo
   - silver/         ← histórico acumulado (historico_scores.parquet)
-  - gold/YYYY-MM/   ← outputs finais (PDFs, HTMLs)
+  - gold/YYYY-MM/   ← outputs finais (PDFs, HTMLs, relatorios.json)
+
+Uso: python scripts/upload_to_azure.py --ciclo YYYY-MM  (ciclo obrigatório, vem da DAG)
 """
 import argparse
 import os
 import glob
 import json
 import logging
-from datetime import date, timedelta
+import sys
 from pathlib import Path
 from azure.storage.blob import BlobServiceClient, CorsRule
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ciclo import adicionar_argumento_ciclo  # noqa: E402
+from artefatos import localizar_dashboards_do_ciclo  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,44 +48,24 @@ def upload_file(client, container, blob_path, local_path):
 
 def main():
     parser = argparse.ArgumentParser(description='Upload mensal de outputs para o Azure Data Lake Gen2')
-    parser.add_argument(
-        '--ciclo', default=None,
-        help=(
-            'Rótulo do ciclo (YYYY-MM) para os caminhos de destino no Azure '
-            '(bronze/{ciclo}/..., gold/{ciclo}/pdf|html/...). Não afeta de onde os '
-            'arquivos de entrada locais são lidos — isso continua usando o mês real '
-            'atual (onde estão os arquivos gerados hoje). '
-            'Default: mês atual (comportamento original).'
-        ),
-    )
+    adicionar_argumento_ciclo(parser)
     args = parser.parse_args()
+    ciclo = args.ciclo
 
-    def _mes_anterior_ao_atual() -> str:
-        """Mês/ano civil imediatamente anterior ao atual (YYYY-MM). Um ciclo
-        mensal, por padrão, resume o mês que acabou de fechar — não o mês que
-        está começando (ver incidente de 01/09/2026, mesmo ajuste feito em
-        dash.py/generate_silver.py). Só se aplica quando --ciclo não é
-        passado explicitamente."""
-        primeiro_dia_mes_atual = date.today().replace(day=1)
-        ultimo_dia_mes_anterior = primeiro_dia_mes_atual - timedelta(days=1)
-        return ultimo_dia_mes_anterior.strftime('%Y-%m')
-
-    # Quando --ciclo é passado explicitamente (ex.: reenvio de errata), os
-    # dados de entrada locais continuam vindo do mês REAL atual (onde a
-    # correção foi de fato gerada hoje). Sem --ciclo, o padrão passa a ser o
-    # mês anterior — inclui o nome do arquivo oscs_views_{X}.json esperado,
-    # que corresponde ao que dash.py já usa por padrão nesse mesmo cenário.
-    month_leitura = date.today().strftime('%Y-%m') if args.ciclo else _mes_anterior_ao_atual()
-    ciclo_publicacao = args.ciclo if args.ciclo else month_leitura
-    if args.ciclo:
-        logger.warning(
-            'Ciclo de publicação sobrescrito manualmente: publicando em "%s" '
-            '(arquivos de entrada lidos de %s, mês real atual)',
-            ciclo_publicacao, month_leitura,
-        )
     base = '/home/airflow' if os.path.exists('/home/airflow/output') else os.getcwd()
     out = os.path.join(base, 'output')
     container = 'etransparente'
+
+    pasta_dash, manifesto_path = localizar_dashboards_do_ciclo(out, ciclo)
+    if not pasta_dash:
+        raise RuntimeError(
+            f'Nenhuma pasta em output/dashboards/ com relatorios.json do ciclo {ciclo}. '
+            f'Rode dash.py --ciclo {ciclo} antes do upload.'
+        )
+    with open(manifesto_path, 'r', encoding='utf-8') as fh:
+        manifesto = json.load(fh)
+    logger.info(f'Ciclo {ciclo}: publicando {pasta_dash}')
+
     client = get_client()
     setup_cors(client)
 
@@ -91,32 +77,30 @@ def main():
         stem = Path(path).stem.lower()
         return 'idc' in stem or 'instituto-de-direito-coletivo' in stem
 
-    # Bronze — JSONs brutos do mês (entrada: mês real atual)
-    for pattern in [f'oscs_etransparente_*.json', f'oscs_views_{month_leitura}.json']:
-        for f in glob.glob(os.path.join(out, pattern)):
-            if test_mode and not _idc_match(f):
-                continue
-            upload_file(client, container, f'bronze/{ciclo_publicacao}/{Path(f).name}', f)
-    for f in glob.glob(os.path.join(out, 'scores', f'transparency_scores_*.json')):
+    # Bronze — exatamente os arquivos que geraram os relatórios deste ciclo
+    # (registrados no relatorios.json), não "todos os arquivos da pasta".
+    bronze = [
+        os.path.join(out, manifesto.get('arquivo_extracao', '')),
+        os.path.join(out, 'scores', manifesto.get('arquivo_scores', '')),
+        os.path.join(out, f'oscs_views_{ciclo}.json'),
+    ]
+    for f in bronze:
+        if not os.path.isfile(f):
+            raise RuntimeError(f'Arquivo de entrada do ciclo não encontrado: {f}')
         if test_mode and not _idc_match(f):
             continue
-        upload_file(client, container, f'bronze/{ciclo_publicacao}/{Path(f).name}', f)
+        upload_file(client, container, f'bronze/{ciclo}/{Path(f).name}', f)
 
-    # Gold — PDFs e HTMLs do ciclo (destino: ciclo de publicação)
-    dashboards = sorted(glob.glob(os.path.join(out, 'dashboards', '*')))
-    if dashboards:
-        latest = dashboards[-1]
-        for folder in ['pdf', 'html']:
-            for f in glob.glob(os.path.join(latest, folder, '*')):
-                if test_mode and not _idc_match(f):
-                    continue
-                upload_file(client, container, f'gold/{ciclo_publicacao}/{folder}/{Path(f).name}', f)
+    # Gold — PDFs, HTMLs e o manifesto dos relatórios do ciclo
+    for folder in ['pdf', 'html']:
+        for f in glob.glob(os.path.join(pasta_dash, folder, '*')):
+            if test_mode and not _idc_match(f):
+                continue
+            upload_file(client, container, f'gold/{ciclo}/{folder}/{Path(f).name}', f)
+    upload_file(client, container, f'gold/{ciclo}/relatorios.json', manifesto_path)
 
-    # Gold — verificacoes_all.json acumulado
-    # verificacoes_{X}.json é gravado por dash.py usando o mesmo rótulo de ciclo
-    # (data_emissao lá segue --ciclo), então a leitura aqui também segue o ciclo
-    # de publicação — não o mês real — para localizar o arquivo correto.
-    verificacoes_monthly = glob.glob(os.path.join(out, f'verificacoes_{ciclo_publicacao}.json'))
+    # Gold — verificacoes_all.json acumulado (dash.py grava verificacoes_{ciclo}.json)
+    verificacoes_monthly = glob.glob(os.path.join(out, f'verificacoes_{ciclo}.json'))
     if verificacoes_monthly:
         blob_client = client.get_blob_client(container=container, blob='gold/verificacoes_all.json')
         existing_all = []
@@ -143,14 +127,11 @@ def main():
         upload_file(client, container, 'gold/verificacoes_all.json', all_path)
         logger.info(f'verificacoes_all.json atualizado: {len(existing_all)} registros totais')
 
-    # Gold — oscs_atual.json (dados completos para o dashboard)
-    ongs_files = glob.glob(os.path.join(out, 'oscs_etransparente_*.json'))
-    if ongs_files:
-        latest_ongs = sorted(ongs_files)[-1]
-        upload_file(client, container, 'gold/oscs_atual.json', latest_ongs)
-        logger.info('gold/oscs_atual.json atualizado')
+    # Gold — oscs_atual.json: a MESMA extração usada nos relatórios do ciclo
+    upload_file(client, container, 'gold/oscs_atual.json', bronze[0])
+    logger.info('gold/oscs_atual.json atualizado')
 
-    logger.info(f'Upload concluído para {ciclo_publicacao} (dados de entrada lidos de {month_leitura})')
+    logger.info(f'Upload concluído para o ciclo {ciclo}')
 
 if __name__ == '__main__':
     main()

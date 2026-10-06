@@ -1,27 +1,39 @@
 """
-Pipeline DAG para orquestração dos scripts de extração e geração de dashboards de ONGs.
+DAG mensal do etransparente — gera, valida e PREPARA o envio. Não envia.
 
-Pipeline:
-1. ong_extractor.py - Extrai dados de ONGs do site etransparente.org
-2. generate_transparency_scores.py - Calcula pontuações de transparência
-3. dash.py - Gera dashboards HTML/PDF por ONG
+Fluxo (dia 3, 11:30 UTC):
+  validar_data → extração → scores → GA4 → PDFs → upload → silver → doc_changes
+  → validar_ciclo → preparar_envios
+
+O envio às OSCs acontece fora desta DAG: a presidência confere uma amostra em
+dashboard.etransparente.org/envio e confirma; uma Azure Function envia exatamente
+os e-mails preparados aqui (ver claude/PLANO_VALIDACAO_E_ENVIO.md no Project).
+
+Ciclo
+-----
+O ciclo é decidido UMA vez, aqui, e passado como --ciclo a todos os scripts.
+Nenhum script calcula data sozinho (causa raiz dos incidentes de set e out/2026).
+
+- Execução agendada de 03/11 → data_interval_start = 03/10 → ciclo 2026-10.
+- Reprocessar um ciclo antigo de propósito:
+    airflow dags trigger ong_pipeline --conf '{"ciclo": "2026-09", "reprocessar": true}'
 """
 
+import os
+import subprocess
 from datetime import datetime, timedelta
+
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
-from airflow.utils.dates import days_ago
-import os
-import sys
-import subprocess
 
-# Configuração do DAG
+BASE = os.environ.get('AIRFLOW_HOME', '/home/airflow')
+SCRIPTS = os.path.join(BASE, 'scripts')
+
 default_args = {
     'owner': 'data-team',
     'retries': 2,
     'retry_delay': timedelta(minutes=5),
-    'email': ['transparencia@direitocoletivo.org.br'],
+    'email': ['transparencia@direitocoletivo.org.br', 'comunicacao@direitocoletivo.org.br'],
     'email_on_failure': True,
     'email_on_retry': False,
 }
@@ -29,170 +41,97 @@ default_args = {
 dag = DAG(
     'ong_pipeline',
     default_args=default_args,
-    description='Pipeline para extração e processamento de dados de ONGs',
-    # Executa mensalmente, no dia 1 às 11:30 UTC
-    schedule_interval='30 11 1 * *',
+    description='Gera, valida e prepara o envio mensal dos relatórios de transparência',
+    # Dia 3 às 11:30 UTC (08:30 BRT): o ciclo fechou há 48h+, tempo para o GA4
+    # consolidar os últimos dias do mês.
+    schedule_interval='30 11 3 * *',
     start_date=datetime(2026, 1, 1),
     catchup=False,
+    max_active_runs=1,
     tags=['ong', 'etransparente', 'pipeline'],
 )
 
 
-def run_ong_extractor(**context):
-    """Executa o script de extração de dados de ONGs"""
-    script_path = os.path.join(os.environ.get('AIRFLOW_HOME', '/home/airflow'), 
-                               'scripts', 'ong_extractor.py')
-    
-    result = subprocess.run(
-        ['python', script_path],
-        cwd=os.path.dirname(os.path.dirname(script_path)),
-        capture_output=True,
-        text=True
-    )
-    
-    print(f"STDOUT: {result.stdout}")
-    if result.returncode != 0:
-        print(f"STDERR: {result.stderr}")
-        raise Exception(f"ong_extractor.py failed with return code {result.returncode}")
-    
-    return result.stdout
+def resolver_ciclo(context) -> tuple[str, bool]:
+    """Ciclo desta execução: conf explícita (reprocessamento) ou o intervalo do Airflow."""
+    import sys
+    sys.path.insert(0, SCRIPTS)
+    from ciclo import ciclo_do_intervalo, parse_ciclo
+
+    conf = (context.get('dag_run').conf or {}) if context.get('dag_run') else {}
+    if conf.get('ciclo'):
+        parse_ciclo(conf['ciclo'])
+        return conf['ciclo'], bool(conf.get('reprocessar'))
+    return ciclo_do_intervalo(context['data_interval_start']), False
 
 
-def run_transparency_scores(**context):
-    """Executa o script de geração de pontuações de transparência"""
-    script_path = os.path.join(os.environ.get('AIRFLOW_HOME', '/home/airflow'), 
-                               'scripts', 'generate_transparency_scores.py')
-    
-    result = subprocess.run(
-        ['python', script_path],
-        cwd=os.path.dirname(os.path.dirname(script_path)),
-        capture_output=True,
-        text=True
-    )
-    
-    print(f"STDOUT: {result.stdout}")
-    if result.returncode != 0:
-        print(f"STDERR: {result.stderr}")
-        raise Exception(f"generate_transparency_scores.py failed with return code {result.returncode}")
-    
-    return result.stdout
-
-
-def run_dashboard_generator(**context):
-    """Executa o script de geração de dashboards"""
-    script_path = os.path.join(os.environ.get('AIRFLOW_HOME', '/home/airflow'), 
-                               'scripts', 'dash.py')
-    
-    result = subprocess.run(
-        ['python', script_path],
-        cwd=os.path.dirname(os.path.dirname(script_path)),
-        capture_output=True,
-        text=True
-    )
-    
-    print(f"STDOUT: {result.stdout}")
-    if result.returncode != 0:
-        print(f"STDERR: {result.stderr}")
-        raise Exception(f"dash.py failed with return code {result.returncode}")
-    
-    return result.stdout
-
-
-def run_fetch_ga4_views(**context):
-    """Executa o script de busca de visualizações GA4"""
-    script_path = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'ga4', 'oscs_monthly_views.py')
-    script_path = os.path.abspath(script_path)
-    result = subprocess.run(
-        ['python', script_path],
-        capture_output=True, text=True,
-        cwd='/home/airflow'
-    )
-    if result.returncode != 0:
-        raise Exception(f"fetch_ga4_views falhou:\n{result.stderr}")
+def rodar(script: str, args: list[str], context, env_extra: dict | None = None):
+    """Executa um script do pipeline sempre com --ciclo, a partir de /home/airflow."""
+    ciclo, _ = resolver_ciclo(context)
+    caminho = os.path.join(SCRIPTS, script)
+    cmd = ['python', caminho, '--ciclo', ciclo, *args]
+    env = os.environ.copy()
+    env.update(env_extra or {})
+    print(f'[ciclo {ciclo}] $ {" ".join(cmd)}')
+    result = subprocess.run(cmd, cwd=BASE, capture_output=True, text=True, env=env)
     print(result.stdout)
+    if result.returncode != 0:
+        print(result.stderr)
+        detalhe = (result.stderr.strip() or result.stdout.strip())[-3000:]
+        raise Exception(f'{script} falhou (código {result.returncode}) no ciclo {ciclo}:\n{detalhe}')
+    return result.stdout
 
 
-# Tasks
+def rodar_sem_ciclo(script: str):
+    """Extração e scores não dependem de data: leem o estado atual do site."""
+    def _run(**context):
+        caminho = os.path.join(SCRIPTS, script)
+        result = subprocess.run(['python', caminho], cwd=BASE, capture_output=True, text=True)
+        print(result.stdout)
+        if result.returncode != 0:
+            print(result.stderr)
+            detalhe = (result.stderr.strip() or result.stdout.strip())[-3000:]
+            raise Exception(f'{script} falhou (código {result.returncode}):\n{detalhe}')
+    return _run
+
+
+def task_validar_data(**context):
+    ciclo, reprocessar = resolver_ciclo(context)
+    return rodar('ciclo.py', ['--reprocessar'] if reprocessar else [], context)
+
+
+def task_script(script: str, extra_args: list[str] | None = None, repassa_reprocessar: bool = False):
+    def _run(**context):
+        args = list(extra_args or [])
+        if repassa_reprocessar and resolver_ciclo(context)[1]:
+            args.append('--reprocessar')
+        return rodar(script, args, context)
+    return _run
+
+
+validar_data_task = PythonOperator(
+    task_id='validar_data', python_callable=task_validar_data, retries=0, dag=dag)
 extract_task = PythonOperator(
-    task_id='extract_ong_data',
-    python_callable=run_ong_extractor,
-    dag=dag,
-)
-
+    task_id='extract_ong_data', python_callable=rodar_sem_ciclo('ong_extractor.py'), dag=dag)
 scores_task = PythonOperator(
     task_id='generate_transparency_scores',
-    python_callable=run_transparency_scores,
-    dag=dag,
-)
-
+    python_callable=rodar_sem_ciclo('generate_transparency_scores.py'), dag=dag)
 fetch_ga4_task = PythonOperator(
-    task_id='fetch_ga4_views',
-    python_callable=run_fetch_ga4_views,
-    dag=dag,
-)
-
+    task_id='fetch_ga4_views', python_callable=task_script('ga4/oscs_monthly_views.py'), dag=dag)
 dashboard_task = PythonOperator(
-    task_id='generate_dashboards',
-    python_callable=run_dashboard_generator,
-    dag=dag,
-)
-
-def run_upload_to_azure(**context):
-    """Executa o upload dos outputs para o Azure Data Lake Gen2"""
-    script_path = '/home/airflow/scripts/upload_to_azure.py'
-    result = subprocess.run(
-        ['python', script_path],
-        capture_output=True, text=True,
-        cwd='/home/airflow'
-    )
-    if result.returncode != 0:
-        raise Exception(f'upload_to_azure falhou:\n{result.stderr}')
-    print(result.stdout)
-
+    task_id='generate_dashboards', python_callable=task_script('dash.py'), dag=dag)
 upload_task = PythonOperator(
-    task_id='upload_to_azure',
-    python_callable=run_upload_to_azure,
-    dag=dag,
-)
+    task_id='upload_to_azure', python_callable=task_script('upload_to_azure.py'), dag=dag)
+silver_task = PythonOperator(
+    task_id='generate_silver', python_callable=task_script('generate_silver.py'), dag=dag)
+doc_changes_task = PythonOperator(
+    task_id='detect_doc_changes', python_callable=task_script('detect_doc_changes.py'), dag=dag)
+# Validação e preparação não têm retry: se bloquearem, é por dado errado —
+# repetir não resolve, e o e-mail de falha avisa a equipe.
+validar_ciclo_task = PythonOperator(
+    task_id='validar_ciclo', python_callable=task_script('validar_ciclo.py', repassa_reprocessar=True), retries=0, dag=dag)
+preparar_envios_task = PythonOperator(
+    task_id='preparar_envios', python_callable=task_script('preparar_envios.py'), retries=0, dag=dag)
 
-def run_send_reports(**context):
-    """Executa o envio dos relatórios mensais por e-mail"""
-    import os
-    env = os.environ.copy()
-    env['SEND_REPORTS_ENABLED'] = 'true'
-    script_path = '/home/airflow/scripts/send_reports.py'
-    result = subprocess.run(
-        ['python', script_path],
-        capture_output=True, text=True,
-        cwd='/home/airflow',
-        env=env,
-    )
-    if result.returncode != 0:
-        raise Exception(f'send_reports falhou:\n{result.stderr}')
-    print(result.stdout)
-
-send_task = PythonOperator(
-    task_id='send_reports',
-    python_callable=run_send_reports,
-    dag=dag,
-)
-
-def run_generate_silver(**context):
-    script_path = '/home/airflow/scripts/generate_silver.py'
-    result = subprocess.run(['python', script_path], capture_output=True, text=True, cwd='/home/airflow')
-    if result.returncode != 0:
-        raise Exception(f'generate_silver falhou:\n{result.stderr}')
-    print(result.stdout)
-
-def run_detect_doc_changes(**context):
-    script_path = '/home/airflow/scripts/detect_doc_changes.py'
-    result = subprocess.run(['python', script_path], capture_output=True, text=True, cwd='/home/airflow')
-    if result.returncode != 0:
-        raise Exception(f'detect_doc_changes falhou:\n{result.stderr}')
-    print(result.stdout)
-
-silver_task = PythonOperator(task_id='generate_silver', python_callable=run_generate_silver, dag=dag)
-doc_changes_task = PythonOperator(task_id='detect_doc_changes', python_callable=run_detect_doc_changes, dag=dag)
-
-# Define task dependencies
-extract_task >> scores_task >> fetch_ga4_task >> dashboard_task >> upload_task >> silver_task >> doc_changes_task >> send_task
+(validar_data_task >> extract_task >> scores_task >> fetch_ga4_task >> dashboard_task
+ >> upload_task >> silver_task >> doc_changes_task >> validar_ciclo_task >> preparar_envios_task)

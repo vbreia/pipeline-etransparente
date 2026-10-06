@@ -6,10 +6,14 @@ no silver/oscs_historico.parquet e gera gold/tempestividade_YYYY-MM.json.
 import json
 import logging
 import os
-from datetime import date
+import argparse
+import sys
 from io import BytesIO
 from azure.storage.blob import BlobServiceClient
 import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ciclo import adicionar_argumento_ciclo, ciclo_anterior, parse_ciclo  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,21 +50,17 @@ def mes_ano_label(ano, mes):
     return f'{MESES[mes]}-{ano}'
 
 def main():
-    hoje = date.today()
-    ciclo_atual = hoje.strftime('%Y-%m')
-    ciclo_anterior = date(hoje.year, hoje.month, 1) - pd.offsets.MonthBegin(1)
-    if hasattr(ciclo_anterior, 'strftime'):
-        ciclo_anterior_str = ciclo_anterior.strftime('%Y-%m')
-    else:
-        if hoje.month == 1:
-            ciclo_anterior_str = f'{hoje.year - 1}-12'
-        else:
-            ciclo_anterior_str = f'{hoje.year}-{hoje.month - 1:02d}'
+    parser = argparse.ArgumentParser(description='Detecta alterações de documentos entre o ciclo e o anterior')
+    adicionar_argumento_ciclo(parser)
+    args = parser.parse_args()
 
-    if hoje.month == 1:
-        mes_ant, ano_ant = 12, hoje.year - 1
-    else:
-        mes_ant, ano_ant = hoje.month - 1, hoje.year
+    # Antes este script usava date.today() (mês CORRENTE). Como o silver é
+    # gravado com o ciclo que acabou de fechar, no dia do ciclo ele procurava
+    # um mês que ainda não existia e o feed saía vazio. Agora o ciclo vem da DAG.
+    ciclo_atual = args.ciclo
+    ciclo_anterior_str = ciclo_anterior(ciclo_atual)
+    ano_atual, mes_atual = parse_ciclo(ciclo_atual)
+    ano_ant, mes_ant = parse_ciclo(ciclo_anterior_str)
 
     client = get_client()
 
@@ -98,7 +98,7 @@ def main():
                 'campo': '',
                 'url_anterior': '',
                 'url_nova': '',
-                'ciclo_deteccao': mes_ano_label(hoje.year, hoje.month),
+                'ciclo_deteccao': mes_ano_label(ano_atual, mes_atual),
                 'ciclo_anterior': '',
                 'ciclo_key': ciclo_atual,
             })
@@ -118,7 +118,7 @@ def main():
                         'campo': campo,
                         'url_anterior': url_anterior,
                         'url_nova': url_atual,
-                        'ciclo_deteccao': mes_ano_label(hoje.year, hoje.month),
+                        'ciclo_deteccao': mes_ano_label(ano_atual, mes_atual),
                         'ciclo_anterior': mes_ano_label(ano_ant, mes_ant),
                         'ciclo_key': ciclo_atual,
                     })
@@ -129,7 +129,7 @@ def main():
                         'campo': campo,
                         'url_anterior': '',
                         'url_nova': url_atual,
-                        'ciclo_deteccao': mes_ano_label(hoje.year, hoje.month),
+                        'ciclo_deteccao': mes_ano_label(ano_atual, mes_atual),
                         'ciclo_anterior': mes_ano_label(ano_ant, mes_ant),
                         'ciclo_key': ciclo_atual,
                     })
@@ -144,7 +144,7 @@ def main():
                 'campo': '',
                 'url_anterior': '',
                 'url_nova': '',
-                'ciclo_deteccao': mes_ano_label(hoje.year, hoje.month),
+                'ciclo_deteccao': mes_ano_label(ano_atual, mes_atual),
                 'ciclo_anterior': mes_ano_label(ano_ant, mes_ant),
                 'ciclo_key': ciclo_atual,
             })

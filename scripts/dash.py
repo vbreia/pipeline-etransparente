@@ -4,8 +4,10 @@ Small utility to render one HTML dashboard per ONG (from the latest
 `output/dashboards/<timestamp>/html` and PDFs under
 `output/dashboards/<timestamp>/pdf` using Playwright/Chromium.
 
-Usage: run `python scripts/dash.py` from repository root. The script will
-locate the newest `output/oscs_etransparente_*.json` automatically.
+Usage: `python scripts/dash.py --ciclo YYYY-MM` from repository root (o ciclo
+é obrigatório e vem da DAG). Além de HTML/PDF, grava
+`output/dashboards/<timestamp>/relatorios.json` — manifesto do que cada PDF
+contém (views, nota, hash do arquivo), base da validação do ciclo.
 """
 
 import argparse
@@ -18,8 +20,13 @@ import io
 import json
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote as _url_quote
+
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ciclo import adicionar_argumento_ciclo  # noqa: E402
+from artefatos import carregar_views, gravar_json, sha256_arquivo  # noqa: E402
 
 try:
     from playwright.sync_api import sync_playwright
@@ -155,10 +162,9 @@ def gerar_dashboard_html(osc, score=None, views_by_url=None, ciclo_override=None
 
     # ciclo_override (YYYY-MM) sobrescreve o mês/ano usado para rotular o relatório
     # (título, nome do arquivo, hash de verificação) — não afeta a data real de emissão.
-    if ciclo_override:
-        _efetivo = datetime.strptime(ciclo_override, '%Y-%m')
-    else:
-        _efetivo = datetime.now()
+    if not ciclo_override:
+        raise ValueError('gerar_dashboard_html exige o ciclo (YYYY-MM) — ver scripts/ciclo.py')
+    _efetivo = datetime.strptime(ciclo_override, '%Y-%m')
 
     data_emissao = _efetivo.strftime('%Y-%m')
     data_emissao_formatada = datetime.now().strftime('%d/%m/%Y')
@@ -1191,16 +1197,7 @@ def _validar_views_do_ciclo(views_file, views_by_url, ciclo, permitir=False):
 
 def main():
     parser = argparse.ArgumentParser(description='Gera dashboards HTML/PDF por ONG')
-    parser.add_argument(
-        '--ciclo', default=None,
-        help=(
-            'Rótulo do ciclo (YYYY-MM) usado para exibição no relatório (título, '
-            'período de referência, nome do arquivo do PDF) e para localizar o '
-            'arquivo oscs_views_{ciclo}.json. Não afeta de onde os dados de entrada '
-            '(oscs_etransparente_*.json, scores) são lidos — isso continua usando o '
-            'arquivo mais recente em output/. Default: mês anterior ao atual.'
-        ),
-    )
+    adicionar_argumento_ciclo(parser)
     parser.add_argument(
         '--permitir-views-suspeitas', action='store_true',
         help=(
@@ -1210,11 +1207,6 @@ def main():
         ),
     )
     args = parser.parse_args()
-    if args.ciclo:
-        try:
-            datetime.strptime(args.ciclo, '%Y-%m')
-        except ValueError:
-            parser.error('--ciclo deve estar no formato YYYY-MM (ex.: 2026-07)')
 
     input_file = find_latest_input()
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -1243,30 +1235,8 @@ def main():
 
     ts = datetime.now().strftime('%Y%m%d%H%M%S')
 
-    def _mes_anterior_ao_atual() -> str:
-        """Retorna o mês/ano civil imediatamente anterior ao atual, no formato
-        YYYY-MM. Usado como ciclo padrão: um relatório mensal, por definição,
-        resume o mês que acabou de fechar — não o mês que está começando.
-        Sem isso, um relatório gerado no dia 1º de qualquer mês sempre
-        aparece com visualizações zeradas, mesmo quando o mês anterior teve
-        tráfego real (ver incidente de 01/09/2026)."""
-        primeiro_dia_mes_atual = datetime.now().replace(day=1)
-        ultimo_dia_mes_anterior = primeiro_dia_mes_atual - timedelta(days=1)
-        return ultimo_dia_mes_anterior.strftime('%Y-%m')
-
-    data_emissao = args.ciclo if args.ciclo else _mes_anterior_ao_atual()
-    if args.ciclo:
-        print(
-            f'Ciclo sobrescrito manualmente: rotulando/publicando relatórios como '
-            f'"{data_emissao}" (dados de entrada lidos do arquivo mais recente em output/, '
-            f'mês real atual: {datetime.now().strftime("%Y-%m")})'
-        )
-    else:
-        print(
-            f'Ciclo padrão (sem --ciclo): usando o mês anterior ao atual — '
-            f'"{data_emissao}" (mês real atual: {datetime.now().strftime("%Y-%m")}). '
-            f'Um relatório mensal resume o mês que acabou de fechar.'
-        )
+    data_emissao = args.ciclo
+    print(f'Ciclo: {data_emissao} (definido pela DAG via --ciclo)')
     # Usar /home/airflow como base se existir (volume Docker), fallback para cwd
     _base = '/home/airflow' if os.path.exists('/home/airflow/output') else os.getcwd()
     base_out = os.path.join(_base, 'output', 'dashboards', ts)
@@ -1277,11 +1247,14 @@ def main():
 
     # Load GA4 views data
     views_by_url = {}
+    views_meta = None
     views_file = os.path.join(_base, 'output', f'oscs_views_{data_emissao}.json')
     if os.path.exists(views_file):
         try:
-            with open(views_file, 'r', encoding='utf-8') as f:
-                views_data = json.load(f)
+            views_meta, views_data = carregar_views(views_file)
+            if views_meta and views_meta.get('ciclo') != data_emissao:
+                print(f"✗ Arquivo de views declara ciclo {views_meta.get('ciclo')}, esperado {data_emissao}.")
+                raise SystemExit(1)
             for entry in views_data:
                 url = entry.get('url', '')
                 if url:
@@ -1307,6 +1280,8 @@ def main():
 
     verificacoes = []
     pdf_count = 0
+    relatorios = []  # manifesto do que foi efetivamente impresso em cada PDF
+    _dias_ciclo = calendar.monthrange(_data_ciclo.year, _data_ciclo.month)[1]
     for idx, osc in enumerate(oscs, 1):
         nome = osc.get('nome', 'Sem nome')
         url = osc.get('url', '')
@@ -1356,6 +1331,25 @@ def main():
             except Exception as e:
                 print(f"✗ Erro ao salvar HTML para {nome}: {e}")
                 continue
+
+            _vl = views_by_url.get(url) or []
+            _views_ok = len(_vl) == _dias_ciclo
+            _s = score or {}
+            relatorios.append({
+                'nome': nome,
+                'slug': slug,
+                'url': url,
+                'email': (osc.get('email') or '').strip(),
+                'pdf': f"{nome_arquivo}.pdf",
+                'html': f"{nome_arquivo}.html",
+                'views_disponiveis': _views_ok,
+                'views_total': sum(_vl) if _views_ok else None,
+                'views_dias': len(_vl),
+                'nota_final': _s.get('nota_final', _SCORE_DEFAULTS['nota_final']),
+                'max_nota': _s.get('max_nota', _SCORE_DEFAULTS['max_nota']),
+                'classificacao': _s.get('classificacao', _SCORE_DEFAULTS['classificacao']),
+                'hash_verificacao': verificacoes[-1]['hash'] if verificacoes and verificacoes[-1]['nome'] == nome else '',
+            })
 
             if PLAYWRIGHT_AVAILABLE:
                 try:
@@ -1416,6 +1410,27 @@ def main():
         print(f"Verificações salvas: {verificacoes_path} ({len(verificacoes)} registros)")
     except Exception as e:
         print(f"Aviso: erro ao salvar verificações: {e}")
+
+    # Manifesto dos relatórios deste ciclo: o que cada PDF contém, com hash do
+    # arquivo. É a base da validação (validar_ciclo.py) e da preparação do envio.
+    for r in relatorios:
+        caminho_pdf = os.path.join(pdf_dir, r['pdf'])
+        existe = os.path.isfile(caminho_pdf) and os.path.getsize(caminho_pdf) > 0
+        r['pdf_gerado'] = existe
+        r['pdf_sha256'] = sha256_arquivo(caminho_pdf) if existe else ''
+    gravar_json(os.path.join(base_out, 'relatorios.json'), {
+        'ciclo': data_emissao,
+        'gerado_em': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+        'pasta': os.path.basename(base_out),
+        'arquivo_extracao': os.path.basename(input_file),
+        'sha256_extracao': sha256_arquivo(input_file),
+        'arquivo_scores': os.path.basename(scores_file) if scores_file else '',
+        'arquivo_views': os.path.basename(views_file) if os.path.exists(views_file) else '',
+        'sha256_views': sha256_arquivo(views_file) if os.path.exists(views_file) else '',
+        'total_oscs': len(oscs),
+        'total_pdfs': sum(1 for r in relatorios if r['pdf_gerado']),
+        'relatorios': relatorios,
+    })
 
     print('\n' + '=' * 60)
     print(f"Total de PDFs gerados: {pdf_count}/{len(oscs)}")

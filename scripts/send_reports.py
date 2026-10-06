@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """
-Envio mensal de relatórios de transparência por e-mail.
+Envio de relatórios de transparência por e-mail — USO EMERGENCIAL.
+
+A partir de nov/2026 o envio normal NÃO passa por este script: a DAG prepara os
+e-mails (preparar_envios.py), a presidência confere e aprova em
+dashboard.etransparente.org/envio e uma Azure Function envia. Este script fica
+para emergência, exige --ciclo e --confirmo-envio-emergencial. As funções de
+montagem de e-mail abaixo são reutilizadas por preparar_envios.py.
 
 Para cada ONG com e-mail cadastrado:
   - E-mail HTML com template IDC + PDF anexado
@@ -25,6 +31,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 from azure.storage.blob import generate_blob_sas, BlobSasPermissions, BlobServiceClient
+
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ciclo import adicionar_argumento_ciclo  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -107,26 +117,10 @@ def gerar_sas_url(connection_string, container, blob_path, dias=30):
     )
     return f'https://{account_name}.blob.core.windows.net/{container}/{blob_path}?{sas_token}'
 
-def mes_ano(ciclo_override=None):
-    """Resolve mês/ano do ciclo a rotular/publicar.
-
-    ciclo_override (YYYY-MM), quando fornecido, sobrescreve apenas o rótulo/mês
-    usado para exibição e caminho de publicação — não afeta de onde os dados de
-    entrada (JSON de ONGs, scores, PDFs) são lidos, que continuam vindo do
-    arquivo/pasta mais recente em output/.
-
-    Sem ciclo_override, o padrão é o mês anterior ao atual — um relatório
-    mensal resume o mês que acabou de fechar, não o mês que está começando
-    (ver incidente de 01/09/2026: envio automático no dia 1º com views
-    zeradas porque usava o mês corrente, ainda sem dado acumulado).
-    """
-    if ciclo_override:
-        ano, mes = (int(x) for x in ciclo_override.split('-'))
-        referencia = date(ano, mes, 1)
-    else:
-        primeiro_dia_mes_atual = date.today().replace(day=1)
-        referencia = primeiro_dia_mes_atual - timedelta(days=1)
-    return referencia.month, referencia.year, MESES[referencia.month], referencia.strftime('%Y-%m')
+def mes_ano(ciclo):
+    """Mês/ano do ciclo (YYYY-MM obrigatório — vem de quem chama, nunca do relógio)."""
+    ano, mes = (int(x) for x in ciclo.split('-'))
+    return mes, ano, MESES[mes], f'{ano}-{mes:02d}'
 
 def build_paragraphs(entry, mes, ano, mes_extenso):
     classificacao = entry.get('classificacao', 'Regular')
@@ -460,18 +454,17 @@ def build_relatorio_execucao_html(template_html, stats, ongs_detalhes, mes_exten
     return html
 
 def main():
-    parser = argparse.ArgumentParser(description='Envio mensal de relatórios de transparência por e-mail')
+    parser = argparse.ArgumentParser(
+        description='ENVIO EMERGENCIAL de relatórios por e-mail. O fluxo normal é: DAG prepara '
+                    '(preparar_envios.py) → presidência confere e aprova em /envio → Azure Function envia.'
+    )
+    adicionar_argumento_ciclo(parser)
     parser.add_argument(
-        '--ciclo', default=None,
-        help=(
-            'Rótulo do ciclo (YYYY-MM) usado no assunto/corpo do e-mail e nos '
-            'caminhos gold/{ciclo}/pdf/... dos links e anexos. Não afeta de onde '
-            'os dados de entrada (JSON de ONGs, scores, PDFs) são lidos — isso '
-            'continua usando o arquivo/pasta mais recente em output/. '
-            'Default: mês atual (comportamento original).'
-        ),
+        '--confirmo-envio-emergencial', action='store_true', required=True,
+        help='Obrigatório. Use só com aprovação por escrito da presidência para este ciclo.',
     )
     args = parser.parse_args()
+    logger.warning('ENVIO EMERGENCIAL fora do fluxo de aprovação — ciclo %s', args.ciclo)
 
     # Proteção contra disparo acidental
     if os.environ.get('SEND_REPORTS_ENABLED', '').lower() != 'true':
@@ -494,12 +487,6 @@ def main():
     }
 
     mes, ano, mes_extenso, mes_ano_str = mes_ano(args.ciclo)
-    if args.ciclo:
-        logger.warning(
-            'Ciclo sobrescrito manualmente: rotulando/publicando como "%s" '
-            '(dados de entrada continuam vindo do arquivo/pasta mais recente em output/)',
-            mes_ano_str,
-        )
 
     # Carregar dados
     ong_path = find_latest('oscs_etransparente_*.json')
@@ -524,6 +511,15 @@ def main():
     latest_dash = find_latest_dir(dash_base)
     if latest_dash:
         pasta_pdf = os.path.join(latest_dash, 'pdf')
+        _manifesto = os.path.join(latest_dash, 'relatorios.json')
+        if os.path.isfile(_manifesto):
+            with open(_manifesto, 'r', encoding='utf-8') as _fh:
+                _ciclo_pasta = json.load(_fh).get('ciclo')
+            if _ciclo_pasta != mes_ano_str:
+                raise RuntimeError(
+                    f'A pasta de PDFs mais recente ({latest_dash}) é do ciclo {_ciclo_pasta}, '
+                    f'não de {mes_ano_str}. Envio abortado para não mandar relatórios de outro mês.'
+                )
 
     if not pasta_pdf or not os.path.isdir(pasta_pdf):
         logger.warning('Pasta de PDFs não encontrada em %s', pasta_pdf)

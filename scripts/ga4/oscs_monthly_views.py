@@ -8,17 +8,15 @@ queries the GA4 Data API to return daily `screenPageViews` for the full calendar
 month requested.
 
 Behavior:
-- Default month: previous calendar month (e.g. today=2025-12-02 -> month=2025-11)
+- O ciclo (--ciclo YYYY-MM) é OBRIGATÓRIO e vem da DAG — o script não calcula
+  data a partir do relógio do sistema (ver scripts/ciclo.py e incidente 01/10/2026)
+- Saída no formato 2: {"meta": {...ciclo, período, gerado_em, sha256...}, "oscs": [...]}
 - Batches multiple pagePaths per RunReportRequest to reduce API calls
 - Outputs a JSON file with objects: `{ "nome": "", "url": "", "views": [int,...] }`
 
 Usage examples:
-  # previous month (default)
   export GA4_PROPERTY_ID=414902979
-  python3 oscs_monthly_views.py --input output/oscs_etransparente_2025-12-02-21-04-43.json
-
-  # explicit month
-  python3 oscs_monthly_views.py --input output/oscs_etransparente_2025-12-02-21-04-43.json --month 2025-11
+  python3 oscs_monthly_views.py --ciclo 2025-11 --input output/oscs_etransparente_2025-12-02-21-04-43.json
 
 Options:
   --batch-size N   Number of pagePaths per GA4 request (default 40)
@@ -36,11 +34,16 @@ import json
 import logging
 import os
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Tuple
 from urllib.parse import urlparse
 
 OUTPUT_DIR = '/home/airflow/output'
+
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ciclo import _tipo_ciclo, dias_do_ciclo, limites_ciclo  # noqa: E402
+from artefatos import VERSAO_FORMATO_VIEWS, sha256_json  # noqa: E402
 
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import (
@@ -74,20 +77,6 @@ def month_range_from_string(month_str: str) -> Tuple[str, str, List[str]]:
         cur = cur + timedelta(days=1)
 
     return start.isoformat(), end.isoformat(), days
-
-
-def default_previous_month() -> str:
-    """Mês civil anterior ao atual (YYYY-MM).
-
-    Precisa bater com o ciclo padrão de dash.py / upload_to_azure.py /
-    send_reports.py / generate_silver.py (corrigidos em aabdf79). Este script
-    ficou de fora daquela correção e continuou buscando o mês corrente: no dia
-    1º isso gera um arquivo do mês novo (vazio), enquanto dash.py procura o
-    arquivo do mês anterior — que só existia na versão gerada no dia 1º do mês
-    anterior, com poucas horas de dados (incidente 01/10/2026).
-    """
-    first_of_this_month = date.today().replace(day=1)
-    return (first_of_this_month - timedelta(days=1)).strftime("%Y-%m")
 
 
 def read_input_json(path: str) -> List[Dict]:
@@ -209,13 +198,16 @@ def accumulate_views_historico(client, month: str, monthly_data: list):
 def main():
     parser = argparse.ArgumentParser(description="Generate daily views per OSC for a month")
     parser.add_argument("--input", required=False, help="Input JSON file produced by ong_extractor (defaults to latest output/oscs_etransparente_*.json)")
-    parser.add_argument("--month", help="Month in YYYY-MM (default: previous month)")
+    parser.add_argument("--ciclo", "--month", dest="ciclo", required=True, type=_tipo_ciclo,
+                        help="Ciclo YYYY-MM (obrigatório; definido pela DAG). --month é aceito por compatibilidade.")
     parser.add_argument("--batch-size", type=int, default=40, help="Number of pagePaths per GA4 request (default 40)")
     parser.add_argument("--output", help="Output JSON file path")
     args = parser.parse_args()
 
-    month = args.month or default_previous_month()
+    month = args.ciclo
     start_date, end_date, days = month_range_from_string(month)
+    assert days == dias_do_ciclo(month), 'inconsistência no cálculo de dias do ciclo'
+    gerado_em = datetime.now(timezone.utc)
 
     input_path = args.input
     # If input not provided, pick the latest generated file in ./output matching pattern
@@ -305,8 +297,24 @@ def main():
         os.makedirs(outdir, exist_ok=True)
         outpath = os.path.join(outdir, f"oscs_views_{month}.json")
 
+    inicio_ciclo, fim_ciclo = limites_ciclo(month)
+    documento = {
+        'meta': {
+            'versao_formato': VERSAO_FORMATO_VIEWS,
+            'ciclo': month,
+            'periodo_consultado': {'inicio': start_date, 'fim': end_date},
+            'fim_do_ciclo': fim_ciclo.isoformat(timespec='seconds'),
+            'gerado_em': gerado_em.isoformat(timespec='seconds'),
+            'propriedade_ga4': property_id,
+            'arquivo_extracao': os.path.basename(input_path),
+            'total_oscs': len(output),
+            'total_views': sum(sum(o['views']) for o in output),
+            'sha256_oscs': sha256_json(output),
+        },
+        'oscs': output,
+    }
     with open(outpath, 'w', encoding='utf-8') as f:
-        json.dump(output, f, ensure_ascii=False, indent=2)
+        json.dump(documento, f, ensure_ascii=False, indent=2)
 
     print(f"Wrote {len(output)} entries to {outpath}")
 
