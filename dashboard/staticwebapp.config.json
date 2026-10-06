@@ -8,7 +8,9 @@
           "clientSecretSettingName": "AZURE_CLIENT_SECRET"
         },
         "login": {
-          "loginParameters": ["scope=openid profile email"]
+          "loginParameters": [
+            "scope=openid profile email"
+          ]
         }
       }
     }
@@ -20,19 +22,43 @@
     },
     {
       "route": "/oscs",
-      "rewrite": "/oscs.html"
+      "rewrite": "/oscs.html",
+      "allowedRoles": [
+        "etransparente_acesso"
+      ]
     },
     {
       "route": "/osc",
-      "rewrite": "/osc.html"
+      "rewrite": "/osc.html",
+      "allowedRoles": [
+        "etransparente_acesso"
+      ]
     },
     {
       "route": "/feed",
-      "rewrite": "/feed.html"
+      "rewrite": "/feed.html",
+      "allowedRoles": [
+        "etransparente_acesso"
+      ]
+    },
+    {
+      "route": "/envio",
+      "rewrite": "/envio.html",
+      "allowedRoles": [
+        "etransparente_acesso"
+      ]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": [
+        "etransparente_acesso"
+      ]
     },
     {
       "route": "/*",
-      "allowedRoles": ["etransparente_acesso"]
+      "allowedRoles": [
+        "etransparente_acesso"
+      ]
     }
   ],
   "responseOverrides": {
@@ -47,5 +73,8 @@
   },
   "globalHeaders": {
     "Access-Control-Allow-Origin": "*"
+  },
+  "platform": {
+    "apiRuntime": "python:3.11"
   }
 }

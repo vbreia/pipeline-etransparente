@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>etransparente.org — Envio do ciclo</title>
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:#0f172a;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
+.sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-logo .logo-text{color:#fff;font-size:16px;font-weight:700;letter-spacing:-.3px}
+.sidebar-logo .logo-sub{color:#94a3b8;font-size:12px;margin-top:2px}
+.sidebar-nav{padding:12px 0;flex:1}
+.sidebar-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#94a3b8;text-decoration:none;font-size:14px;transition:all .15s}
+.sidebar-nav a:hover{color:#fff;background:rgba(255,255,255,.05)}
+.sidebar-nav a.active{color:#fff;background:rgba(59,130,246,.15);border-right:3px solid #3b82f6;font-weight:500}
+.sidebar-nav a i{font-size:18px;width:20px;text-align:center}
+.sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08)}
+.sidebar-footer .user-email{color:#94a3b8;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-footer a{display:flex;align-items:center;gap:8px;color:#94a3b8;text-decoration:none;font-size:12px;margin-top:6px}
+.content{margin-left:220px;flex:1;padding:32px;max-width:1100px}
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.page-header h1{font-size:22px;font-weight:700;color:#0f172a}
+.page-header .subtitle{font-size:13px;color:#64748b;margin-top:4px}
+select,input,textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a}
+.card{background:#fff;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:20px}
+.card h2{font-size:16px;font-weight:600;color:#1e3a8a;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.banner{border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.5}
+.banner i{font-size:24px;flex-shrink:0;margin-top:1px}
+.banner b{display:block;font-size:15px;margin-bottom:2px}
+.b-ok{background:#dcfce7;color:#14532d}.b-info{background:#dbeafe;color:#1e3a8a}
+.b-warn{background:#fef3c7;color:#78350f}.b-erro{background:#fee2e2;color:#7f1d1d}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:#f8fafc;border-radius:8px;padding:12px 14px}
+.kpi .l{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.3px}
+.kpi .v{font-size:20px;font-weight:700;color:#0f172a;margin-top:2px}
+.ver{border-top:1px solid #f1f5f9;padding:10px 0;font-size:13px}
+.ver:first-child{border-top:0}
+.ver .t{font-weight:600}.ver .d{color:#475569;margin-top:2px}
+.ver ul{margin:4px 0 0 18px;color:#475569}
+details summary{cursor:pointer;color:#1e3a8a;font-size:13px;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.3px;padding:8px;border-bottom:2px solid #e2e8f0}
+td{padding:10px 8px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#e0e7ff;color:#3730a3;margin-left:6px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-azul{background:#1e3a8a;color:#fff}.btn-verde{background:#15803d;color:#fff;font-size:15px;padding:12px 22px}
+.btn-cinza{background:#e2e8f0;color:#0f172a}.btn-vermelho{background:#b91c1c;color:#fff}
+.conf label{display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:13px;cursor:pointer}
+.conf input:disabled+span{color:#94a3b8}
+.aberto{font-size:11px;color:#15803d;margin-top:3px}
+.declaracao{font-size:15px;line-height:2;margin:8px 0 16px}
+.declaracao input{width:320px;max-width:100%;font-size:15px}
+.nota{font-size:12px;color:#64748b;margin-top:8px}
+.modal-fundo{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:200}
+.modal{background:#fff;border-radius:10px;padding:24px;width:520px;max-width:92vw}
+.modal h3{font-size:17px;margin-bottom:12px;color:#7f1d1d}
+.modal label{display:block;font-size:12px;color:#64748b;margin:10px 0 4px}
+.modal select,.modal textarea{width:100%}
+.modal .acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.msg{font-size:13px;margin-top:10px}
+.msg.erro{color:#b91c1c}.msg.ok{color:#15803d}
+#app{opacity:0;transition:opacity .3s}
+@media(max-width:768px){.sidebar{width:56px}.sidebar-logo .logo-text,.sidebar-logo .logo-sub,.sidebar-nav a span,.sidebar-footer .user-email,.sidebar-footer a span{display:none}.sidebar-nav a{padding:12px;justify-content:center}.content{margin-left:56px;padding:16px}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">etransparente.org</div>
+    <div class="logo-sub">Dashboard IDC</div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="index.html"><i class="ph ph-chart-bar"></i><span>Visão Geral</span></a>
+    <a href="oscs.html"><i class="ph ph-buildings"></i><span>OSCs</span></a>
+    <a href="feed.html"><i class="ph ph-newspaper"></i><span>Feed</span></a>
+    <a href="envio.html" class="active"><i class="ph ph-paper-plane-tilt"></i><span>Envio</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-email" id="userEmail">Carregando...</div>
+    <a href="/.auth/logout"><i class="ph ph-sign-out"></i><span>Sair</span></a>
+  </div>
+</aside>
+
+<main class="content" id="app">
+  <div class="page-header">
+    <div>
+      <h1 id="titulo">Envio do ciclo</h1>
+      <div class="subtitle" id="subtitulo"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="seletorCiclo" aria-label="Ciclo"></select>
+      <button class="btn btn-vermelho" id="btnReportar"><i class="ph ph-warning"></i>Reportar erro nos dados</button>
+    </div>
+  </div>
+
+  <div id="banner"></div>
+
+  <div class="card" id="cardResumo">
+    <h2><i class="ph ph-list-checks"></i>Resumo do ciclo</h2>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <div class="card" id="cardValidacao">
+    <h2><i class="ph ph-shield-check"></i>Validação automática</h2>
+    <div id="validacao"></div>
+  </div>
+
+  <div class="card" id="cardConferencia">
+    <h2><i class="ph ph-magnifying-glass"></i>Conferência por amostra</h2>
+    <p style="font-size:13px;color:#475569;margin-bottom:10px">
+      Abra cada PDF e compare com a tabela — os números aparecem aqui exatamente como estão impressos no PDF.
+      O instituto (fixo) e duas OSCs sorteadas pelo sistema.
+      “Confere” só fica disponível depois de abrir o PDF.
+    </p>
+    <table>
+      <thead><tr><th>OSC</th><th>Visualizações</th><th>Média diária</th><th>Nota</th><th>Classificação</th><th>PDF</th><th>Confere?</th></tr></thead>
+      <tbody id="amostra"></tbody>
+    </table>
+  </div>
+
+  <div class="card" id="cardConfirmacao">
+    <h2><i class="ph ph-signature"></i>Confirmação</h2>
+    <div id="confirmacao"></div>
+  </div>
+</main>
+
+<div class="modal-fundo" id="modalErro">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloModal">
+    <h3 id="tituloModal">Reportar erro nos dados</h3>
+    <p style="font-size:13px;color:#475569">O envio deste ciclo é <b>bloqueado imediatamente</b> e a equipe técnica é avisada.
+      Se o envio já começou, os e-mails restantes não saem.</p>
+    <label for="erroOsc">OSC</label><select id="erroOsc"></select>
+    <label for="erroCampo">O que está errado</label>
+    <select id="erroCampo">
+      <option value="views">Visualizações</option><option value="nota">Nota</option>
+      <option value="classificacao">Classificação</option><option value="cadastro">Dados cadastrais</option>
+      <option value="pdf">PDF não abre / ilegível</option><option value="outro">Outro</option>
+    </select>
+    <label for="erroDescricao">Descrição</label>
+    <textarea id="erroDescricao" rows="4" placeholder="Ex.: o PDF mostra 0 visualizações e a tabela mostra 12"></textarea>
+    <div class="msg" id="erroMsg"></div>
+    <div class="acoes">
+      <button class="btn btn-cinza" id="btnCancelarErro">Cancelar</button>
+      <button class="btn btn-vermelho" id="btnEnviarErro">Bloquear envio e reportar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let estado = null;
+const confere = {};          // slug -> true/false (marcação desta tela)
+let atualizador = null;
+
+async function api(caminho, corpo) {
+  const r = await fetch(caminho, corpo ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(corpo)} : {});
+  let dados = {};
+  try { dados = await r.json(); } catch (e) {}
+  if (!r.ok) { const e = new Error(dados.erro || ('Erro ' + r.status)); e.motivos = dados.motivos || []; throw e; }
+  return dados;
+}
+
+async function carregar(ciclo) {
+  try {
+    estado = await api('/api/status' + (ciclo ? '?ciclo=' + encodeURIComponent(ciclo) : ''));
+  } catch (e) {
+    $('banner').innerHTML = banner('erro', 'ph-x-circle', 'Não foi possível carregar o envio', esc(e.message));
+    $('app').style.opacity = 1; return;
+  }
+  $('userEmail').textContent = estado.usuario?.email || 'conectado';
+  render();
+  $('app').style.opacity = 1;
+  clearTimeout(atualizador);
+  if (estado.aprovacao && !estado.andamento?.concluido && !estado.bloqueio) atualizador = setTimeout(() => carregar(estado.ciclo), 20000);
+}
+
+function banner(tipo, icone, titulo, texto) {
+  return `<div class="banner b-${tipo}"><i class="ph ${icone}"></i><div><b>${titulo}</b>${texto}</div></div>`;
+}
+
+function render() {
+  if (!estado.ciclo) {
+    $('banner').innerHTML = banner('info', 'ph-info', 'Nenhum envio preparado', 'Quando a DAG do dia 3 terminar, o ciclo aparece aqui.');
+    ['cardResumo','cardValidacao','cardConferencia','cardConfirmacao'].forEach(i => $(i).style.display='none');
+    return;
+  }
+  const e = estado, env = e.envio, and = e.andamento, aprovador = e.usuario.aprovador;
+  $('titulo').textContent = 'Envio do ciclo ' + e.rotulo;
+  $('subtitulo').textContent = `Preparado em ${env.preparado_em || '?'} · Código de validação ${env.codigo_curto || '?'}`;
+  $('seletorCiclo').innerHTML = (e.ciclos_disponiveis || []).slice().reverse()
+    .map(c => `<option value="${esc(c)}" ${c===e.ciclo?'selected':''}>${esc(c)}</option>`).join('');
+  $('erroOsc').innerHTML = (e.oscs || []).map(n => `<option>${esc(n)}</option>`).join('');
+
+  // Banner de situação
+  let b = '';
+  if (env.modo_teste) b += banner('warn', 'ph-flask', 'ENSAIO', `Todos os e-mails deste ciclo vão para ${esc(env.destino_teste)}, não para as OSCs.`);
+  if (e.bloqueio) {
+    b += banner('erro', 'ph-hand', 'Envio bloqueado — erro reportado',
+      '<ul style="margin:6px 0 0 18px">' + e.bloqueio.reportes.map(r =>
+        `<li>${esc(r.osc)} — ${esc(r.campo)}: ${esc(r.descricao)} <span style="opacity:.75">(${esc(r.conta)}, ${esc(r.em)})</span></li>`).join('') +
+      '</ul>A equipe técnica foi avisada. Nenhum novo e-mail sai até a liberação.');
+  } else if (and.concluido) {
+    b += banner(and.enviados === and.total ? 'ok' : 'warn', 'ph-check-circle', 'Envio concluído',
+      `${and.enviados} de ${and.total} e-mails entregues.` + (and.falhas.length ? ` Falhas: ${and.falhas.map(esc).join(', ')}.` : ''));
+  } else if (e.aprovacao) {
+    b += banner('info', 'ph-paper-plane-tilt', 'Enviando…',
+      `Confirmado por ${esc(e.aprovacao.nome_declarado)} (${esc(e.aprovacao.conta)}) em ${esc(e.aprovacao.confirmado_em)}. ` +
+      `${and.enviados} de ${and.total} enviados até agora. A página atualiza sozinha.`);
+  } else if (e.validacao.status !== 'aprovado') {
+    b += banner('erro', 'ph-x-circle', 'Validação automática não aprovada', 'Este ciclo não pode ser enviado. A equipe técnica foi avisada pelo pipeline.');
+  } else {
+    b += banner('info', 'ph-hourglass', 'Aguardando conferência e confirmação',
+      aprovador ? 'Confira os 3 relatórios abaixo e confirme no final da página.' : 'Somente a presidência pode confirmar o envio. Você pode reportar erros.');
+  }
+  $('banner').innerHTML = b;
+
+  // KPIs
+  const r = e.validacao.resumo || {};
+  $('kpis').innerHTML = [
+    ['OSCs no ciclo', env.total_oscs], ['E-mails a enviar', env.total_emails], ['Sem e-mail', (env.sem_email||[]).length],
+    ['Visualizações no ciclo', r.total_views], ['Validação', e.validacao.status === 'aprovado' ? '✅ aprovada' : '❌ bloqueada'],
+  ].map(([l, v]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${esc(v ?? '—')}</div></div>`).join('');
+
+  // Validação
+  const vs = e.validacao.verificacoes || [];
+  const problemas = vs.filter(v => !v.ok), oks = vs.filter(v => v.ok);
+  const item = v => `<div class="ver"><div class="t">${v.ok ? '✅' : (v.nivel === 'bloqueante' ? '❌' : '⚠️')} ${esc(v.titulo)}</div>
+    <div class="d">${esc(v.detalhe)}</div>${v.itens?.length ? '<ul>' + v.itens.slice(0, 30).map(i => `<li>${esc(i)}</li>`).join('') + '</ul>' : ''}</div>`;
+  $('validacao').innerHTML = `<div style="font-size:13px;color:#475569;margin-bottom:6px">Validado em ${esc(e.validacao.validado_em || '?')} — ${oks.length} de ${vs.length} verificações sem pendência.</div>`
+    + problemas.map(item).join('')
+    + (oks.length ? `<details><summary>Ver as ${oks.length} verificações aprovadas</summary>${oks.map(item).join('')}</details>` : '');
+
+  // Amostra
+  const podeConferir = aprovador && !e.aprovacao && !e.bloqueio && e.validacao.status === 'aprovado';
+  $('amostra').innerHTML = (e.amostra || []).map(a => `
+    <tr>
+      <td><b>${esc(a.nome)}</b>${a.fixa ? '<span class="tag">fixa</span>' : '<span class="tag" style="background:#fef3c7;color:#92400e">sorteada</span>'}</td>
+      <td>${esc(a.views_total)}</td><td>${esc(a.media_diaria)}</td>
+      <td>${esc(a.nota_exibida || (a.nota_final + '/' + a.max_nota))}</td><td>${esc(a.classificacao)}</td>
+      <td>${aprovador ? `<button class="btn btn-azul" data-abrir="${esc(a.slug)}" ${podeConferir ? '' : 'disabled'}><i class="ph ph-file-pdf"></i>Abrir PDF</button>
+          ${a.aberto_em ? `<div class="aberto">aberto ${esc(a.aberto_em.split(' (')[0])}</div>` : ''}` : '<span style="color:#94a3b8;font-size:12px">—</span>'}</td>
+      <td class="conf">${aprovador ? `
+        <label><input type="radio" name="c_${esc(a.slug)}" value="sim" ${(!a.aberto_em || !podeConferir) ? 'disabled' : ''} ${confere[a.slug] === true ? 'checked' : ''}><span>Sim</span></label>
+        <label><input type="radio" name="c_${esc(a.slug)}" value="nao" ${!podeConferir ? 'disabled' : ''}><span>Não</span></label>` : '—'}</td>
+    </tr>`).join('');
+  document.querySelectorAll('[data-abrir]').forEach(btn => btn.onclick = () => abrirPdf(btn.dataset.abrir, btn));
+  document.querySelectorAll('.conf input').forEach(inp => inp.onchange = () => {
+    const slug = inp.name.slice(2);
+    if (inp.value === 'nao') { confere[slug] = false; abrirModalErro((e.amostra.find(x => x.slug === slug) || {}).nome); }
+    else confere[slug] = true;
+    renderConfirmacao();
+  });
+  renderConfirmacao();
+}
+
+function renderConfirmacao() {
+  const e = estado, aprovador = e.usuario.aprovador;
+  if (e.aprovacao) {
+    $('confirmacao').innerHTML = `<p style="font-size:14px">Confirmado por <b>${esc(e.aprovacao.nome_declarado)}</b>
+      (conta ${esc(e.aprovacao.conta)}) em ${esc(e.aprovacao.confirmado_em)}.</p>`;
+    return;
+  }
+  if (!aprovador) {
+    $('confirmacao').innerHTML = '<p style="font-size:14px;color:#475569">Somente a presidência pode confirmar o envio deste ciclo.</p>';
+    return;
+  }
+  const bloqueios = e.pode_aprovar_motivos || [];
+  const tudoConferido = (e.amostra || []).length > 0 && e.amostra.every(a => a.aberto_em && confere[a.slug] === true);
+  const nomeAtual = $('nomeDeclarado')?.value || '';
+  $('confirmacao').innerHTML = `
+    <div class="declaracao">Eu, <input id="nomeDeclarado" placeholder="seu nome completo" value="${esc(nomeAtual)}" autocomplete="name">,
+      confirmo que conferi os relatórios acima e autorizo o envio do ciclo <b>${esc(e.rotulo)}</b>
+      para <b>${esc(e.envio.total_emails)}</b> OSCs.</div>
+    <button class="btn btn-verde" id="btnConfirmar"><i class="ph ph-paper-plane-tilt"></i>Confirmar envio</button>
+    <div class="msg" id="confMsg"></div>
+    <p class="nota">Ao confirmar, presidência, transparência e comunicação recebem um e-mail com seu nome, conta, horário,
+      IP e localização aproximada. O envio começa em seguida.</p>
+    ${bloqueios.length ? `<p class="msg erro">${bloqueios.map(esc).join('<br>')}</p>` : ''}`;
+  const btn = $('btnConfirmar'), nome = $('nomeDeclarado');
+  const atualizar = () => { btn.disabled = !(tudoConferido && nome.value.trim().length >= 5 && !bloqueios.length); };
+  nome.oninput = atualizar; atualizar();
+  if (!tudoConferido) $('confMsg').textContent = 'Abra os 3 PDFs e marque “Sim” em cada um para liberar a confirmação.';
+  btn.onclick = confirmar;
+}
+
+async function abrirPdf(slug, btn) {
+  const janela = window.open('', '_blank');           // abre já, para o navegador não bloquear o pop-up
+  btn.disabled = true;
+  try {
+    const r = await api('/api/abrir-pdf', {ciclo: estado.ciclo, slug, codigo: estado.envio.codigo_validacao});
+    if (janela) janela.location = r.url; else window.location = r.url;
+    await carregar(estado.ciclo);
+  } catch (e) {
+    if (janela) janela.close();
+    alertaInline(e.message); btn.disabled = false;
+  }
+}
+
+async function confirmar() {
+  const btn = $('btnConfirmar'); btn.disabled = true;
+  $('confMsg').className = 'msg'; $('confMsg').textContent = 'Confirmando…';
+  try {
+    const r = await api('/api/aprovar', {ciclo: estado.ciclo, codigo: estado.envio.codigo_validacao,
+      nome_declarado: $('nomeDeclarado').value, conferencia: confere});
+    $('confMsg').className = 'msg ok'; $('confMsg').textContent = `Envio confirmado. ${r.enfileirados} e-mails na fila.`;
+    setTimeout(() => carregar(estado.ciclo), 1500);
+  } catch (e) {
+    $('confMsg').className = 'msg erro';
+    $('confMsg').innerHTML = esc(e.message) + (e.motivos.length ? '<br>' + e.motivos.map(esc).join('<br>') : '');
+    btn.disabled = false;
+  }
+}
+
+function alertaInline(texto) {
+  $('banner').insertAdjacentHTML('afterbegin', banner('erro', 'ph-x-circle', 'Atenção', esc(texto)));
+}
+
+function abrirModalErro(osc) {
+  if (osc) $('erroOsc').value = osc;
+  $('erroMsg').textContent = ''; $('erroDescricao').value = '';
+  $('modalErro').style.display = 'flex'; $('erroDescricao').focus();
+}
+$('btnReportar').onclick = () => abrirModalErro();
+$('btnCancelarErro').onclick = () => { $('modalErro').style.display = 'none'; };
+$('btnEnviarErro').onclick = async () => {
+  const b = $('btnEnviarErro'); b.disabled = true;
+  try {
+    await api('/api/reportar-erro', {ciclo: estado.ciclo, osc: $('erroOsc').value, campo: $('erroCampo').value,
+      descricao: $('erroDescricao').value});
+    $('erroMsg').className = 'msg ok'; $('erroMsg').textContent = 'Envio bloqueado e equipe técnica avisada.';
+    setTimeout(() => { $('modalErro').style.display = 'none'; carregar(estado.ciclo); }, 1200);
+  } catch (e) {
+    $('erroMsg').className = 'msg erro'; $('erroMsg').textContent = e.message;
+  } finally { b.disabled = false; }
+};
+$('seletorCiclo').onchange = ev => { Object.keys(confere).forEach(k => delete confere[k]); carregar(ev.target.value); };
+
+carregar(new URLSearchParams(location.search).get('ciclo'));
+</script>
+</body>
+</html>

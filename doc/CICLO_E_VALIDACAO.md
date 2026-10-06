@@ -30,7 +30,7 @@
 | `preparar_envios` | `preparar_envios.py` | e-mails prontos + amostra + código de validação. **Não envia.** |
 
 O envio às OSCs não está na DAG: acontece depois da conferência e confirmação da
-presidência em `dashboard.etransparente.org/envio` (em construção — Entrega 5).
+presidência em `dashboard.etransparente.org/envio` (ver `doc/ENVIO_COM_APROVACAO.md`).
 
 ## As 12 verificações (`validar_ciclo.py`)
 

@@ -6,7 +6,8 @@ conferência e calcula o código de validação. NÃO envia nada.
 Só roda se `validar_ciclo.py` aprovou o ciclo E se os arquivos validados não
 mudaram desde a validação (conferido por hash).
 
-Saída (local em output/envios/{ciclo}/ e no Azure em gold/envios/{ciclo}/):
+Saída (local em output/envios/{ciclo}/ e no Azure em envios/{ciclo}/ — FORA de gold/,
+que é legível pelo token do dashboard; aqui há e-mails de OSCs):
   emails/{slug}.json   e-mail final de cada OSC (destinatário, assunto, HTML, PDF)
   amostra.json         IDC (fixa) + 2 OSCs sorteadas para a conferência humana
   manifesto.json       lista do que será enviado + código de validação
@@ -114,6 +115,51 @@ def conferir_validacao(validacao: dict, ciclo: str, sha_relatorios: str, sha_vie
     return motivos
 
 
+def avisar_ciclo_pronto(manifesto: dict, amostra: list[dict], validacao: dict) -> None:
+    """E-mail interno para presidência, transparência e comunicação (usa o SMTP da VM)."""
+    import html as _h
+    import smtplib
+    import ssl
+    from email.mime.text import MIMEText
+
+    destinatarios = [e.strip() for e in os.environ.get(
+        'NOTIFICAR_GESTAO',
+        'presidencia@direitocoletivo.org.br,transparencia@direitocoletivo.org.br,'
+        'comunicacao@direitocoletivo.org.br').split(',') if e.strip()]
+    resumo = validacao.get('resumo', {})
+    alertas = [v for v in validacao.get('verificacoes', []) if not v['ok']]
+    itens = ''.join(f'<li>⚠️ {_h.escape(v["titulo"])}: {_h.escape(v["detalhe"])}'
+                    + ''.join(f'<br>&nbsp;&nbsp;– {_h.escape(str(i))}' for i in v['itens'][:15]) + '</li>'
+                    for v in alertas)
+    amostra_html = ''.join(f'<li>{_h.escape(a["nome"])}{" (fixa)" if a["fixa"] else ""}</li>' for a in amostra)
+    teste = ' [ENSAIO]' if manifesto.get('modo_teste') else ''
+    corpo = (
+        '<div style="font-family:Arial,sans-serif;max-width:640px;color:#0f172a">'
+        f'<h2 style="color:#1e3a8a">Ciclo {_h.escape(manifesto["rotulo"])} pronto para conferência{teste}</h2>'
+        f'<p>A validação automática aprovou o ciclo ({len(validacao.get("verificacoes", []))} verificações). '
+        f'<b>{manifesto["total_emails"]}</b> e-mails estão preparados e <b>nada foi enviado</b>.</p>'
+        f'<p>Total de visualizações no ciclo: <b>{resumo.get("total_views", "?")}</b> · '
+        f'OSCs: <b>{manifesto["total_oscs"]}</b> · Sem e-mail: <b>{len(manifesto["sem_email"])}</b> · '
+        f'Código de validação: <b>{manifesto["codigo_curto"]}</b></p>'
+        + (f'<p><b>Pontos de atenção:</b></p><ul>{itens}</ul>' if itens else '')
+        + f'<p><b>Amostra para conferência:</b></p><ul>{amostra_html}</ul>'
+        '<p>Para conferir e autorizar o envio: '
+        '<a href="https://dashboard.etransparente.org/envio">dashboard.etransparente.org/envio</a> '
+        '(acesso da presidência).</p>'
+        '<p style="font-size:12px;color:#64748b">Mensagem automática do pipeline etransparente.</p></div>'
+    )
+    msg = MIMEText(corpo, 'html', 'utf-8')
+    msg['Subject'] = f'[etransparente]{teste} Ciclo {manifesto["rotulo"]} pronto para conferência e envio'
+    msg['From'] = 'transparencia@direitocoletivo.org.br'
+    msg['To'] = ', '.join(destinatarios)
+    with smtplib.SMTP(os.environ['AIRFLOW__SMTP__SMTP_HOST'],
+                      int(os.environ.get('AIRFLOW__SMTP__SMTP_PORT', '587')), timeout=30) as s:
+        s.starttls(context=ssl.create_default_context())
+        s.login(os.environ['AIRFLOW__SMTP__SMTP_USER'], os.environ['AIRFLOW__SMTP__SMTP_PASSWORD'])
+        s.send_message(msg, to_addrs=destinatarios)
+    print(f'Aviso "ciclo pronto" enviado para: {", ".join(destinatarios)}')
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Execução (VM)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -150,12 +196,16 @@ def main():
 
     cliente = BlobServiceClient.from_connection_string(os.environ['AZURE_STORAGE_CONNECTION_STRING'])
     cont = cliente.get_container_client(CONTAINER)
-    prefixo = f'gold/envios/{ciclo}/'
+    prefixo = f'envios/{ciclo}/'
 
-    # 2. Nunca preparar de novo um ciclo que já começou a ser enviado
-    ja_enviado = any(True for _ in cont.list_blobs(name_starts_with=prefixo + 'status/'))
-    if ja_enviado or cont.get_blob_client(prefixo + 'resultado.json').exists():
-        raise SystemExit(f'O ciclo {ciclo} já teve envio iniciado — preparação recusada para evitar duplicidade.')
+    # 2. Nunca preparar de novo um ciclo em que algum e-mail JÁ SAIU (evita duplicidade).
+    #    Se o envio foi interrompido por bloqueio sem nenhum e-mail enviado, a
+    #    nova preparação arquiva os status antigos e recomeça.
+    status_antigos = list(cont.list_blobs(name_starts_with=prefixo + 'status/'))
+    for b in status_antigos:
+        if json.loads(cont.get_blob_client(b.name).download_blob().readall()).get('estado') in ('enviado', 'enviando'):
+            raise SystemExit(f'O ciclo {ciclo} já teve e-mails enviados — preparação recusada para evitar '
+                             f'duplicidade. Tratamento manual necessário (ver doc/CICLO_E_VALIDACAO.md).')
 
     # 3. Montar os e-mails
     ano, mes = (int(x) for x in ciclo.split('-'))
@@ -211,7 +261,7 @@ def main():
 
     # 4. Amostra de conferência (IDC + 2 sorteadas, sem repetir o ciclo anterior)
     anterior = set()
-    blob_amostra_ant = cont.get_blob_client(f'gold/envios/{ciclo_anterior(ciclo)}/amostra.json')
+    blob_amostra_ant = cont.get_blob_client(f'envios/{ciclo_anterior(ciclo)}/amostra.json')
     if blob_amostra_ant.exists():
         anterior = {a['slug'] for a in json.loads(blob_amostra_ant.download_blob().readall()).get('oscs', [])
                     if not a.get('fixa')}
@@ -224,6 +274,8 @@ def main():
             **a, 'nome': r['nome'],
             'views_total': r.get('views_total'), 'media_diaria': media_diaria(r.get('views_total'), n_dias),
             'nota_final': r.get('nota_final'), 'max_nota': r.get('max_nota'),
+            # exatamente como o PDF imprime ({nota_final}/{max_nota} em dash.py), para a conferência
+            'nota_exibida': f"{r.get('nota_final')}/{r.get('max_nota')}",
             'classificacao': r.get('classificacao'),
             'pdf_blob': f'gold/{ciclo}/pdf/{r["pdf"]}',
         })
@@ -249,7 +301,11 @@ def main():
     # 6. Publicar. Uma nova preparação invalida aprovação/bloqueio anteriores:
     #    eles são arquivados em historico/ (nada é apagado sem registro).
     ts = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-    for nome in ('aprovacao.json', 'bloqueio.json'):
+    for b in status_antigos:
+        conteudo = cont.get_blob_client(b.name).download_blob().readall()
+        cont.get_blob_client(f'{prefixo}historico/{ts}_{b.name.rsplit("/", 1)[-1]}').upload_blob(conteudo)
+        cont.delete_blob(b.name)
+    for nome in ('aprovacao.json', 'bloqueio.json', 'resultado.json'):
         b = cont.get_blob_client(prefixo + nome)
         if b.exists():
             conteudo = b.download_blob().readall()
@@ -264,6 +320,9 @@ def main():
     for nome_arq in ('amostra.json', 'manifesto.json'):  # manifesto por último
         with open(os.path.join(dir_envio, nome_arq), 'rb') as f:
             cont.get_blob_client(prefixo + nome_arq).upload_blob(f, overwrite=True)
+
+    # 7. Avisar a gestão que o ciclo está pronto para conferência
+    avisar_ciclo_pronto(manifesto, amostra, validacao)
 
     print('=' * 70)
     print(f'ENVIO DO CICLO {ciclo} PREPARADO{" (ENSAIO → " + args.destino_teste + ")" if modo_teste else ""}')
