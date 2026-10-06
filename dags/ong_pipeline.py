@@ -30,9 +30,9 @@ dag = DAG(
     'ong_pipeline',
     default_args=default_args,
     description='Pipeline para extração e processamento de dados de ONGs',
-    # Executa mensalmente, no dia 1 às 02:00 UTC
+    # Executa mensalmente, no dia 1 às 11:30 UTC
     schedule_interval='30 11 1 * *',
-    start_date=days_ago(1),
+    start_date=datetime(2026, 1, 1),
     catchup=False,
     tags=['ong', 'etransparente', 'pipeline'],
 )
